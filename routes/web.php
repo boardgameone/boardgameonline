@@ -1,22 +1,46 @@
 <?php
 
+use App\Http\Controllers\GameController;
+use App\Http\Controllers\GameRoomController;
 use App\Http\Controllers\ProfileController;
-use Illuminate\Foundation\Application;
+use App\Models\Game;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
+    $featuredGames = Game::query()
+        ->where('is_active', true)
+        ->orderBy('sort_order')
+        ->limit(4)
+        ->get();
+
     return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
+        'featuredGames' => $featuredGames,
     ]);
 });
 
 Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
+
+// Game routes (public)
+Route::get('/games', [GameController::class, 'index'])->name('games.index');
+Route::get('/games/{game:slug}', [GameController::class, 'show'])->name('games.show');
+
+// Room routes (public - guests allowed)
+Route::post('/rooms', [GameRoomController::class, 'store'])->name('rooms.store');
+Route::get('/rooms/join', [GameRoomController::class, 'showJoin'])->name('rooms.join');
+Route::post('/rooms/join', [GameRoomController::class, 'join'])->name('rooms.join.submit');
+Route::get('/rooms/{room:room_code}', [GameRoomController::class, 'show'])->name('rooms.show');
+Route::post('/rooms/{room:room_code}/start', [GameRoomController::class, 'start'])->name('rooms.start');
+Route::post('/rooms/{room:room_code}/leave', [GameRoomController::class, 'leave'])->name('rooms.leave');
+
+// Game action routes
+Route::post('/rooms/{room:room_code}/confirm-roll', [GameRoomController::class, 'confirmRoll'])->name('rooms.confirmRoll');
+Route::post('/rooms/{room:room_code}/peek', [GameRoomController::class, 'peek'])->name('rooms.peek');
+Route::post('/rooms/{room:room_code}/skip-peek', [GameRoomController::class, 'skipPeek'])->name('rooms.skipPeek');
+Route::post('/rooms/{room:room_code}/select-accomplice', [GameRoomController::class, 'selectAccomplice'])->name('rooms.selectAccomplice');
+Route::post('/rooms/{room:room_code}/vote', [GameRoomController::class, 'vote'])->name('rooms.vote');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
