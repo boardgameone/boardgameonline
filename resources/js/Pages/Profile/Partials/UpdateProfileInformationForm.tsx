@@ -15,7 +15,7 @@ export default function UpdateProfileInformation({
     status?: string;
     className?: string;
 }) {
-    const user = usePage().props.auth.user;
+    const user = usePage().props.auth.user!; // Non-null assertion: this page requires authentication
 
     const { data, setData, patch, errors, processing, recentlySuccessful } =
         useForm({

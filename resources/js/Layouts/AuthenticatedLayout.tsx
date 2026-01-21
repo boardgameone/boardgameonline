@@ -9,7 +9,7 @@ export default function Authenticated({
     header,
     children,
 }: PropsWithChildren<{ header?: ReactNode }>) {
-    const user = usePage().props.auth.user;
+    const user = usePage().props.auth.user!; // Non-null assertion: this layout is only used in authenticated routes
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
@@ -32,6 +32,12 @@ export default function Authenticated({
                                     active={route().current('dashboard')}
                                 >
                                     Dashboard
+                                </NavLink>
+                                <NavLink
+                                    href={route('games.index')}
+                                    active={route().current('games.*')}
+                                >
+                                    Games
                                 </NavLink>
                             </div>
                         </div>
@@ -136,6 +142,12 @@ export default function Authenticated({
                             active={route().current('dashboard')}
                         >
                             Dashboard
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            href={route('games.index')}
+                            active={route().current('games.*')}
+                        >
+                            Games
                         </ResponsiveNavLink>
                     </div>
 
