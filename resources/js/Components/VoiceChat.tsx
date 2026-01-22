@@ -260,16 +260,25 @@ export default function VoiceChat({ roomCode, currentPlayerId }: Readonly<Props>
                     }
                 }
 
-                // Poll for new players to call
+                // Poll for new players to call - also retry failed calls
                 peerPollingRef.current = setInterval(async () => {
                     const res = await axios.get(route('rooms.voice.status', roomCode));
                     const players = res.data.players as VoicePlayer[];
                     for (const player of players) {
-                        if (player.id !== currentPlayerId && !callsRef.current.has(player.id)) {
-                            callPlayer(player.id);
+                        if (player.id !== currentPlayerId) {
+                            const existingCall = callsRef.current.get(player.id);
+                            // Call if no existing call, or if existing call has no audio element (failed)
+                            if (!existingCall?.audioElement) {
+                                // Remove failed call first
+                                if (existingCall) {
+                                    callsRef.current.delete(player.id);
+                                }
+                                console.log(`Retry calling player ${player.id}`);
+                                callPlayer(player.id);
+                            }
                         }
                     }
-                }, 5000);
+                }, 3000);
             });
 
             // Handle incoming calls
