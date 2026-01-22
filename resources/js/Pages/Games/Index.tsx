@@ -1,4 +1,4 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import GameLayout from '@/Layouts/GameLayout';
 import { Game, PageProps } from '@/types';
 import { Head, Link } from '@inertiajs/react';
 
@@ -8,81 +8,153 @@ interface Props extends PageProps {
 
 export default function Index({ games }: Props) {
     return (
-        <AuthenticatedLayout
-            header={
-                <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                        Games
-                    </h2>
-                    <Link
-                        href={route('rooms.join')}
-                        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500"
-                    >
-                        Join Room by Code
-                    </Link>
-                </div>
-            }
-        >
+        <GameLayout>
             <Head title="Games" />
 
-            <div className="py-12">
-                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                        {games.map((game) => (
-                            <GameCard key={game.id} game={game} />
-                        ))}
-                    </div>
+            {/* Hero Header */}
+            <div className="mb-10">
+                <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+                    {/* Decorative circles */}
+                    <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+                    <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2" />
 
-                    {games.length === 0 && (
-                        <div className="text-center py-12">
-                            <p className="text-gray-500">
-                                No games available at the moment.
+                    <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-6">
+                        <div className="text-center sm:text-left">
+                            <div className="flex items-center gap-3 justify-center sm:justify-start">
+                                <span className="text-5xl">{'\u{1F3AE}'}</span>
+                                <h1 className="text-3xl sm:text-4xl font-black text-white">
+                                    Game Library
+                                </h1>
+                            </div>
+                            <p className="text-white/80 mt-2 text-lg">
+                                Pick a game and start playing with friends!
                             </p>
                         </div>
-                    )}
+                        <Link
+                            href={route('rooms.join')}
+                            className="rounded-full bg-white px-8 py-4 font-bold text-purple-600 shadow-lg transition hover:scale-105 border-b-4 border-purple-300 flex items-center gap-2"
+                        >
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                            </svg>
+                            Join with Code
+                        </Link>
+                    </div>
                 </div>
             </div>
-        </AuthenticatedLayout>
+
+            {/* Games Section Title */}
+            <div className="mb-6 flex items-center gap-3">
+                <div className="h-1 flex-1 bg-gradient-to-r from-transparent via-blue-400 to-transparent rounded-full" />
+                <h2 className="text-xl font-bold text-gray-700 flex items-center gap-2">
+                    <span>{'\u{2B50}'}</span> Available Games <span>{'\u{2B50}'}</span>
+                </h2>
+                <div className="h-1 flex-1 bg-gradient-to-r from-transparent via-blue-400 to-transparent rounded-full" />
+            </div>
+
+            {/* Games Grid */}
+            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+                {games.map((game) => (
+                    <GameCard key={game.id} game={game} />
+                ))}
+            </div>
+
+            {games.length === 0 && (
+                <div className="text-center py-20">
+                    <div className="inline-flex items-center justify-center w-32 h-32 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full mb-6 shadow-inner">
+                        <span className="text-6xl opacity-40">{'\u{1F3B2}'}</span>
+                    </div>
+                    <p className="text-gray-600 font-bold text-xl">
+                        No games available yet
+                    </p>
+                    <p className="text-gray-500 mt-2">
+                        Check back soon for exciting new games!
+                    </p>
+                </div>
+            )}
+        </GameLayout>
     );
 }
 
-function GameCard({ game }: { game: Game }) {
+function GameCard({ game }: Readonly<{ game: Game }>) {
     const gameEmoji = getGameEmoji(game.slug);
+    const gradients: Record<string, string> = {
+        'cheese-thief': 'from-amber-400 via-yellow-400 to-orange-400',
+    };
+    const gradient = gradients[game.slug] || 'from-blue-400 via-purple-400 to-pink-400';
 
     return (
         <Link
             href={route('games.show', game.slug)}
-            className="group relative overflow-hidden rounded-xl bg-white shadow-md transition hover:shadow-xl"
+            className="group relative bg-white rounded-3xl shadow-xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
         >
-            <div className="aspect-video bg-gradient-to-br from-yellow-400 to-yellow-500 flex items-center justify-center">
-                <span className="text-6xl">{gameEmoji}</span>
+            {/* Game Image Area */}
+            <div className={`aspect-[4/3] bg-gradient-to-br ${gradient} flex items-center justify-center relative overflow-hidden`}>
+                {/* Animated background shapes */}
+                <div className="absolute inset-0 opacity-30">
+                    <div className="absolute top-4 left-4 w-16 h-16 bg-white/30 rounded-full animate-pulse" />
+                    <div className="absolute bottom-8 right-8 w-24 h-24 bg-white/20 rounded-full" />
+                    <div className="absolute top-1/2 left-1/2 w-12 h-12 bg-white/20 rounded-lg rotate-45 -translate-x-1/2 -translate-y-1/2" />
+                </div>
+
+                {/* Main emoji */}
+                <span className="text-8xl group-hover:scale-125 transition-transform duration-500 drop-shadow-lg relative z-10">
+                    {gameEmoji}
+                </span>
+
+                {/* Play button overlay on hover */}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
+                    <div className="w-16 h-16 bg-white/90 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-50 group-hover:scale-100 shadow-lg">
+                        <svg className="h-8 w-8 text-purple-600 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z" />
+                        </svg>
+                    </div>
+                </div>
+
+                {/* Active rooms badge */}
+                {game.active_rooms_count !== undefined && game.active_rooms_count > 0 && (
+                    <div className="absolute top-4 right-4 z-20">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500 text-white text-sm font-bold shadow-lg animate-pulse">
+                            <span className="w-2 h-2 bg-white rounded-full" />
+                            {game.active_rooms_count} Live
+                        </span>
+                    </div>
+                )}
             </div>
-            <div className="p-5">
-                <h3 className="text-lg font-bold text-gray-900 group-hover:text-blue-600">
+
+            {/* Game Info */}
+            <div className="p-6">
+                <h3 className="text-2xl font-black text-gray-900 group-hover:text-purple-600 transition-colors">
                     {game.name}
                 </h3>
-                <p className="mt-2 text-sm text-gray-600 line-clamp-2">
+                <p className="mt-2 text-gray-500 line-clamp-2 text-sm">
                     {game.description}
                 </p>
-                <div className="mt-4 flex items-center gap-4 text-xs text-gray-500">
-                    <span className="flex items-center gap-1">
-                        <UsersIcon />
-                        {game.min_players}-{game.max_players} players
+
+                {/* Stats */}
+                <div className="mt-5 flex items-center gap-3 flex-wrap">
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-blue-600 text-sm font-bold">
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        {game.min_players}-{game.max_players} Players
                     </span>
                     {game.estimated_duration_minutes && (
-                        <span className="flex items-center gap-1">
-                            <ClockIcon />
+                        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-50 text-purple-600 text-sm font-bold">
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
                             ~{game.estimated_duration_minutes} min
                         </span>
                     )}
                 </div>
-                {game.active_rooms_count !== undefined && game.active_rooms_count > 0 && (
-                    <div className="mt-3">
-                        <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-                            {game.active_rooms_count} room{game.active_rooms_count !== 1 ? 's' : ''} waiting
-                        </span>
+
+                {/* Play Button */}
+                <div className="mt-6">
+                    <div className="w-full rounded-full bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-3 font-bold text-white text-center shadow-lg group-hover:shadow-xl transition-all group-hover:from-blue-700 group-hover:to-purple-700">
+                        Play Now {'\u{1F680}'}
                     </div>
-                )}
+                </div>
             </div>
         </Link>
     );
@@ -93,40 +165,4 @@ function getGameEmoji(slug: string): string {
         'cheese-thief': '\u{1F9C0}',
     };
     return emojis[slug] || '\u{1F3B2}';
-}
-
-function UsersIcon() {
-    return (
-        <svg
-            className="h-4 w-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-        >
-            <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-            />
-        </svg>
-    );
-}
-
-function ClockIcon() {
-    return (
-        <svg
-            className="h-4 w-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-        >
-            <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-        </svg>
-    );
 }

@@ -32,6 +32,7 @@ Route::post('/rooms', [GameRoomController::class, 'store'])->name('rooms.store')
 Route::get('/rooms/join', [GameRoomController::class, 'showJoin'])->name('rooms.join');
 Route::post('/rooms/join', [GameRoomController::class, 'join'])->name('rooms.join.submit');
 Route::get('/rooms/{room:room_code}', [GameRoomController::class, 'show'])->name('rooms.show');
+Route::post('/rooms/{room:room_code}/join-direct', [GameRoomController::class, 'joinDirect'])->name('rooms.joinDirect');
 Route::post('/rooms/{room:room_code}/start', [GameRoomController::class, 'start'])->name('rooms.start');
 Route::post('/rooms/{room:room_code}/leave', [GameRoomController::class, 'leave'])->name('rooms.leave');
 
@@ -41,6 +42,14 @@ Route::post('/rooms/{room:room_code}/peek', [GameRoomController::class, 'peek'])
 Route::post('/rooms/{room:room_code}/skip-peek', [GameRoomController::class, 'skipPeek'])->name('rooms.skipPeek');
 Route::post('/rooms/{room:room_code}/select-accomplice', [GameRoomController::class, 'selectAccomplice'])->name('rooms.selectAccomplice');
 Route::post('/rooms/{room:room_code}/vote', [GameRoomController::class, 'vote'])->name('rooms.vote');
+Route::post('/rooms/{room:room_code}/chat', [GameRoomController::class, 'sendMessage'])->name('rooms.chat');
+Route::get('/rooms/{room:room_code}/messages', [GameRoomController::class, 'getMessages'])->name('rooms.messages');
+
+// Voice chat routes
+Route::post('/rooms/{room:room_code}/voice/signal', [GameRoomController::class, 'sendSignal'])->name('rooms.voice.signal');
+Route::get('/rooms/{room:room_code}/voice/signals', [GameRoomController::class, 'getSignals'])->name('rooms.voice.signals');
+Route::post('/rooms/{room:room_code}/voice/toggle-mute', [GameRoomController::class, 'toggleMute'])->name('rooms.voice.toggleMute');
+Route::get('/rooms/{room:room_code}/voice/status', [GameRoomController::class, 'getVoiceStatus'])->name('rooms.voice.status');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

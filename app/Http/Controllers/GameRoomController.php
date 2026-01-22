@@ -7,13 +7,17 @@ use App\Http\Requests\JoinGameRoomRequest;
 use App\Http\Requests\PeekRequest;
 use App\Http\Requests\SelectAccompliceRequest;
 use App\Http\Requests\VoteRequest;
+use App\Models\ChatMessage;
 use App\Models\Game;
 use App\Models\GamePeek;
 use App\Models\GamePlayer;
 use App\Models\GameRoom;
 use App\Models\GameVote;
+use App\Models\VoiceSignal;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -94,8 +98,12 @@ class GameRoomController extends Controller
         // Build game state with visibility rules
         $gameState = $this->buildGameState($room, $currentPlayer);
 
+        // Add is_full to room data
+        $roomData = $room->toArray();
+        $roomData['is_full'] = $room->isFull();
+
         return Inertia::render('Rooms/Show', [
-            'room' => $room,
+            'room' => $roomData,
             'currentPlayer' => $currentPlayer,
             'isHost' => $currentPlayer?->is_host ?? false,
             'gameState' => $gameState,
@@ -362,6 +370,101 @@ class GameRoomController extends Controller
     }
 
     /**
+     * Join a room directly via link (for guests who need to provide nickname).
+     */
+    public function joinDirect(JoinGameRoomRequest $request, GameRoom $room): RedirectResponse
+    {
+        if (! $room->isWaiting()) {
+            return back()->withErrors(['nickname' => 'This room is no longer accepting players.']);
+        }
+
+        if ($room->isFull()) {
+            return back()->withErrors(['nickname' => 'This room is full.']);
+        }
+
+        $existingPlayer = $this->findCurrentPlayer($room);
+
+        if (! $existingPlayer) {
+            $this->joinAsPlayer($room, false, $request->validated('nickname'));
+        } else {
+            $existingPlayer->update(['is_connected' => true]);
+        }
+
+        return redirect()->route('rooms.show', $room->room_code);
+    }
+
+    /**
+     * Send a chat message in the room.
+     */
+    public function sendMessage(Request $request, GameRoom $room): JsonResponse
+    {
+        $currentPlayer = $this->findCurrentPlayer($room);
+
+        if (! $currentPlayer) {
+            return response()->json(['error' => 'You are not a player in this room.'], 403);
+        }
+
+        $validated = $request->validate([
+            'message' => ['required', 'string', 'max:500'],
+        ]);
+
+        $chatMessage = ChatMessage::create([
+            'game_room_id' => $room->id,
+            'game_player_id' => $currentPlayer->id,
+            'message' => $validated['message'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => [
+                'id' => $chatMessage->id,
+                'message' => $chatMessage->message,
+                'created_at' => $chatMessage->created_at->toISOString(),
+                'player' => [
+                    'id' => $currentPlayer->id,
+                    'nickname' => $currentPlayer->nickname,
+                    'avatar_color' => $currentPlayer->avatar_color,
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Get chat messages for the room.
+     */
+    public function getMessages(Request $request, GameRoom $room): JsonResponse
+    {
+        $currentPlayer = $this->findCurrentPlayer($room);
+
+        if (! $currentPlayer) {
+            return response()->json(['error' => 'You are not a player in this room.'], 403);
+        }
+
+        $afterId = $request->query('after_id', 0);
+
+        $messages = $room->chatMessages()
+            ->with('player:id,nickname,avatar_color')
+            ->where('id', '>', $afterId)
+            ->orderBy('created_at', 'asc')
+            ->limit(100)
+            ->get()
+            ->map(fn (ChatMessage $msg) => [
+                'id' => $msg->id,
+                'message' => $msg->message,
+                'created_at' => $msg->created_at->toISOString(),
+                'player' => [
+                    'id' => $msg->player->id,
+                    'nickname' => $msg->player->nickname,
+                    'avatar_color' => $msg->player->avatar_color,
+                ],
+            ]);
+
+        return response()->json([
+            'messages' => $messages,
+        ]);
+    }
+
+    /**
      * Find the current player in a room by user_id (if authenticated) or session_id (if guest).
      */
     private function findCurrentPlayer(GameRoom $room): ?GamePlayer
@@ -537,5 +640,116 @@ class GameRoomController extends Controller
             'is_thief' => $isThief,
             'is_accomplice' => $isAccomplice,
         ];
+    }
+
+    /**
+     * Send a WebRTC signal to another player.
+     */
+    public function sendSignal(Request $request, GameRoom $room): JsonResponse
+    {
+        $currentPlayer = $this->findCurrentPlayer($room);
+
+        if (! $currentPlayer) {
+            return response()->json(['error' => 'You are not a player in this room.'], 403);
+        }
+
+        $validated = $request->validate([
+            'to_player_id' => ['required', 'integer', 'exists:game_players,id'],
+            'type' => ['required', 'string', 'in:offer,answer,ice-candidate'],
+            'payload' => ['required', 'array'],
+        ]);
+
+        // Verify target player is in the same room
+        $targetPlayer = $room->connectedPlayers()->find($validated['to_player_id']);
+        if (! $targetPlayer) {
+            return response()->json(['error' => 'Target player not found in room.'], 404);
+        }
+
+        VoiceSignal::create([
+            'game_room_id' => $room->id,
+            'from_player_id' => $currentPlayer->id,
+            'to_player_id' => $validated['to_player_id'],
+            'type' => $validated['type'],
+            'payload' => $validated['payload'],
+        ]);
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Get pending WebRTC signals for the current player.
+     */
+    public function getSignals(Request $request, GameRoom $room): JsonResponse
+    {
+        $currentPlayer = $this->findCurrentPlayer($room);
+
+        if (! $currentPlayer) {
+            return response()->json(['error' => 'You are not a player in this room.'], 403);
+        }
+
+        $signals = VoiceSignal::where('game_room_id', $room->id)
+            ->where('to_player_id', $currentPlayer->id)
+            ->where('processed', false)
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->map(fn (VoiceSignal $signal) => [
+                'id' => $signal->id,
+                'from_player_id' => $signal->from_player_id,
+                'type' => $signal->type,
+                'payload' => $signal->payload,
+            ]);
+
+        // Mark as processed
+        VoiceSignal::where('game_room_id', $room->id)
+            ->where('to_player_id', $currentPlayer->id)
+            ->where('processed', false)
+            ->update(['processed' => true]);
+
+        return response()->json(['signals' => $signals]);
+    }
+
+    /**
+     * Toggle mute status for the current player.
+     */
+    public function toggleMute(GameRoom $room): JsonResponse
+    {
+        $currentPlayer = $this->findCurrentPlayer($room);
+
+        if (! $currentPlayer) {
+            return response()->json(['error' => 'You are not a player in this room.'], 403);
+        }
+
+        $currentPlayer->update(['is_muted' => ! $currentPlayer->is_muted]);
+
+        return response()->json([
+            'success' => true,
+            'is_muted' => $currentPlayer->is_muted,
+        ]);
+    }
+
+    /**
+     * Get voice status of all players (mute state).
+     */
+    public function getVoiceStatus(GameRoom $room): JsonResponse
+    {
+        $currentPlayer = $this->findCurrentPlayer($room);
+
+        if (! $currentPlayer) {
+            return response()->json(['error' => 'You are not a player in this room.'], 403);
+        }
+
+        $players = $room->connectedPlayers()
+            ->get(['id', 'nickname', 'avatar_color', 'is_muted'])
+            ->map(fn (GamePlayer $player) => [
+                'id' => $player->id,
+                'nickname' => $player->nickname,
+                'avatar_color' => $player->avatar_color,
+                'is_muted' => $player->is_muted,
+            ]);
+
+        return response()->json([
+            'players' => $players,
+            'current_player_id' => $currentPlayer->id,
+        ]);
     }
 }

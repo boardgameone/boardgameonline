@@ -1,19 +1,64 @@
-import ApplicationLogo from '@/Components/ApplicationLogo';
 import { Link } from '@inertiajs/react';
 import { PropsWithChildren } from 'react';
 
 export default function Guest({ children }: PropsWithChildren) {
     return (
-        <div className="flex min-h-screen flex-col items-center bg-gray-100 pt-6 sm:justify-center sm:pt-0">
-            <div>
+        <div className="min-h-screen bg-yellow-400 flex flex-col">
+            {/* Nav */}
+            <nav className="flex items-center justify-between p-4 sm:p-6 shrink-0">
                 <Link href="/">
-                    <ApplicationLogo className="h-20 w-20 fill-current text-gray-500" />
+                    <img
+                        src="/images/logo.png"
+                        alt="Board Game Online"
+                        className="h-10 sm:h-12 w-auto drop-shadow-lg"
+                    />
                 </Link>
-            </div>
+                <div className="flex gap-2 sm:gap-3">
+                    <Link
+                        href={route('login')}
+                        className="rounded-full bg-white px-4 sm:px-6 py-2 font-bold text-yellow-600 shadow-lg transition hover:scale-105 border-b-4 border-yellow-500 text-sm sm:text-base"
+                    >
+                        Log in
+                    </Link>
+                    <Link
+                        href={route('register')}
+                        className="rounded-full bg-blue-600 px-4 sm:px-6 py-2 font-bold text-white shadow-lg transition hover:scale-105 hover:bg-blue-700 border-b-4 border-blue-800 text-sm sm:text-base"
+                    >
+                        Register
+                    </Link>
+                </div>
+            </nav>
 
-            <div className="mt-6 w-full overflow-hidden bg-white px-6 py-4 shadow-md sm:max-w-md sm:rounded-lg">
-                {children}
-            </div>
+            {/* Main content */}
+            <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-8">
+                {/* Decorative dice */}
+                <div className="absolute top-20 left-10 text-4xl opacity-20 rotate-12 hidden lg:block">
+                    {'\u{1F3B2}'}
+                </div>
+                <div className="absolute bottom-20 right-10 text-5xl opacity-20 -rotate-12 hidden lg:block">
+                    {'\u{1F3B2}'}
+                </div>
+                <div className="absolute top-40 right-20 text-3xl opacity-15 rotate-45 hidden lg:block">
+                    {'\u{1F0CF}'}
+                </div>
+                <div className="absolute bottom-40 left-20 text-4xl opacity-15 -rotate-45 hidden lg:block">
+                    {'\u{265F}'}
+                </div>
+
+                {/* Card container */}
+                <div className="w-full max-w-md">
+                    <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border-b-8 border-blue-500">
+                        <div className="p-8">
+                            {children}
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            {/* Footer */}
+            <footer className="p-3 text-center text-yellow-800 font-medium text-sm shrink-0">
+                Play together, anywhere!
+            </footer>
         </div>
     );
 }

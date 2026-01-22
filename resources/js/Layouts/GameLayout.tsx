@@ -1,7 +1,4 @@
-import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
-import NavLink from '@/Components/NavLink';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import { User } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useState } from 'react';
@@ -21,21 +18,47 @@ export default function GameLayout({
         useState(false);
 
     return (
-        <div className="min-h-screen bg-gray-100">
-            <nav className="border-b border-gray-100 bg-white">
-                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <div className="flex h-16 justify-between">
-                        <div className="flex">
-                            <div className="flex shrink-0 items-center">
-                                <Link href="/">
-                                    <ApplicationLogo className="block h-9 w-auto fill-current text-gray-800" />
-                                </Link>
-                            </div>
+        <div className="min-h-screen bg-gradient-to-b from-yellow-400 to-yellow-500">
+            {/* Nav */}
+            <nav className="relative">
+                {/* Gradient Background */}
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500" />
 
-                            <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                {/* Decorative elements */}
+                <div className="absolute inset-0 overflow-hidden">
+                    <div className="absolute -top-10 -left-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
+                    <div className="absolute -top-10 -right-10 w-32 h-32 bg-yellow-400/20 rounded-full blur-2xl" />
+                    <div className="absolute top-0 left-1/2 w-24 h-24 bg-blue-400/10 rounded-full blur-xl" />
+                </div>
+
+                <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <div className="flex h-16 sm:h-20 justify-between items-center">
+                        {/* Logo and Nav Links */}
+                        <div className="flex items-center gap-2 sm:gap-6">
+                            {/* Logo */}
+                            <Link href="/" className="flex items-center gap-2 sm:gap-3 group">
+                                <div className="relative">
+                                    <div className="absolute inset-0 bg-yellow-400 rounded-xl blur-sm opacity-50 group-hover:opacity-75 transition" />
+                                    <div className="relative bg-white rounded-xl p-1.5 sm:p-2 shadow-lg group-hover:scale-105 transition">
+                                        <img
+                                            src="/images/logo.png"
+                                            alt="Board Game Online"
+                                            className="h-8 sm:h-10 w-auto"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="hidden md:block">
+                                    <span className="text-white font-black text-lg tracking-tight">Board Game</span>
+                                    <span className="text-yellow-300 font-black text-lg tracking-tight"> Online</span>
+                                </div>
+                            </Link>
+
+                            {/* Desktop Nav Links */}
+                            <div className="hidden sm:flex items-center gap-1 ml-4">
                                 <NavLink
                                     href={route('games.index')}
                                     active={route().current('games.*')}
+                                    icon={<span className="text-lg">{'\u{1F3AE}'}</span>}
                                 >
                                     Games
                                 </NavLink>
@@ -43,6 +66,7 @@ export default function GameLayout({
                                     <NavLink
                                         href={route('dashboard')}
                                         active={route().current('dashboard')}
+                                        icon={<span className="text-lg">{'\u{1F3E0}'}</span>}
                                     >
                                         Dashboard
                                     </NavLink>
@@ -50,79 +74,97 @@ export default function GameLayout({
                             </div>
                         </div>
 
-                        <div className="hidden sm:ms-6 sm:flex sm:items-center">
+                        {/* Right Side - User Menu */}
+                        <div className="hidden sm:flex items-center gap-3">
                             {user ? (
-                                <div className="relative ms-3">
-                                    <Dropdown>
-                                        <Dropdown.Trigger>
-                                            <span className="inline-flex rounded-md">
-                                                <button
-                                                    type="button"
-                                                    className="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none"
-                                                >
-                                                    {user.name}
-
-                                                    <svg
-                                                        className="-me-0.5 ms-2 h-4 w-4"
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                        viewBox="0 0 20 20"
-                                                        fill="currentColor"
-                                                    >
-                                                        <path
-                                                            fillRule="evenodd"
-                                                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                                            clipRule="evenodd"
-                                                        />
-                                                    </svg>
-                                                </button>
+                                <Dropdown>
+                                    <Dropdown.Trigger>
+                                        <button
+                                            type="button"
+                                            className="flex items-center gap-2 sm:gap-3 bg-white/15 backdrop-blur-sm hover:bg-white/25 rounded-full pl-2 pr-3 sm:pl-3 sm:pr-4 py-1.5 sm:py-2 transition group"
+                                        >
+                                            <div className="relative">
+                                                <div className="absolute inset-0 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full blur-sm opacity-75" />
+                                                <span className="relative flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 text-white font-bold text-sm sm:text-base shadow-lg">
+                                                    {user.name.charAt(0).toUpperCase()}
+                                                </span>
+                                            </div>
+                                            <span className="text-white font-bold text-sm sm:text-base hidden xs:block">
+                                                {user.name}
                                             </span>
-                                        </Dropdown.Trigger>
+                                            <svg
+                                                className="h-4 w-4 text-white/70 group-hover:text-white transition"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M19 9l-7 7-7-7"
+                                                />
+                                            </svg>
+                                        </button>
+                                    </Dropdown.Trigger>
 
-                                        <Dropdown.Content>
-                                            <Dropdown.Link
-                                                href={route('profile.edit')}
-                                            >
-                                                Profile
-                                            </Dropdown.Link>
-                                            <Dropdown.Link
-                                                href={route('logout')}
-                                                method="post"
-                                                as="button"
-                                            >
+                                    <Dropdown.Content align="right">
+                                        <div className="px-4 py-3 border-b border-gray-100">
+                                            <p className="text-sm font-bold text-gray-900">{user.name}</p>
+                                            <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                                        </div>
+                                        <Dropdown.Link href={route('profile.edit')}>
+                                            <span className="flex items-center gap-2">
+                                                <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                </svg>
+                                                Profile Settings
+                                            </span>
+                                        </Dropdown.Link>
+                                        <Dropdown.Link
+                                            href={route('logout')}
+                                            method="post"
+                                            as="button"
+                                        >
+                                            <span className="flex items-center gap-2 text-red-600">
+                                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                                </svg>
                                                 Log Out
-                                            </Dropdown.Link>
-                                        </Dropdown.Content>
-                                    </Dropdown>
-                                </div>
+                                            </span>
+                                        </Dropdown.Link>
+                                    </Dropdown.Content>
+                                </Dropdown>
                             ) : (
-                                <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2 sm:gap-3">
                                     <Link
                                         href={route('login')}
-                                        className="text-sm font-medium text-gray-500 hover:text-gray-700"
+                                        className="text-white/90 hover:text-white font-bold text-sm px-3 sm:px-4 py-2 rounded-full hover:bg-white/10 transition"
                                     >
                                         Log in
                                     </Link>
                                     <Link
                                         href={route('register')}
-                                        className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500"
+                                        className="bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-300 hover:to-orange-400 text-gray-900 font-bold text-sm px-4 sm:px-6 py-2 sm:py-2.5 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all"
                                     >
-                                        Register
+                                        Play Now
                                     </Link>
                                 </div>
                             )}
                         </div>
 
-                        <div className="-me-2 flex items-center sm:hidden">
+                        {/* Mobile Menu Button */}
+                        <div className="flex items-center sm:hidden">
                             <button
                                 onClick={() =>
                                     setShowingNavigationDropdown(
                                         (previousState) => !previousState,
                                     )
                                 }
-                                className="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none"
+                                className="relative p-2 rounded-xl bg-white/10 hover:bg-white/20 transition"
                             >
                                 <svg
-                                    className="h-6 w-6"
+                                    className="h-6 w-6 text-white"
                                     stroke="currentColor"
                                     fill="none"
                                     viewBox="0 0 24 24"
@@ -130,7 +172,7 @@ export default function GameLayout({
                                     <path
                                         className={
                                             !showingNavigationDropdown
-                                                ? 'inline-flex'
+                                                ? 'block'
                                                 : 'hidden'
                                         }
                                         strokeLinecap="round"
@@ -141,7 +183,7 @@ export default function GameLayout({
                                     <path
                                         className={
                                             showingNavigationDropdown
-                                                ? 'inline-flex'
+                                                ? 'block'
                                                 : 'hidden'
                                         }
                                         strokeLinecap="round"
@@ -155,77 +197,161 @@ export default function GameLayout({
                     </div>
                 </div>
 
+                {/* Mobile menu */}
                 <div
                     className={
                         (showingNavigationDropdown ? 'block' : 'hidden') +
-                        ' sm:hidden'
+                        ' sm:hidden relative'
                     }
                 >
-                    <div className="space-y-1 pb-3 pt-2">
-                        <ResponsiveNavLink
-                            href={route('games.index')}
-                            active={route().current('games.*')}
-                        >
-                            Games
-                        </ResponsiveNavLink>
-                        {user && (
-                            <ResponsiveNavLink
-                                href={route('dashboard')}
-                                active={route().current('dashboard')}
+                    <div className="bg-white/10 backdrop-blur-lg border-t border-white/20">
+                        <div className="px-4 py-3 space-y-1">
+                            <MobileNavLink
+                                href={route('games.index')}
+                                active={route().current('games.*')}
                             >
-                                Dashboard
-                            </ResponsiveNavLink>
+                                <span className="text-lg mr-2">{'\u{1F3AE}'}</span>
+                                Games
+                            </MobileNavLink>
+                            {user && (
+                                <MobileNavLink
+                                    href={route('dashboard')}
+                                    active={route().current('dashboard')}
+                                >
+                                    <span className="text-lg mr-2">{'\u{1F3E0}'}</span>
+                                    Dashboard
+                                </MobileNavLink>
+                            )}
+                        </div>
+
+                        {user ? (
+                            <div className="border-t border-white/20 px-4 py-4">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 text-white font-bold text-lg shadow-lg">
+                                        {user.name.charAt(0).toUpperCase()}
+                                    </span>
+                                    <div>
+                                        <div className="text-white font-bold">
+                                            {user.name}
+                                        </div>
+                                        <div className="text-white/60 text-sm">
+                                            {user.email}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <MobileNavLink href={route('profile.edit')}>
+                                        <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                        Profile Settings
+                                    </MobileNavLink>
+                                    <Link
+                                        method="post"
+                                        href={route('logout')}
+                                        as="button"
+                                        className="w-full flex items-center px-4 py-3 text-red-300 hover:text-red-200 hover:bg-red-500/20 rounded-xl font-medium transition"
+                                    >
+                                        <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                        </svg>
+                                        Log Out
+                                    </Link>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="border-t border-white/20 px-4 py-4 space-y-2">
+                                <Link
+                                    href={route('login')}
+                                    className="block w-full text-center py-3 text-white font-bold rounded-xl hover:bg-white/10 transition"
+                                >
+                                    Log in
+                                </Link>
+                                <Link
+                                    href={route('register')}
+                                    className="block w-full text-center py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 font-bold rounded-xl shadow-lg"
+                                >
+                                    Create Account
+                                </Link>
+                            </div>
                         )}
                     </div>
-
-                    {user ? (
-                        <div className="border-t border-gray-200 pb-1 pt-4">
-                            <div className="px-4">
-                                <div className="text-base font-medium text-gray-800">
-                                    {user.name}
-                                </div>
-                                <div className="text-sm font-medium text-gray-500">
-                                    {user.email}
-                                </div>
-                            </div>
-
-                            <div className="mt-3 space-y-1">
-                                <ResponsiveNavLink href={route('profile.edit')}>
-                                    Profile
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    method="post"
-                                    href={route('logout')}
-                                    as="button"
-                                >
-                                    Log Out
-                                </ResponsiveNavLink>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="border-t border-gray-200 pb-3 pt-4">
-                            <div className="space-y-1">
-                                <ResponsiveNavLink href={route('login')}>
-                                    Log in
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink href={route('register')}>
-                                    Register
-                                </ResponsiveNavLink>
-                            </div>
-                        </div>
-                    )}
                 </div>
+
+                {/* Bottom Gradient Border */}
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-500" />
             </nav>
 
             {header && (
-                <header className="bg-white shadow">
-                    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+                <header className="bg-white/80 backdrop-blur-sm shadow-sm">
+                    <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
                         {header}
                     </div>
                 </header>
             )}
 
-            <main>{children}</main>
+            <main className="py-6 sm:py-8">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    {children}
+                </div>
+            </main>
+
+            {/* Footer */}
+            <footer className="py-6 text-center">
+                <p className="text-yellow-800 font-medium text-sm">
+                    {'\u{1F3B2}'} Play together, anywhere! {'\u{1F3AE}'}
+                </p>
+            </footer>
         </div>
+    );
+}
+
+function NavLink({
+    href,
+    active,
+    icon,
+    children,
+}: Readonly<{
+    href: string;
+    active: boolean;
+    icon?: React.ReactNode;
+    children: React.ReactNode;
+}>) {
+    return (
+        <Link
+            href={href}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-bold transition rounded-full ${
+                active
+                    ? 'bg-white/25 text-white shadow-lg'
+                    : 'text-white/80 hover:text-white hover:bg-white/15'
+            }`}
+        >
+            {icon}
+            <span className="hidden lg:inline">{children}</span>
+        </Link>
+    );
+}
+
+function MobileNavLink({
+    href,
+    active,
+    children,
+}: Readonly<{
+    href: string;
+    active?: boolean;
+    children: React.ReactNode;
+}>) {
+    return (
+        <Link
+            href={href}
+            className={`flex items-center px-4 py-3 rounded-xl font-medium transition ${
+                active
+                    ? 'bg-white/20 text-white'
+                    : 'text-white/80 hover:text-white hover:bg-white/10'
+            }`}
+        >
+            {children}
+        </Link>
     );
 }

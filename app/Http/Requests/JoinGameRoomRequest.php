@@ -17,9 +17,12 @@ class JoinGameRoomRequest extends FormRequest
      */
     public function rules(): array
     {
-        $rules = [
-            'room_code' => ['required', 'string', 'size:6', 'alpha_num'],
-        ];
+        $rules = [];
+
+        // room_code is required only for the join page, not for direct join via URL
+        if ($this->routeIs('rooms.join.submit')) {
+            $rules['room_code'] = ['required', 'string', 'size:6', 'alpha_num'];
+        }
 
         // Nickname required for guests, optional for authenticated users
         if (! Auth::check()) {

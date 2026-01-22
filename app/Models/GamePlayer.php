@@ -26,6 +26,7 @@ class GamePlayer extends Model
         'die_value',
         'has_stolen_cheese',
         'is_connected',
+        'is_muted',
         'turn_order',
         'game_data',
     ];
@@ -41,6 +42,7 @@ class GamePlayer extends Model
             'is_accomplice' => 'boolean',
             'has_stolen_cheese' => 'boolean',
             'is_connected' => 'boolean',
+            'is_muted' => 'boolean',
             'die_value' => 'integer',
             'turn_order' => 'integer',
             'game_data' => 'array',

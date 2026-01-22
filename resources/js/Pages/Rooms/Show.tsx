@@ -1,6 +1,9 @@
+import RoomChat from '@/Components/RoomChat';
+import VoiceChat from '@/Components/VoiceChat';
 import GameLayout from '@/Layouts/GameLayout';
 import { GamePlayer, GameRoom, GameState, PageProps } from '@/types';
-import { Head, Link, router, usePoll } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePoll } from '@inertiajs/react';
+import { FormEventHandler, useState } from 'react';
 import CheeseThiefGame from './CheeseThief/CheeseThiefGame';
 
 interface Props extends PageProps {
@@ -10,7 +13,26 @@ interface Props extends PageProps {
     gameState: GameState | null;
 }
 
-export default function Show({ room, currentPlayer, isHost, gameState }: Props) {
+export default function Show({ auth, room, currentPlayer, isHost, gameState }: Props) {
+    const [copiedCode, setCopiedCode] = useState(false);
+    const [copiedLink, setCopiedLink] = useState(false);
+
+    const roomLink = route('rooms.show', room.room_code);
+
+    // Form for guests to join directly
+    const { data, setData, post, processing, errors } = useForm({
+        nickname: '',
+    });
+
+    const handleJoin: FormEventHandler = (e) => {
+        e.preventDefault();
+        post(route('rooms.joinDirect', room.room_code));
+    };
+
+    // Check if user needs to join (not a player yet)
+    const needsToJoin = !currentPlayer && room.status === 'waiting' && !room.is_full;
+    const isGuest = !auth.user;
+
     // Poll for real-time updates when the room is waiting or playing
     usePoll(2500, {}, { keepAlive: room.status !== 'finished' });
 
@@ -24,6 +46,14 @@ export default function Show({ room, currentPlayer, isHost, gameState }: Props) 
 
     const copyRoomCode = () => {
         navigator.clipboard.writeText(room.room_code);
+        setCopiedCode(true);
+        setTimeout(() => setCopiedCode(false), 2000);
+    };
+
+    const copyRoomLink = () => {
+        navigator.clipboard.writeText(roomLink);
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2000);
     };
 
     const connectedPlayers = room.players?.filter((p) => p.is_connected) || [];
@@ -31,174 +61,301 @@ export default function Show({ room, currentPlayer, isHost, gameState }: Props) 
     const maxPlayers = room.game?.max_players || 10;
     const canStart = connectedPlayers.length >= minPlayers && room.status === 'waiting';
 
+    const getStatusBadge = () => {
+        if (room.status === 'waiting') {
+            return { bg: 'bg-yellow-400', text: 'text-yellow-900', label: 'Waiting' };
+        }
+        if (room.status === 'playing') {
+            return { bg: 'bg-green-500', text: 'text-white', label: 'Playing' };
+        }
+        return { bg: 'bg-gray-400', text: 'text-white', label: 'Finished' };
+    };
+
+    const status = getStatusBadge();
+
     return (
-        <GameLayout
-            header={
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <Link
-                            href={room.game ? route('games.show', room.game.slug) : route('games.index')}
-                            className="text-gray-500 hover:text-gray-700"
-                        >
-                            <svg
-                                className="h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M15 19l-7-7 7-7"
-                                />
-                            </svg>
-                        </Link>
-                        <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                            {room.name || room.game?.name || 'Game Room'}
-                        </h2>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                            room.status === 'waiting'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : room.status === 'playing'
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-gray-100 text-gray-800'
-                        }`}>
-                            {room.status.charAt(0).toUpperCase() + room.status.slice(1)}
-                        </span>
-                    </div>
-                </div>
-            }
-        >
+        <GameLayout>
             <Head title={`Room ${room.room_code}`} />
 
-            <div className="py-12">
-                <div className="mx-auto max-w-4xl sm:px-6 lg:px-8">
-                    <div className="grid gap-6 lg:grid-cols-3">
-                        <div className="lg:col-span-2">
-                            <div className="overflow-hidden rounded-xl bg-white p-6 shadow">
-                                {/* Show lobby player list when waiting */}
-                                {room.status === 'waiting' && (
-                                    <>
-                                        <div className="flex items-center justify-between mb-6">
-                                            <h3 className="text-lg font-bold text-gray-900">
-                                                Players ({connectedPlayers.length}/{maxPlayers})
-                                            </h3>
-                                            <p className="text-sm text-gray-500">
-                                                Need {Math.max(0, minPlayers - connectedPlayers.length)} more to start
-                                            </p>
-                                        </div>
+            {/* Back button */}
+            <div className="mb-6 flex items-center justify-between">
+                <Link
+                    href={room.game ? route('games.show', room.game.slug) : route('games.index')}
+                    className="inline-flex items-center gap-2 text-yellow-900 hover:text-yellow-700 font-bold transition"
+                >
+                    <svg
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 19l-7-7 7-7"
+                        />
+                    </svg>
+                    Back
+                </Link>
+                <span className={`px-4 py-1.5 rounded-full font-bold text-sm ${status.bg} ${status.text} shadow-md`}>
+                    {status.label}
+                </span>
+            </div>
 
-                                        <div className="grid gap-3 sm:grid-cols-2">
-                                            {connectedPlayers.map((player) => (
-                                                <PlayerCard
-                                                    key={player.id}
-                                                    player={player}
-                                                    isCurrentUser={player.id === currentPlayer?.id}
-                                                />
-                                            ))}
-                                            {Array.from({
-                                                length: Math.max(0, minPlayers - connectedPlayers.length),
-                                            }).map((_, i) => (
-                                                <EmptySlot key={`empty-${i}`} />
-                                            ))}
-                                        </div>
-                                    </>
-                                )}
-
-                                {/* Show game UI when playing or finished */}
-                                {(room.status === 'playing' || room.status === 'finished') && gameState && (
-                                    <div className="mt-6">
-                                        <CheeseThiefGame
-                                            gameState={gameState}
-                                            roomCode={room.room_code}
-                                        />
-                                    </div>
-                                )}
+            <div className="grid gap-6 lg:grid-cols-3">
+                {/* Main content */}
+                <div className="lg:col-span-2">
+                    <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+                        {/* Room Header */}
+                        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5">
+                            <div className="flex items-center gap-4">
+                                <span className="text-4xl">
+                                    {getGameEmoji(room.game?.slug)}
+                                </span>
+                                <div>
+                                    <h1 className="text-xl font-black text-white">
+                                        {room.name || room.game?.name || 'Game Room'}
+                                    </h1>
+                                    <p className="text-blue-100">
+                                        {room.game?.name} - {connectedPlayers.length}/{maxPlayers} players
+                                    </p>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="space-y-6">
-                            <div className="overflow-hidden rounded-xl bg-white p-6 shadow">
-                                <h3 className="text-lg font-bold text-gray-900">Room Code</h3>
-                                <div className="mt-3 flex items-center gap-2">
-                                    <code className="flex-1 rounded-lg bg-gray-100 px-4 py-3 text-center text-2xl font-mono font-bold tracking-widest text-gray-900">
+                        <div className="p-6">
+                            {/* Show join form for guests who need to enter nickname */}
+                            {needsToJoin && isGuest && (
+                                <div className="text-center py-8">
+                                    <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-400 to-green-500 rounded-full mb-4 shadow-lg">
+                                        <span className="text-4xl">{'\u{1F44B}'}</span>
+                                    </div>
+                                    <h3 className="text-xl font-black text-gray-900 mb-2">
+                                        Join this game!
+                                    </h3>
+                                    <p className="text-gray-500 mb-6">
+                                        Enter your nickname to join the room
+                                    </p>
+                                    <form onSubmit={handleJoin} className="max-w-xs mx-auto space-y-4">
+                                        <div>
+                                            <input
+                                                type="text"
+                                                value={data.nickname}
+                                                onChange={(e) => setData('nickname', e.target.value)}
+                                                placeholder="Your nickname"
+                                                maxLength={20}
+                                                className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-400 focus:ring-green-400 transition-colors font-medium text-center"
+                                                autoFocus
+                                                required
+                                            />
+                                            {errors.nickname && (
+                                                <p className="mt-2 text-sm text-red-600 font-medium">
+                                                    {errors.nickname}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <button
+                                            type="submit"
+                                            disabled={processing || data.nickname.length < 2}
+                                            className="w-full rounded-full bg-green-500 px-6 py-3 font-bold text-white shadow-lg transition hover:scale-105 hover:bg-green-600 border-b-4 border-green-700 disabled:opacity-50 disabled:hover:scale-100"
+                                        >
+                                            {processing ? 'Joining...' : 'Join Room'}
+                                        </button>
+                                    </form>
+                                </div>
+                            )}
+
+                            {/* Show lobby player list when waiting and user has joined */}
+                            {room.status === 'waiting' && (!needsToJoin || !isGuest) && (
+                                <>
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                            {'\u{1F465}'} Players
+                                        </h3>
+                                        <p className="text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                                            {Math.max(0, minPlayers - connectedPlayers.length) > 0
+                                                ? `Need ${minPlayers - connectedPlayers.length} more`
+                                                : 'Ready to start!'}
+                                        </p>
+                                    </div>
+
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                        {connectedPlayers.map((player) => (
+                                            <PlayerCard
+                                                key={player.id}
+                                                player={player}
+                                                isCurrentUser={player.id === currentPlayer?.id}
+                                            />
+                                        ))}
+                                        {Array.from({
+                                            length: Math.max(0, minPlayers - connectedPlayers.length),
+                                        }).map((_, i) => (
+                                            <EmptySlot key={`empty-${i}`} />
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Show game UI when playing or finished */}
+                            {(room.status === 'playing' || room.status === 'finished') && gameState && (
+                                <CheeseThiefGame
+                                    gameState={gameState}
+                                    roomCode={room.room_code}
+                                />
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Sidebar */}
+                <div className="space-y-6">
+                    {/* Room Code & Link */}
+                    <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                        <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 px-6 py-4">
+                            <h3 className="text-lg font-bold text-yellow-900 flex items-center gap-2">
+                                {'\u{1F511}'} Invite Friends
+                            </h3>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            {/* Room Code */}
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">
+                                    Room Code
+                                </label>
+                                <div className="flex items-center gap-2">
+                                    <code className="flex-1 rounded-xl bg-gray-100 px-4 py-3 text-center text-2xl font-mono font-black tracking-[0.3em] text-gray-900">
                                         {room.room_code}
                                     </code>
                                     <button
                                         onClick={copyRoomCode}
-                                        className="rounded-lg bg-gray-100 p-3 text-gray-600 hover:bg-gray-200"
+                                        className={`rounded-xl p-3 transition hover:scale-105 ${
+                                            copiedCode
+                                                ? 'bg-green-100 text-green-600'
+                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
                                         title="Copy room code"
                                     >
-                                        <svg
-                                            className="h-6 w-6"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            viewBox="0 0 24 24"
-                                        >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth={2}
-                                                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                                            />
-                                        </svg>
+                                        {copiedCode ? (
+                                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        ) : (
+                                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                            </svg>
+                                        )}
                                     </button>
                                 </div>
-                                <p className="mt-2 text-sm text-gray-500">
-                                    Share this code with friends to join
-                                </p>
                             </div>
 
-                            {room.status === 'waiting' && (
-                                <div className="overflow-hidden rounded-xl bg-white p-6 shadow">
-                                    <h3 className="text-lg font-bold text-gray-900">Actions</h3>
-                                    <div className="mt-4 space-y-3">
-                                        {isHost && (
-                                            <button
-                                                onClick={handleStart}
-                                                disabled={!canStart}
-                                                className="w-full rounded-md bg-green-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-50"
-                                            >
-                                                {canStart ? 'Start Game' : `Need ${minPlayers} players to start`}
-                                            </button>
-                                        )}
-                                        {!isHost && (
-                                            <p className="text-center text-sm text-gray-500">
-                                                Waiting for the host to start...
-                                            </p>
-                                        )}
-                                        <button
-                                            onClick={handleLeave}
-                                            className="w-full rounded-md bg-gray-100 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-200"
-                                        >
-                                            Leave Room
-                                        </button>
-                                    </div>
+                            {/* Divider */}
+                            <div className="relative">
+                                <div className="absolute inset-0 flex items-center">
+                                    <div className="w-full border-t border-gray-200" />
                                 </div>
-                            )}
+                                <div className="relative flex justify-center text-sm">
+                                    <span className="bg-white px-3 text-gray-500">or share link</span>
+                                </div>
+                            </div>
 
-                            {room.game && (
-                                <div className="overflow-hidden rounded-xl bg-gray-50 p-6 shadow">
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-3xl">
-                                            {getGameEmoji(room.game.slug)}
-                                        </span>
-                                        <div>
-                                            <h3 className="font-bold text-gray-900">
-                                                {room.game.name}
-                                            </h3>
-                                            <p className="text-sm text-gray-500">
-                                                {room.game.min_players}-{room.game.max_players} players
-                                            </p>
-                                        </div>
+                            {/* Room Link */}
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">
+                                    Direct Link
+                                </label>
+                                <div className="flex items-center gap-2">
+                                    <div className="flex-1 rounded-xl bg-gray-100 px-3 py-3 text-sm text-gray-600 truncate font-medium">
+                                        {roomLink}
                                     </div>
+                                    <button
+                                        onClick={copyRoomLink}
+                                        className={`rounded-xl p-3 transition hover:scale-105 ${
+                                            copiedLink
+                                                ? 'bg-green-100 text-green-600'
+                                                : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                                        }`}
+                                        title="Copy link"
+                                    >
+                                        {copiedLink ? (
+                                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        ) : (
+                                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                            </svg>
+                                        )}
+                                    </button>
                                 </div>
-                            )}
+                            </div>
+
+                            <p className="text-xs text-gray-500 text-center">
+                                Friends can join directly with the link!
+                            </p>
                         </div>
                     </div>
+
+                    {/* Actions */}
+                    {room.status === 'waiting' && (
+                        <div className="bg-white rounded-2xl shadow-lg p-6">
+                            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
+                                {'\u{1F3AE}'} Actions
+                            </h3>
+                            <div className="space-y-3">
+                                {isHost ? (
+                                    <button
+                                        onClick={handleStart}
+                                        disabled={!canStart}
+                                        className="w-full rounded-full bg-green-500 px-6 py-3 font-bold text-white shadow-lg transition hover:scale-105 hover:bg-green-600 border-b-4 border-green-700 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
+                                    >
+                                        {canStart ? "Start Game!" : `Need ${minPlayers} players`}
+                                    </button>
+                                ) : (
+                                    <div className="text-center py-3 bg-yellow-50 rounded-xl">
+                                        <p className="text-sm text-yellow-700 font-medium">
+                                            {'\u{23F3}'} Waiting for host to start...
+                                        </p>
+                                    </div>
+                                )}
+                                <button
+                                    onClick={handleLeave}
+                                    className="w-full rounded-full bg-gray-100 px-6 py-3 font-bold text-gray-700 shadow-md transition hover:scale-105 hover:bg-gray-200 border-b-4 border-gray-300"
+                                >
+                                    Leave Room
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Game Info */}
+                    {room.game && (
+                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6">
+                            <div className="flex items-center gap-4">
+                                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 text-3xl shadow-md">
+                                    {getGameEmoji(room.game.slug)}
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-gray-900">
+                                        {room.game.name}
+                                    </h3>
+                                    <p className="text-sm text-gray-500">
+                                        {room.game.min_players}-{room.game.max_players} players
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Voice Chat */}
+                    {currentPlayer && (
+                        <VoiceChat roomCode={room.room_code} currentPlayerId={currentPlayer.id} />
+                    )}
+
+                    {/* Chat */}
+                    {currentPlayer && (
+                        <RoomChat roomCode={room.room_code} currentPlayerId={currentPlayer.id} />
+                    )}
                 </div>
             </div>
         </GameLayout>
@@ -208,50 +365,51 @@ export default function Show({ room, currentPlayer, isHost, gameState }: Props) 
 function PlayerCard({
     player,
     isCurrentUser,
-}: {
+}: Readonly<{
     player: GamePlayer;
     isCurrentUser: boolean;
-}) {
+}>) {
     return (
         <div
-            className={`flex items-center gap-3 rounded-lg border-2 p-4 ${
+            className={`flex items-center gap-3 rounded-xl p-4 transition ${
                 isCurrentUser
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 bg-white'
+                    ? 'bg-blue-100 border-2 border-blue-400'
+                    : 'bg-gray-50 border-2 border-transparent'
             }`}
         >
             <div
-                className="flex h-10 w-10 items-center justify-center rounded-full text-white font-bold"
+                className="flex h-12 w-12 items-center justify-center rounded-full text-white font-bold text-lg shadow-md"
                 style={{ backgroundColor: player.avatar_color }}
             >
                 {player.nickname.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-                <p className="font-medium text-gray-900 truncate">
+                <p className="font-bold text-gray-900 truncate">
                     {player.nickname}
-                    {isCurrentUser && ' (You)'}
+                    {isCurrentUser && <span className="text-blue-600"> (You)</span>}
                 </p>
                 {player.is_host && (
-                    <span className="inline-flex items-center text-xs text-yellow-600">
+                    <span className="inline-flex items-center text-xs text-yellow-600 font-bold">
                         {'\u{1F451}'} Host
                     </span>
                 )}
             </div>
-            {player.is_connected ? (
-                <span className="h-2 w-2 rounded-full bg-green-500" title="Online" />
-            ) : (
-                <span className="h-2 w-2 rounded-full bg-gray-300" title="Offline" />
-            )}
+            <span
+                className={`h-3 w-3 rounded-full ${
+                    player.is_connected ? 'bg-green-500 animate-pulse' : 'bg-gray-300'
+                }`}
+                title={player.is_connected ? 'Online' : 'Offline'}
+            />
         </div>
     );
 }
 
 function EmptySlot() {
     return (
-        <div className="flex items-center gap-3 rounded-lg border-2 border-dashed border-gray-200 p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
+        <div className="flex items-center gap-3 rounded-xl border-2 border-dashed border-gray-200 p-4 bg-gray-50/50">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-200">
                 <svg
-                    className="h-5 w-5 text-gray-400"
+                    className="h-6 w-6 text-gray-400"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -264,12 +422,13 @@ function EmptySlot() {
                     />
                 </svg>
             </div>
-            <p className="text-sm text-gray-400">Waiting for player...</p>
+            <p className="text-sm text-gray-400 font-medium">Waiting for player...</p>
         </div>
     );
 }
 
-function getGameEmoji(slug: string): string {
+function getGameEmoji(slug?: string): string {
+    if (!slug) return '\u{1F3B2}';
     const emojis: Record<string, string> = {
         'cheese-thief': '\u{1F9C0}',
     };
