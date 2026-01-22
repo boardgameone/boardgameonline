@@ -1,4 +1,5 @@
 import axios from 'axios';
+import Peer, { MediaConnection } from 'peerjs';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface VoicePlayer {
@@ -13,33 +14,10 @@ interface Props {
     currentPlayerId: number;
 }
 
-interface PeerConnection {
+interface CallData {
     playerId: number;
-    connection: RTCPeerConnection;
+    call: MediaConnection;
     audioElement?: HTMLAudioElement;
-}
-
-const ICE_SERVERS = [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'stun:stun3.l.google.com:19302' },
-];
-
-// Fix Chrome SDP for cross-browser compatibility
-// Remove problematic a=ssrc lines with msid attribute that cause parsing errors
-function fixSdpForCompatibility(sdp: string): string {
-    // Remove all a=ssrc lines containing msid (these cause parsing issues)
-    // The audio will still work through the a=msid-semantic and m= lines
-    const lines = sdp.split('\r\n');
-    const filteredLines = lines.filter(line => {
-        // Remove a=ssrc lines that contain msid
-        if (line.startsWith('a=ssrc:') && line.includes(' msid:')) {
-            return false;
-        }
-        return true;
-    });
-    return filteredLines.join('\r\n');
 }
 
 export default function VoiceChat({ roomCode, currentPlayerId }: Readonly<Props>) {
@@ -51,13 +29,14 @@ export default function VoiceChat({ roomCode, currentPlayerId }: Readonly<Props>
     const [error, setError] = useState<string | null>(null);
     const [connectionStatus, setConnectionStatus] = useState<string>('');
 
+    const peerRef = useRef<Peer | null>(null);
     const localStreamRef = useRef<MediaStream | null>(null);
-    const peerConnectionsRef = useRef<Map<number, PeerConnection>>(new Map());
-    const audioContextRef = useRef<AudioContext | null>(null);
-    const analyserRef = useRef<AnalyserNode | null>(null);
-    const signalPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const callsRef = useRef<Map<number, CallData>>(new Map());
     const statusPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-    const isConnectedRef = useRef(false);
+    const peerPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    // Generate unique peer ID for this player in this room
+    const getPeerId = (playerId: number) => `${roomCode}-player-${playerId}`;
 
     // Fetch voice status of all players
     const fetchVoiceStatus = useCallback(async () => {
@@ -81,7 +60,7 @@ export default function VoiceChat({ roomCode, currentPlayerId }: Readonly<Props>
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
             const checkLevel = () => {
-                if (!peerConnectionsRef.current.has(playerId)) {
+                if (!callsRef.current.has(playerId) && playerId !== currentPlayerId) {
                     audioContext.close();
                     return;
                 }
@@ -105,216 +84,115 @@ export default function VoiceChat({ roomCode, currentPlayerId }: Readonly<Props>
         } catch (err) {
             console.error('Failed to setup audio level detection:', err);
         }
-    }, []);
+    }, [currentPlayerId]);
 
-    // Clean up peer connection
-    const cleanupPeerConnection = useCallback((playerId: number) => {
-        const peerConn = peerConnectionsRef.current.get(playerId);
-        if (peerConn) {
-            peerConn.connection.close();
-            if (peerConn.audioElement) {
-                peerConn.audioElement.srcObject = null;
-                peerConn.audioElement.remove();
-            }
-            peerConnectionsRef.current.delete(playerId);
+    // Handle incoming stream
+    const handleStream = useCallback((stream: MediaStream, playerId: number) => {
+        console.log(`Received stream from player ${playerId}`);
+        console.log(`Stream tracks:`, stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, muted: t.muted })));
+        setConnectionStatus(`Receiving audio from player ${playerId}`);
+
+        // Remove existing audio element
+        const existingAudio = document.getElementById(`audio-${playerId}`);
+        if (existingAudio) {
+            existingAudio.remove();
         }
-        // Remove any orphaned audio elements
+
+        const audioElement = document.createElement('audio');
+        audioElement.id = `audio-${playerId}`;
+        audioElement.srcObject = stream;
+        audioElement.autoplay = true;
+        audioElement.setAttribute('playsinline', 'true');
+        audioElement.volume = 1;
+        // Make sure audio is not muted
+        audioElement.muted = false;
+        document.body.appendChild(audioElement);
+
+        // Debug: Log audio element state
+        console.log(`Audio element created for player ${playerId}:`, {
+            volume: audioElement.volume,
+            muted: audioElement.muted,
+            paused: audioElement.paused,
+        });
+
+        // Play audio
+        audioElement.play()
+            .then(() => {
+                console.log(`Audio playing for player ${playerId}, paused:`, audioElement.paused);
+            })
+            .catch((err) => {
+                console.error(`Failed to play audio:`, err);
+                // Retry on click
+                const clickHandler = () => {
+                    audioElement.play();
+                    document.removeEventListener('click', clickHandler);
+                };
+                document.addEventListener('click', clickHandler);
+            });
+
+        // Update call data
+        const callData = callsRef.current.get(playerId);
+        if (callData) {
+            callData.audioElement = audioElement;
+        }
+
+        // Setup speaking indicator
+        setupAudioLevelDetection(stream, playerId);
+    }, [setupAudioLevelDetection]);
+
+    // Clean up call
+    const cleanupCall = useCallback((playerId: number) => {
+        const callData = callsRef.current.get(playerId);
+        if (callData) {
+            callData.call.close();
+            if (callData.audioElement) {
+                callData.audioElement.srcObject = null;
+                callData.audioElement.remove();
+            }
+            callsRef.current.delete(playerId);
+        }
         const existingAudio = document.getElementById(`audio-${playerId}`);
         if (existingAudio) {
             existingAudio.remove();
         }
     }, []);
 
-    // Create peer connection for a player
-    const createPeerConnection = useCallback((playerId: number): RTCPeerConnection => {
-        // Clean up existing connection first
-        cleanupPeerConnection(playerId);
+    // Call another player
+    const callPlayer = useCallback((playerId: number) => {
+        if (!peerRef.current || !localStreamRef.current) return;
 
-        console.log(`Creating peer connection for player ${playerId}`);
-        const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-
-        // Add local tracks to connection
-        if (localStreamRef.current) {
-            localStreamRef.current.getTracks().forEach(track => {
-                console.log(`Adding track to connection for player ${playerId}:`, track.kind);
-                pc.addTrack(track, localStreamRef.current!);
-            });
+        // Don't call if already have an active call
+        if (callsRef.current.has(playerId)) {
+            console.log(`Already have call with player ${playerId}, skipping`);
+            return;
         }
 
-        // Handle ICE candidates
-        pc.onicecandidate = async (event) => {
-            if (event.candidate) {
-                console.log(`Sending ICE candidate to player ${playerId}`);
-                try {
-                    await axios.post(route('rooms.voice.signal', roomCode), {
-                        to_player_id: playerId,
-                        type: 'ice-candidate',
-                        payload: { candidate: event.candidate.toJSON() },
-                    });
-                } catch (err) {
-                    console.error('Failed to send ICE candidate:', err);
-                }
-            }
-        };
-
-        pc.oniceconnectionstatechange = () => {
-            console.log(`ICE connection state for player ${playerId}:`, pc.iceConnectionState);
-            setConnectionStatus(`ICE: ${pc.iceConnectionState}`);
-        };
-
-        // Handle remote tracks - THIS IS WHERE AUDIO COMES FROM
-        pc.ontrack = (event) => {
-            console.log(`Received remote track from player ${playerId}:`, event.track.kind);
-
-            if (event.track.kind !== 'audio') return;
-
-            // Remove any existing audio element for this player
-            const existingAudio = document.getElementById(`audio-${playerId}`);
-            if (existingAudio) {
-                existingAudio.remove();
-            }
-
-            const audioElement = document.createElement('audio');
-            audioElement.id = `audio-${playerId}`;
-            audioElement.autoplay = true;
-            audioElement.volume = 1;
-
-            // Set the stream as source
-            audioElement.srcObject = event.streams[0];
-
-            // Append to body (hidden)
-            document.body.appendChild(audioElement);
-
-            // Force play
-            const attemptPlay = () => {
-                audioElement.play()
-                    .then(() => {
-                        console.log(`Audio playing for player ${playerId}`);
-                        setConnectionStatus(`Playing audio from ${playerId}`);
-                    })
-                    .catch((err) => {
-                        console.error(`Failed to play audio for player ${playerId}:`, err);
-                        // Browser might block autoplay - will retry on user interaction
-                    });
-            };
-
-            attemptPlay();
-
-            // Also try on any click if autoplay was blocked
-            const clickHandler = () => {
-                attemptPlay();
-                document.removeEventListener('click', clickHandler);
-            };
-            document.addEventListener('click', clickHandler);
-
-            // Update peer connection with audio element
-            const peerConn = peerConnectionsRef.current.get(playerId);
-            if (peerConn) {
-                peerConn.audioElement = audioElement;
-            }
-
-            // Set up audio level detection for speaking indicator
-            setupAudioLevelDetection(event.streams[0], playerId);
-        };
-
-        pc.onconnectionstatechange = () => {
-            console.log(`Connection state for player ${playerId}:`, pc.connectionState);
-            if (pc.connectionState === 'connected') {
-                setConnectionStatus(`Connected to ${playerId}`);
-            } else if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
-                console.log(`Disconnected from player ${playerId}`);
-                cleanupPeerConnection(playerId);
-            }
-        };
-
-        peerConnectionsRef.current.set(playerId, { playerId, connection: pc });
-        return pc;
-    }, [roomCode, cleanupPeerConnection, setupAudioLevelDetection]);
-
-    // Process incoming signals
-    const processSignals = useCallback(async () => {
-        if (!isConnectedRef.current) return;
+        const peerId = getPeerId(playerId);
+        console.log(`Calling player ${playerId} (${peerId})`);
 
         try {
-            const response = await axios.get(route('rooms.voice.signals', roomCode));
-            const signals = response.data.signals;
+            const call = peerRef.current.call(peerId, localStreamRef.current);
 
-            if (signals.length > 0) {
-                console.log(`Processing ${signals.length} signals`);
-            }
+            call.on('stream', (remoteStream) => {
+                handleStream(remoteStream, playerId);
+            });
 
-            for (const signal of signals) {
-                const { from_player_id, type, payload } = signal;
-                console.log(`Processing signal from player ${from_player_id}: ${type}`);
+            call.on('close', () => {
+                console.log(`Call closed with player ${playerId}`);
+                cleanupCall(playerId);
+            });
 
-                let peerConn = peerConnectionsRef.current.get(from_player_id);
-                let pc = peerConn?.connection;
+            call.on('error', (err) => {
+                console.error(`Call error with player ${playerId}:`, err);
+                // Remove from calls so we can try again later
+                callsRef.current.delete(playerId);
+            });
 
-                if (type === 'offer') {
-                    // Create new connection if needed
-                    if (!pc || pc.signalingState === 'closed') {
-                        pc = createPeerConnection(from_player_id);
-                    }
-
-                    try {
-                        // payload contains { type: 'offer', sdp: '...' }
-                        console.log('Received offer payload:', JSON.stringify(payload).substring(0, 200));
-                        // Fix SDP for cross-browser compatibility
-                        const fixedSdp = fixSdpForCompatibility(payload.sdp);
-                        await pc.setRemoteDescription({
-                            type: payload.type || 'offer',
-                            sdp: fixedSdp,
-                        } as RTCSessionDescriptionInit);
-                        console.log(`Set remote description (offer) from player ${from_player_id}`);
-
-                        // Create and send answer
-                        const answer = await pc.createAnswer();
-                        await pc.setLocalDescription(answer);
-                        console.log(`Created and set local description (answer) for player ${from_player_id}`);
-
-                        // Send answer - payload directly contains type and sdp
-                        await axios.post(route('rooms.voice.signal', roomCode), {
-                            to_player_id: from_player_id,
-                            type: 'answer',
-                            payload: {
-                                type: answer.type,
-                                sdp: answer.sdp,
-                            },
-                        });
-                        console.log(`Sent answer to player ${from_player_id}`);
-                    } catch (err) {
-                        console.error(`Error processing offer from player ${from_player_id}:`, err);
-                    }
-                } else if (type === 'answer') {
-                    if (pc && pc.signalingState === 'have-local-offer') {
-                        try {
-                            console.log('Received answer payload:', JSON.stringify(payload).substring(0, 200));
-                            // Fix SDP for cross-browser compatibility
-                            const fixedSdp = fixSdpForCompatibility(payload.sdp);
-                            await pc.setRemoteDescription({
-                                type: payload.type || 'answer',
-                                sdp: fixedSdp,
-                            } as RTCSessionDescriptionInit);
-                            console.log(`Set remote description (answer) from player ${from_player_id}`);
-                        } catch (err) {
-                            console.error(`Error setting answer from player ${from_player_id}:`, err);
-                        }
-                    }
-                } else if (type === 'ice-candidate') {
-                    if (pc && pc.remoteDescription && payload.candidate) {
-                        try {
-                            await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
-                            console.log(`Added ICE candidate from player ${from_player_id}`);
-                        } catch (err) {
-                            console.error(`Error adding ICE candidate from player ${from_player_id}:`, err);
-                        }
-                    }
-                }
-            }
+            callsRef.current.set(playerId, { playerId, call });
         } catch (err) {
-            console.error('Error fetching signals:', err);
+            console.error(`Failed to call player ${playerId}:`, err);
         }
-    }, [roomCode, createPeerConnection]);
+    }, [handleStream, cleanupCall]);
 
     // Connect to voice chat
     const connect = async () => {
@@ -331,7 +209,7 @@ export default function VoiceChat({ roomCode, currentPlayerId }: Readonly<Props>
                 },
             });
 
-            console.log('Got microphone access, tracks:', stream.getAudioTracks().length);
+            console.log('Got microphone access');
             localStreamRef.current = stream;
 
             // Mute by default
@@ -339,61 +217,101 @@ export default function VoiceChat({ roomCode, currentPlayerId }: Readonly<Props>
                 track.enabled = false;
             });
 
-            // Setup local audio analysis for speaking indicator
-            audioContextRef.current = new AudioContext();
-            const source = audioContextRef.current.createMediaStreamSource(stream);
-            analyserRef.current = audioContextRef.current.createAnalyser();
-            analyserRef.current.fftSize = 256;
-            source.connect(analyserRef.current);
+            // Setup local speaking indicator
+            setupAudioLevelDetection(stream, currentPlayerId);
 
-            setIsConnected(true);
-            isConnectedRef.current = true;
-            setIsMuted(true);
+            setConnectionStatus('Connecting to peer server...');
 
-            // Start polling for signals FIRST (so we can receive offers from others)
-            setConnectionStatus('Starting signal polling...');
-            signalPollingRef.current = setInterval(processSignals, 500);
-            statusPollingRef.current = setInterval(fetchVoiceStatus, 3000);
+            // Create peer with unique ID
+            const myPeerId = getPeerId(currentPlayerId);
+            console.log(`Creating peer with ID: ${myPeerId}`);
 
-            // Wait a bit for polling to start
-            await new Promise(resolve => setTimeout(resolve, 100));
+            const peer = new Peer(myPeerId, {
+                debug: 2,
+                config: {
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                    ],
+                },
+            });
 
-            // Fetch current players and initiate connections
-            setConnectionStatus('Fetching players...');
-            const response = await axios.get(route('rooms.voice.status', roomCode));
-            const currentPlayers = response.data.players as VoicePlayer[];
-            setPlayers(currentPlayers);
+            peerRef.current = peer;
 
-            // Initiate connections with other players (send offers)
-            for (const player of currentPlayers) {
-                if (player.id !== currentPlayerId) {
-                    setConnectionStatus(`Connecting to ${player.nickname}...`);
-                    console.log(`Initiating connection with player ${player.id}`);
+            peer.on('open', async (id) => {
+                console.log(`Peer connected with ID: ${id}`);
+                setIsConnected(true);
+                setIsMuted(true);
+                setConnectionStatus('Connected to peer server');
 
-                    const pc = createPeerConnection(player.id);
+                // Start polling for player status
+                statusPollingRef.current = setInterval(fetchVoiceStatus, 3000);
 
-                    try {
-                        const offer = await pc.createOffer();
-                        await pc.setLocalDescription(offer);
-                        console.log(`Created offer for player ${player.id}`);
+                // Fetch current players
+                const response = await axios.get(route('rooms.voice.status', roomCode));
+                const currentPlayers = response.data.players as VoicePlayer[];
+                setPlayers(currentPlayers);
 
-                        // Send offer - payload directly contains type and sdp
-                        await axios.post(route('rooms.voice.signal', roomCode), {
-                            to_player_id: player.id,
-                            type: 'offer',
-                            payload: {
-                                type: offer.type,
-                                sdp: offer.sdp,
-                            },
-                        });
-                        console.log(`Sent offer to player ${player.id}`);
-                    } catch (err) {
-                        console.error(`Error creating offer for player ${player.id}:`, err);
+                // Call other players who are already connected
+                for (const player of currentPlayers) {
+                    if (player.id !== currentPlayerId) {
+                        // Small delay between calls
+                        setTimeout(() => callPlayer(player.id), 500);
                     }
                 }
-            }
 
-            setConnectionStatus('Connected');
+                // Poll for new players to call
+                peerPollingRef.current = setInterval(async () => {
+                    const res = await axios.get(route('rooms.voice.status', roomCode));
+                    const players = res.data.players as VoicePlayer[];
+                    for (const player of players) {
+                        if (player.id !== currentPlayerId && !callsRef.current.has(player.id)) {
+                            callPlayer(player.id);
+                        }
+                    }
+                }, 5000);
+            });
+
+            // Handle incoming calls
+            peer.on('call', (call) => {
+                console.log(`Incoming call from: ${call.peer}`);
+
+                // Extract player ID from peer ID
+                const match = call.peer.match(/player-(\d+)$/);
+                const playerId = match ? parseInt(match[1], 10) : 0;
+
+                if (playerId && localStreamRef.current) {
+                    call.answer(localStreamRef.current);
+
+                    call.on('stream', (remoteStream) => {
+                        handleStream(remoteStream, playerId);
+                    });
+
+                    call.on('close', () => {
+                        console.log(`Call closed with player ${playerId}`);
+                        cleanupCall(playerId);
+                    });
+
+                    callsRef.current.set(playerId, { playerId, call });
+                }
+            });
+
+            peer.on('error', (err) => {
+                console.error('Peer error:', err);
+                if (err.type === 'unavailable-id') {
+                    setError('Another session is already connected. Please close other tabs.');
+                } else if (err.type === 'peer-unavailable') {
+                    // This is normal - the other peer might not be connected yet
+                    console.log('Peer not available yet, will retry...');
+                } else {
+                    setError(`Connection error: ${err.type}`);
+                }
+            });
+
+            peer.on('disconnected', () => {
+                console.log('Peer disconnected');
+                setConnectionStatus('Disconnected from peer server');
+            });
 
         } catch (err) {
             console.error('Failed to connect:', err);
@@ -405,40 +323,35 @@ export default function VoiceChat({ roomCode, currentPlayerId }: Readonly<Props>
     // Disconnect from voice chat
     const disconnect = useCallback(() => {
         console.log('Disconnecting from voice chat');
-        isConnectedRef.current = false;
 
-        // Stop polling
-        if (signalPollingRef.current) {
-            clearInterval(signalPollingRef.current);
-            signalPollingRef.current = null;
-        }
         if (statusPollingRef.current) {
             clearInterval(statusPollingRef.current);
             statusPollingRef.current = null;
         }
+        if (peerPollingRef.current) {
+            clearInterval(peerPollingRef.current);
+            peerPollingRef.current = null;
+        }
 
-        // Close all peer connections
-        peerConnectionsRef.current.forEach((_, playerId) => {
-            cleanupPeerConnection(playerId);
+        callsRef.current.forEach((_, playerId) => {
+            cleanupCall(playerId);
         });
 
-        // Stop local stream
+        if (peerRef.current) {
+            peerRef.current.destroy();
+            peerRef.current = null;
+        }
+
         if (localStreamRef.current) {
             localStreamRef.current.getTracks().forEach(track => track.stop());
             localStreamRef.current = null;
-        }
-
-        // Close audio context
-        if (audioContextRef.current) {
-            audioContextRef.current.close();
-            audioContextRef.current = null;
         }
 
         setIsConnected(false);
         setIsMuted(true);
         setSpeakingPlayers(new Set());
         setConnectionStatus('');
-    }, [cleanupPeerConnection]);
+    }, [cleanupCall]);
 
     // Toggle mute
     const toggleMute = async () => {
@@ -447,7 +360,6 @@ export default function VoiceChat({ roomCode, currentPlayerId }: Readonly<Props>
         const newMutedState = !isMuted;
         localStreamRef.current.getAudioTracks().forEach(track => {
             track.enabled = !newMutedState;
-            console.log(`Track enabled: ${track.enabled}`);
         });
 
         setIsMuted(newMutedState);
@@ -458,40 +370,6 @@ export default function VoiceChat({ roomCode, currentPlayerId }: Readonly<Props>
             // Silently fail
         }
     };
-
-    // Monitor local speaking
-    useEffect(() => {
-        if (!isConnected || !analyserRef.current || isMuted) return;
-
-        const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-        let animationId: number;
-
-        const checkLevel = () => {
-            if (!analyserRef.current) return;
-
-            analyserRef.current.getByteFrequencyData(dataArray);
-            const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-
-            setSpeakingPlayers(prev => {
-                const next = new Set(prev);
-                if (average > 30) {
-                    next.add(currentPlayerId);
-                } else {
-                    next.delete(currentPlayerId);
-                }
-                return next;
-            });
-
-            animationId = requestAnimationFrame(checkLevel);
-        };
-        checkLevel();
-
-        return () => {
-            if (animationId) {
-                cancelAnimationFrame(animationId);
-            }
-        };
-    }, [isConnected, isMuted, currentPlayerId]);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -578,7 +456,7 @@ export default function VoiceChat({ roomCode, currentPlayerId }: Readonly<Props>
                                     ) : (
                                         <>
                                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 01-3 3z" />
                                             </svg>
                                             Mute
                                         </>
@@ -632,7 +510,7 @@ export default function VoiceChat({ roomCode, currentPlayerId }: Readonly<Props>
                                             </svg>
                                         ) : (
                                             <svg className="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 01-3 3z" />
                                             </svg>
                                         )}
                                     </div>
