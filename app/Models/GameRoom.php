@@ -136,6 +136,14 @@ class GameRoom extends Model
         return $this->hasMany(GameVote::class);
     }
 
+    /**
+     * @return HasMany<ChatMessage, $this>
+     */
+    public function chatMessages(): HasMany
+    {
+        return $this->hasMany(ChatMessage::class);
+    }
+
     public function isWaiting(): bool
     {
         return $this->status === 'waiting';

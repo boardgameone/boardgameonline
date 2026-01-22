@@ -17,67 +17,54 @@ export default function Join({ auth }: PageProps) {
     const canSubmit = data.room_code.length === 6 && (auth.user || data.nickname.length >= 2);
 
     return (
-        <GameLayout
-            header={
-                <div className="flex items-center gap-3">
-                    <Link
-                        href={route('games.index')}
-                        className="text-gray-500 hover:text-gray-700"
-                    >
-                        <svg
-                            className="h-5 w-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M15 19l-7-7 7-7"
-                            />
-                        </svg>
-                    </Link>
-                    <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                        Join a Room
-                    </h2>
-                </div>
-            }
-        >
+        <GameLayout>
             <Head title="Join Room" />
 
-            <div className="py-12">
-                <div className="mx-auto max-w-md sm:px-6 lg:px-8">
-                    <div className="overflow-hidden rounded-xl bg-white p-8 shadow">
-                        <div className="text-center mb-6">
-                            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
-                                <svg
-                                    className="h-8 w-8 text-blue-600"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                                    />
-                                </svg>
-                            </div>
-                            <h3 className="mt-4 text-lg font-semibold text-gray-900">
-                                Enter Room Code
-                            </h3>
-                            <p className="mt-1 text-sm text-gray-500">
-                                Ask your friend for the 6-character room code
-                            </p>
-                        </div>
+            {/* Back button */}
+            <div className="mb-6">
+                <Link
+                    href={route('games.index')}
+                    className="inline-flex items-center gap-2 text-yellow-900 hover:text-yellow-700 font-bold transition"
+                >
+                    <svg
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 19l-7-7 7-7"
+                        />
+                    </svg>
+                    Back to Games
+                </Link>
+            </div>
 
-                        <form onSubmit={submit} className="space-y-4">
+            <div className="max-w-md mx-auto">
+                <div className="bg-white rounded-3xl shadow-xl overflow-hidden border-b-8 border-blue-500">
+                    {/* Header */}
+                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-8 text-center">
+                        <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full mb-4">
+                            <span className="text-5xl">{'\u{1F517}'}</span>
+                        </div>
+                        <h1 className="text-2xl font-black text-white">
+                            Join a Room
+                        </h1>
+                        <p className="text-blue-100 mt-1">
+                            Enter the 6-character room code
+                        </p>
+                    </div>
+
+                    {/* Form */}
+                    <div className="p-6 sm:p-8">
+                        <form onSubmit={submit} className="space-y-5">
                             <div>
                                 <label
                                     htmlFor="room_code"
-                                    className="sr-only"
+                                    className="block text-sm font-bold text-gray-700 mb-2 text-center"
                                 >
                                     Room Code
                                 </label>
@@ -90,12 +77,12 @@ export default function Join({ auth }: PageProps) {
                                     }
                                     placeholder="ABCD12"
                                     maxLength={6}
-                                    className="block w-full rounded-lg border-gray-300 text-center text-2xl font-mono tracking-widest shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                    className="w-full px-6 py-4 rounded-xl border-2 border-gray-200 text-center text-3xl font-mono tracking-[0.5em] focus:border-blue-400 focus:ring-blue-400 transition-colors uppercase"
                                     autoComplete="off"
                                     autoFocus
                                 />
                                 {errors.room_code && (
-                                    <p className="mt-2 text-center text-sm text-red-600">
+                                    <p className="mt-2 text-center text-sm text-red-600 font-medium">
                                         {errors.room_code}
                                     </p>
                                 )}
@@ -105,7 +92,7 @@ export default function Join({ auth }: PageProps) {
                                 <div>
                                     <label
                                         htmlFor="nickname"
-                                        className="block text-sm font-medium text-gray-700"
+                                        className="block text-sm font-bold text-gray-700 mb-1"
                                     >
                                         Your Nickname
                                     </label>
@@ -116,7 +103,7 @@ export default function Join({ auth }: PageProps) {
                                         onChange={(e) => setData('nickname', e.target.value)}
                                         placeholder="Enter your nickname"
                                         maxLength={20}
-                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors font-medium"
                                         required
                                     />
                                     {errors.nickname && (
@@ -130,24 +117,77 @@ export default function Join({ auth }: PageProps) {
                             <button
                                 type="submit"
                                 disabled={processing || !canSubmit}
-                                className="w-full rounded-md bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 disabled:opacity-50"
+                                className="w-full rounded-full bg-blue-600 px-6 py-4 font-bold text-white text-lg shadow-lg transition hover:scale-105 hover:bg-blue-700 border-b-4 border-blue-800 disabled:opacity-50 disabled:hover:scale-100"
                             >
-                                {processing ? 'Joining...' : 'Join Room'}
+                                {processing ? (
+                                    <span className="flex items-center justify-center gap-2">
+                                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                                            <circle
+                                                className="opacity-25"
+                                                cx="12"
+                                                cy="12"
+                                                r="10"
+                                                stroke="currentColor"
+                                                strokeWidth="4"
+                                                fill="none"
+                                            />
+                                            <path
+                                                className="opacity-75"
+                                                fill="currentColor"
+                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                            />
+                                        </svg>
+                                        Joining...
+                                    </span>
+                                ) : (
+                                    'Join Room'
+                                )}
                             </button>
                         </form>
 
-                        <div className="mt-6 text-center">
-                            <p className="text-sm text-gray-500">
+                        <div className="mt-8 text-center">
+                            <div className="relative">
+                                <div className="absolute inset-0 flex items-center">
+                                    <div className="w-full border-t border-gray-200" />
+                                </div>
+                                <div className="relative flex justify-center text-sm">
+                                    <span className="bg-white px-4 text-gray-500">
+                                        or
+                                    </span>
+                                </div>
+                            </div>
+                            <p className="mt-4 text-gray-600">
                                 Don't have a code?{' '}
                                 <Link
                                     href={route('games.index')}
-                                    className="font-medium text-blue-600 hover:text-blue-500"
+                                    className="font-bold text-blue-600 hover:text-blue-700"
                                 >
-                                    Browse available games
+                                    Browse games
                                 </Link>
                             </p>
                         </div>
                     </div>
+                </div>
+
+                {/* Tips */}
+                <div className="mt-6 bg-white/60 backdrop-blur-sm rounded-2xl p-5">
+                    <h3 className="font-bold text-yellow-900 flex items-center gap-2">
+                        {'\u{1F4A1}'} Tips
+                    </h3>
+                    <ul className="mt-2 space-y-2 text-sm text-yellow-800">
+                        <li className="flex items-start gap-2">
+                            <span className="text-yellow-600">{'\u{2022}'}</span>
+                            Ask your friend for the room code
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-yellow-600">{'\u{2022}'}</span>
+                            Codes are 6 characters (letters and numbers)
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-yellow-600">{'\u{2022}'}</span>
+                            Make sure the room hasn't started yet
+                        </li>
+                    </ul>
                 </div>
             </div>
         </GameLayout>
