@@ -26,16 +26,20 @@ const ICE_SERVERS = [
     { urls: 'stun:stun3.l.google.com:19302' },
 ];
 
-// Fix Chrome SDP for Safari compatibility
-// Chrome uses: a=ssrc:123 msid:stream-id track-id (space-separated)
-// Safari expects: a=ssrc:123 msid:stream-id/track-id (slash-separated) or just stream-id
+// Fix Chrome SDP for cross-browser compatibility
+// Remove problematic a=ssrc lines with msid attribute that cause parsing errors
 function fixSdpForCompatibility(sdp: string): string {
-    // Replace space-separated msid with just the stream ID (remove track ID)
-    // a=ssrc:123 msid:uuid1 uuid2 -> a=ssrc:123 msid:uuid1
-    return sdp.replaceAll(
-        /^(a=ssrc:\d+ msid:[a-f0-9-]+) [a-f0-9-]+$/gim,
-        '$1'
-    );
+    // Remove all a=ssrc lines containing msid (these cause parsing issues)
+    // The audio will still work through the a=msid-semantic and m= lines
+    const lines = sdp.split('\r\n');
+    const filteredLines = lines.filter(line => {
+        // Remove a=ssrc lines that contain msid
+        if (line.startsWith('a=ssrc:') && line.includes(' msid:')) {
+            return false;
+        }
+        return true;
+    });
+    return filteredLines.join('\r\n');
 }
 
 export default function VoiceChat({ roomCode, currentPlayerId }: Readonly<Props>) {
