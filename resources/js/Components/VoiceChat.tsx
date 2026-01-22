@@ -26,6 +26,18 @@ const ICE_SERVERS = [
     { urls: 'stun:stun3.l.google.com:19302' },
 ];
 
+// Fix Chrome SDP for Safari compatibility
+// Chrome uses: a=ssrc:123 msid:stream-id track-id (space-separated)
+// Safari expects: a=ssrc:123 msid:stream-id/track-id (slash-separated) or just stream-id
+function fixSdpForCompatibility(sdp: string): string {
+    // Replace space-separated msid with just the stream ID (remove track ID)
+    // a=ssrc:123 msid:uuid1 uuid2 -> a=ssrc:123 msid:uuid1
+    return sdp.replaceAll(
+        /^(a=ssrc:\d+ msid:[a-f0-9-]+) [a-f0-9-]+$/gim,
+        '$1'
+    );
+}
+
 export default function VoiceChat({ roomCode, currentPlayerId }: Readonly<Props>) {
     const [isOpen, setIsOpen] = useState(true);
     const [isConnected, setIsConnected] = useState(false);
@@ -241,12 +253,14 @@ export default function VoiceChat({ roomCode, currentPlayerId }: Readonly<Props>
                     }
 
                     try {
-                        // Set remote description (the offer) - payload.sdp is already the SDP object
-                        const offerDesc = new RTCSessionDescription({
-                            type: 'offer',
-                            sdp: payload.sdp.sdp || payload.sdp,
-                        });
-                        await pc.setRemoteDescription(offerDesc);
+                        // payload contains { type: 'offer', sdp: '...' }
+                        console.log('Received offer payload:', JSON.stringify(payload).substring(0, 200));
+                        // Fix SDP for cross-browser compatibility
+                        const fixedSdp = fixSdpForCompatibility(payload.sdp);
+                        await pc.setRemoteDescription({
+                            type: payload.type || 'offer',
+                            sdp: fixedSdp,
+                        } as RTCSessionDescriptionInit);
                         console.log(`Set remote description (offer) from player ${from_player_id}`);
 
                         // Create and send answer
@@ -254,15 +268,13 @@ export default function VoiceChat({ roomCode, currentPlayerId }: Readonly<Props>
                         await pc.setLocalDescription(answer);
                         console.log(`Created and set local description (answer) for player ${from_player_id}`);
 
-                        // Send answer with proper SDP format
+                        // Send answer - payload directly contains type and sdp
                         await axios.post(route('rooms.voice.signal', roomCode), {
                             to_player_id: from_player_id,
                             type: 'answer',
                             payload: {
-                                sdp: {
-                                    type: answer.type,
-                                    sdp: answer.sdp,
-                                },
+                                type: answer.type,
+                                sdp: answer.sdp,
                             },
                         });
                         console.log(`Sent answer to player ${from_player_id}`);
@@ -272,11 +284,13 @@ export default function VoiceChat({ roomCode, currentPlayerId }: Readonly<Props>
                 } else if (type === 'answer') {
                     if (pc && pc.signalingState === 'have-local-offer') {
                         try {
-                            const answerDesc = new RTCSessionDescription({
-                                type: 'answer',
-                                sdp: payload.sdp.sdp || payload.sdp,
-                            });
-                            await pc.setRemoteDescription(answerDesc);
+                            console.log('Received answer payload:', JSON.stringify(payload).substring(0, 200));
+                            // Fix SDP for cross-browser compatibility
+                            const fixedSdp = fixSdpForCompatibility(payload.sdp);
+                            await pc.setRemoteDescription({
+                                type: payload.type || 'answer',
+                                sdp: fixedSdp,
+                            } as RTCSessionDescriptionInit);
                             console.log(`Set remote description (answer) from player ${from_player_id}`);
                         } catch (err) {
                             console.error(`Error setting answer from player ${from_player_id}:`, err);
@@ -359,15 +373,13 @@ export default function VoiceChat({ roomCode, currentPlayerId }: Readonly<Props>
                         await pc.setLocalDescription(offer);
                         console.log(`Created offer for player ${player.id}`);
 
-                        // Send offer with proper SDP format (type and sdp string)
+                        // Send offer - payload directly contains type and sdp
                         await axios.post(route('rooms.voice.signal', roomCode), {
                             to_player_id: player.id,
                             type: 'offer',
                             payload: {
-                                sdp: {
-                                    type: offer.type,
-                                    sdp: offer.sdp,
-                                },
+                                type: offer.type,
+                                sdp: offer.sdp,
                             },
                         });
                         console.log(`Sent offer to player ${player.id}`);
