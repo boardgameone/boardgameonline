@@ -360,9 +360,11 @@ export default function VoiceChat({ roomCode, currentPlayerId }: Readonly<Props>
         const newMutedState = !isMuted;
         localStreamRef.current.getAudioTracks().forEach(track => {
             track.enabled = !newMutedState;
+            console.log(`Audio track enabled: ${track.enabled}`);
         });
 
         setIsMuted(newMutedState);
+        console.log(`Mute toggled: ${newMutedState ? 'muted' : 'unmuted'}`);
 
         try {
             await axios.post(route('rooms.voice.toggleMute', roomCode));
