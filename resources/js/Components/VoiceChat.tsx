@@ -77,11 +77,32 @@ export default function VoiceChat({ roomCode, currentPlayerId }: Readonly<Props>
 
         // Handle remote tracks
         pc.ontrack = (event) => {
+            // Remove any existing audio element for this player
+            const existingAudio = document.getElementById(`audio-${playerId}`);
+            if (existingAudio) {
+                existingAudio.remove();
+            }
+
             const audioElement = document.createElement('audio');
             audioElement.srcObject = event.streams[0];
             audioElement.autoplay = true;
+            audioElement.volume = 1;
             audioElement.id = `audio-${playerId}`;
             document.body.appendChild(audioElement);
+
+            // Explicitly play the audio - required for browsers to actually play
+            const playAudio = () => {
+                audioElement.play().catch(console.error);
+                document.removeEventListener('click', playAudio);
+            };
+
+            audioElement.play().then(() => {
+                console.log(`Audio playing for player ${playerId}`);
+            }).catch((err) => {
+                console.error('Failed to play audio:', err);
+                // Retry play on user interaction if autoplay was blocked
+                document.addEventListener('click', playAudio);
+            });
 
             // Update peer connection with audio element
             const peerConn = peerConnectionsRef.current.get(playerId);

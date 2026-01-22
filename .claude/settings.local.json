@@ -6,7 +6,8 @@
       "Bash(php artisan make:model:*)",
       "Bash(php artisan migrate:*)",
       "Bash(php artisan make:test:*)",
-      "Bash(php artisan make:migration:*)"
+      "Bash(php artisan make:migration:*)",
+      "mcp__laravel-boost__browser-logs"
     ]
   }
 }
