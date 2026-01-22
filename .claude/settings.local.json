@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(vendor/bin/pint:*)",
+      "Bash(php artisan test:*)",
+      "Bash(php artisan make:model:*)",
+      "Bash(php artisan migrate:*)",
+      "Bash(php artisan make:test:*)",
+      "Bash(php artisan make:migration:*)"
+    ]
+  }
+}

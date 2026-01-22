@@ -34,6 +34,7 @@ export interface GameRoom {
     host?: User;
     players?: GamePlayer[];
     connected_players_count?: number;
+    is_full?: boolean;
 }
 
 export interface GamePlayer {
@@ -49,6 +50,7 @@ export interface GamePlayer {
     die_value: number | null;
     has_stolen_cheese: boolean;
     is_connected: boolean;
+    is_muted: boolean;
     turn_order: number | null;
     game_data: Record<string, unknown> | null;
     user?: User;
@@ -76,6 +78,17 @@ export interface GameStatePlayer {
     has_confirmed_roll: boolean;
     has_voted: boolean;
     has_stolen_cheese: boolean;
+}
+
+export interface ChatMessage {
+    id: number;
+    message: string;
+    created_at: string;
+    player: {
+        id: number;
+        nickname: string;
+        avatar_color: string;
+    };
 }
 
 export interface GameState {

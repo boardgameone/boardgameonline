@@ -28,208 +28,230 @@ export default function Show({ auth, game, waitingRooms }: Props) {
     };
 
     return (
-        <GameLayout
-            header={
-                <div className="flex items-center gap-3">
-                    <Link
-                        href={route('games.index')}
-                        className="text-gray-500 hover:text-gray-700"
-                    >
-                        <svg
-                            className="h-5 w-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M15 19l-7-7 7-7"
-                            />
-                        </svg>
-                    </Link>
-                    <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                        {game.name}
-                    </h2>
-                </div>
-            }
-        >
+        <GameLayout>
             <Head title={game.name} />
 
-            <div className="py-12">
-                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                    <div className="grid gap-8 lg:grid-cols-3">
-                        <div className="lg:col-span-2 space-y-6">
-                            <div className="overflow-hidden rounded-xl bg-white shadow">
-                                <div className="aspect-video bg-gradient-to-br from-yellow-400 to-yellow-500 flex items-center justify-center">
-                                    <span className="text-8xl">{gameEmoji}</span>
-                                </div>
-                                <div className="p-6">
-                                    <h1 className="text-2xl font-bold text-gray-900">
-                                        {game.name}
-                                    </h1>
-                                    <p className="mt-3 text-gray-600">
-                                        {game.description}
-                                    </p>
-                                    <div className="mt-4 flex items-center gap-6 text-sm text-gray-500">
-                                        <span className="flex items-center gap-2">
-                                            <UsersIcon />
-                                            {game.min_players}-{game.max_players} players
-                                        </span>
-                                        {game.estimated_duration_minutes && (
-                                            <span className="flex items-center gap-2">
-                                                <ClockIcon />
-                                                ~{game.estimated_duration_minutes} minutes
-                                            </span>
+            {/* Back button */}
+            <div className="mb-6">
+                <Link
+                    href={route('games.index')}
+                    className="inline-flex items-center gap-2 text-yellow-900 hover:text-yellow-700 font-bold transition"
+                >
+                    <svg
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 19l-7-7 7-7"
+                        />
+                    </svg>
+                    Back to Games
+                </Link>
+            </div>
+
+            <div className="grid gap-8 lg:grid-cols-3">
+                {/* Main content */}
+                <div className="lg:col-span-2 space-y-6">
+                    {/* Game Hero */}
+                    <div className="bg-white rounded-3xl shadow-xl overflow-hidden border-b-8 border-yellow-500">
+                        <div className="aspect-video bg-gradient-to-br from-yellow-400 to-yellow-500 flex items-center justify-center relative">
+                            <span className="text-9xl">{gameEmoji}</span>
+                            {/* Decorative elements */}
+                            <div className="absolute top-4 left-4 text-4xl opacity-20 rotate-12">
+                                {'\u{2B50}'}
+                            </div>
+                            <div className="absolute top-4 right-4 text-3xl opacity-20 -rotate-12">
+                                {'\u{1F3B2}'}
+                            </div>
+                            <div className="absolute bottom-4 left-4 text-3xl opacity-20 -rotate-12">
+                                {'\u{1F3B2}'}
+                            </div>
+                            <div className="absolute bottom-4 right-4 text-4xl opacity-20 rotate-12">
+                                {'\u{2B50}'}
+                            </div>
+                        </div>
+                        <div className="p-6 sm:p-8">
+                            <h1 className="text-3xl font-black text-gray-900">
+                                {game.name}
+                            </h1>
+                            <p className="mt-3 text-gray-600 text-lg">
+                                {game.description}
+                            </p>
+                            <div className="mt-6 flex flex-wrap items-center gap-4">
+                                <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-100 text-blue-700 font-bold">
+                                    <UsersIcon />
+                                    {game.min_players}-{game.max_players} players
+                                </span>
+                                {game.estimated_duration_minutes && (
+                                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-100 text-purple-700 font-bold">
+                                        <ClockIcon />
+                                        ~{game.estimated_duration_minutes} minutes
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Rules */}
+                    {game.rules && (
+                        <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8">
+                            <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
+                                {'\u{1F4D6}'} How to Play
+                            </h2>
+                            <div className="mt-6 space-y-6">
+                                {Object.entries(game.rules).map(([key, value]) => (
+                                    <div key={key} className="bg-yellow-50 rounded-xl p-4">
+                                        <h3 className="font-bold text-yellow-800 capitalize text-lg">
+                                            {key.replace(/_/g, ' ')}
+                                        </h3>
+                                        {typeof value === 'string' ? (
+                                            <p className="mt-2 text-gray-700">{value}</p>
+                                        ) : (
+                                            <ul className="mt-2 space-y-2">
+                                                {Object.entries(value as Record<string, string>).map(
+                                                    ([subKey, subValue]) => (
+                                                        <li key={subKey} className="flex gap-2 text-gray-700">
+                                                            <span className="font-bold text-yellow-700">{subKey}:</span>
+                                                            <span>{subValue}</span>
+                                                        </li>
+                                                    )
+                                                )}
+                                            </ul>
                                         )}
                                     </div>
-                                </div>
+                                ))}
                             </div>
-
-                            {game.rules && (
-                                <div className="overflow-hidden rounded-xl bg-white p-6 shadow">
-                                    <h2 className="text-lg font-bold text-gray-900">
-                                        How to Play
-                                    </h2>
-                                    <div className="mt-4 space-y-4 text-sm text-gray-600">
-                                        {Object.entries(game.rules).map(([key, value]) => (
-                                            <div key={key}>
-                                                <h3 className="font-semibold text-gray-800 capitalize">
-                                                    {key.replace(/_/g, ' ')}
-                                                </h3>
-                                                {typeof value === 'string' ? (
-                                                    <p className="mt-1">{value}</p>
-                                                ) : (
-                                                    <ul className="mt-1 list-disc list-inside space-y-1">
-                                                        {Object.entries(value as Record<string, string>).map(
-                                                            ([subKey, subValue]) => (
-                                                                <li key={subKey}>
-                                                                    <strong>{subKey}:</strong> {subValue}
-                                                                </li>
-                                                            )
-                                                        )}
-                                                    </ul>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
                         </div>
+                    )}
+                </div>
 
-                        <div className="space-y-6">
-                            <div className="overflow-hidden rounded-xl bg-white p-6 shadow">
-                                <h2 className="text-lg font-bold text-gray-900">
-                                    Create a Room
-                                </h2>
-                                <form onSubmit={submit} className="mt-4 space-y-4">
-                                    {!auth.user && (
-                                        <div>
-                                            <label
-                                                htmlFor="nickname"
-                                                className="block text-sm font-medium text-gray-700"
-                                            >
-                                                Your Nickname
-                                            </label>
-                                            <input
-                                                id="nickname"
-                                                type="text"
-                                                value={data.nickname}
-                                                onChange={(e) => setData('nickname', e.target.value)}
-                                                placeholder="Enter your nickname"
-                                                maxLength={20}
-                                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                                                required
-                                            />
-                                            {errors.nickname && (
-                                                <p className="mt-1 text-sm text-red-600">
-                                                    {errors.nickname}
-                                                </p>
-                                            )}
-                                        </div>
-                                    )}
+                {/* Sidebar */}
+                <div className="space-y-6">
+                    {/* Create Room */}
+                    <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
+                            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                                {'\u{1F3AE}'} Create a Room
+                            </h2>
+                        </div>
+                        <div className="p-6">
+                            <form onSubmit={submit} className="space-y-4">
+                                {!auth.user && (
                                     <div>
                                         <label
-                                            htmlFor="name"
-                                            className="block text-sm font-medium text-gray-700"
+                                            htmlFor="nickname"
+                                            className="block text-sm font-bold text-gray-700 mb-1"
                                         >
-                                            Room Name (optional)
+                                            Your Nickname
                                         </label>
                                         <input
-                                            id="name"
+                                            id="nickname"
                                             type="text"
-                                            value={data.name}
-                                            onChange={(e) => setData('name', e.target.value)}
-                                            placeholder="My Game Room"
-                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                            value={data.nickname}
+                                            onChange={(e) => setData('nickname', e.target.value)}
+                                            placeholder="Enter your nickname"
+                                            maxLength={20}
+                                            className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-yellow-400 focus:ring-yellow-400 transition-colors font-medium"
+                                            required
                                         />
-                                        {errors.name && (
+                                        {errors.nickname && (
                                             <p className="mt-1 text-sm text-red-600">
-                                                {errors.name}
+                                                {errors.nickname}
                                             </p>
                                         )}
                                     </div>
-                                    <button
-                                        type="submit"
-                                        disabled={processing || (!auth.user && !data.nickname)}
-                                        className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 disabled:opacity-50"
+                                )}
+                                <div>
+                                    <label
+                                        htmlFor="name"
+                                        className="block text-sm font-bold text-gray-700 mb-1"
                                     >
-                                        {processing ? 'Creating...' : 'Create Room'}
-                                    </button>
-                                </form>
-                            </div>
-
-                            {waitingRooms.length > 0 && (
-                                <div className="overflow-hidden rounded-xl bg-white p-6 shadow">
-                                    <h2 className="text-lg font-bold text-gray-900">
-                                        Open Rooms
-                                    </h2>
-                                    <ul className="mt-4 space-y-3">
-                                        {waitingRooms.map((room) => (
-                                            <li key={room.id}>
-                                                <Link
-                                                    href={route('rooms.show', room.room_code)}
-                                                    className="block rounded-lg border border-gray-200 p-4 transition hover:border-blue-500 hover:bg-blue-50"
-                                                >
-                                                    <div className="flex items-center justify-between">
-                                                        <div>
-                                                            <p className="font-medium text-gray-900">
-                                                                {room.name || `Room ${room.room_code}`}
-                                                            </p>
-                                                            <p className="text-sm text-gray-500">
-                                                                Hosted by {room.host?.name || 'Unknown'}
-                                                            </p>
-                                                        </div>
-                                                        <div className="text-right">
-                                                            <p className="text-sm font-medium text-gray-900">
-                                                                {room.connected_players_count || 0}/{game.max_players}
-                                                            </p>
-                                                            <p className="text-xs text-gray-500">players</p>
-                                                        </div>
-                                                    </div>
-                                                </Link>
-                                            </li>
-                                        ))}
-                                    </ul>
+                                        Room Name (optional)
+                                    </label>
+                                    <input
+                                        id="name"
+                                        type="text"
+                                        value={data.name}
+                                        onChange={(e) => setData('name', e.target.value)}
+                                        placeholder="My Awesome Game Room"
+                                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-yellow-400 focus:ring-yellow-400 transition-colors font-medium"
+                                    />
+                                    {errors.name && (
+                                        <p className="mt-1 text-sm text-red-600">
+                                            {errors.name}
+                                        </p>
+                                    )}
                                 </div>
-                            )}
-
-                            <div className="overflow-hidden rounded-xl bg-gray-50 p-6 shadow">
-                                <h2 className="text-lg font-bold text-gray-900">
-                                    Have a Room Code?
-                                </h2>
-                                <p className="mt-2 text-sm text-gray-600">
-                                    Join a friend's room directly using their room code.
-                                </p>
-                                <Link
-                                    href={route('rooms.join')}
-                                    className="mt-4 block w-full rounded-md bg-gray-200 px-4 py-2 text-center text-sm font-semibold text-gray-700 hover:bg-gray-300"
+                                <button
+                                    type="submit"
+                                    disabled={processing || (!auth.user && !data.nickname)}
+                                    className="w-full rounded-full bg-blue-600 px-6 py-3 font-bold text-white shadow-lg transition hover:scale-105 hover:bg-blue-700 border-b-4 border-blue-800 disabled:opacity-50 disabled:hover:scale-100"
                                 >
-                                    Join with Code
-                                </Link>
+                                    {processing ? 'Creating...' : 'Create Room'}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    {/* Open Rooms */}
+                    {waitingRooms.length > 0 && (
+                        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                            <div className="bg-gradient-to-r from-green-500 to-green-600 px-6 py-4">
+                                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                                    {'\u{1F7E2}'} Open Rooms
+                                </h2>
+                            </div>
+                            <div className="p-4">
+                                <ul className="space-y-3">
+                                    {waitingRooms.map((room) => (
+                                        <li key={room.id}>
+                                            <Link
+                                                href={route('rooms.show', room.room_code)}
+                                                className="block rounded-xl border-2 border-gray-100 p-4 transition hover:border-green-400 hover:bg-green-50"
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <p className="font-bold text-gray-900">
+                                                            {room.name || `Room ${room.room_code}`}
+                                                        </p>
+                                                        <p className="text-sm text-gray-500">
+                                                            Hosted by {room.host?.name || 'Unknown'}
+                                                        </p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-lg font-black text-green-600">
+                                                            {room.connected_players_count || 0}/{game.max_players}
+                                                        </p>
+                                                        <p className="text-xs text-gray-500">players</p>
+                                                    </div>
+                                                </div>
+                                            </Link>
+                                        </li>
+                                    ))}
+                                </ul>
                             </div>
                         </div>
+                    )}
+
+                    {/* Join with Code */}
+                    <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6">
+                        <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                            {'\u{1F517}'} Have a Room Code?
+                        </h2>
+                        <p className="mt-2 text-sm text-gray-600">
+                            Join a friend's room directly using their room code.
+                        </p>
+                        <Link
+                            href={route('rooms.join')}
+                            className="mt-4 block w-full rounded-full bg-white px-6 py-3 text-center font-bold text-yellow-600 shadow-md hover:scale-105 transition border-b-4 border-yellow-400"
+                        >
+                            Join with Code
+                        </Link>
                     </div>
                 </div>
             </div>
