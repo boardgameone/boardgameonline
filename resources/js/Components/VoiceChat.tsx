@@ -10,6 +10,7 @@ interface VoicePlayer {
 }
 
 interface Props {
+    gameSlug: string;
     roomCode: string;
     currentPlayerId: number;
 }
@@ -20,7 +21,7 @@ interface CallData {
     audioElement?: HTMLAudioElement;
 }
 
-export default function VoiceChat({ roomCode, currentPlayerId }: Readonly<Props>) {
+export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Readonly<Props>) {
     const [isOpen, setIsOpen] = useState(true);
     const [isConnected, setIsConnected] = useState(false);
     const [isMuted, setIsMuted] = useState(true);
@@ -41,12 +42,12 @@ export default function VoiceChat({ roomCode, currentPlayerId }: Readonly<Props>
     // Fetch voice status of all players
     const fetchVoiceStatus = useCallback(async () => {
         try {
-            const response = await axios.get(route('rooms.voice.status', roomCode));
+            const response = await axios.get(route('rooms.voice.status', [gameSlug, roomCode]));
             setPlayers(response.data.players);
         } catch {
             // Silently fail
         }
-    }, [roomCode]);
+    }, [gameSlug, roomCode]);
 
     // Setup audio level detection for speaking indicator
     const setupAudioLevelDetection = useCallback((stream: MediaStream, playerId: number) => {
@@ -248,7 +249,7 @@ export default function VoiceChat({ roomCode, currentPlayerId }: Readonly<Props>
                 statusPollingRef.current = setInterval(fetchVoiceStatus, 3000);
 
                 // Fetch current players
-                const response = await axios.get(route('rooms.voice.status', roomCode));
+                const response = await axios.get(route('rooms.voice.status', [gameSlug, roomCode]));
                 const currentPlayers = response.data.players as VoicePlayer[];
                 setPlayers(currentPlayers);
 
@@ -262,7 +263,7 @@ export default function VoiceChat({ roomCode, currentPlayerId }: Readonly<Props>
 
                 // Poll for new players to call - also retry failed calls
                 peerPollingRef.current = setInterval(async () => {
-                    const res = await axios.get(route('rooms.voice.status', roomCode));
+                    const res = await axios.get(route('rooms.voice.status', [gameSlug, roomCode]));
                     const players = res.data.players as VoicePlayer[];
                     for (const player of players) {
                         if (player.id !== currentPlayerId) {
@@ -376,7 +377,7 @@ export default function VoiceChat({ roomCode, currentPlayerId }: Readonly<Props>
         console.log(`Mute toggled: ${newMutedState ? 'muted' : 'unmuted'}`);
 
         try {
-            await axios.post(route('rooms.voice.toggleMute', roomCode));
+            await axios.post(route('rooms.voice.toggleMute', [gameSlug, roomCode]));
         } catch {
             // Silently fail
         }

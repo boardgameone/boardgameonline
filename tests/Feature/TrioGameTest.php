@@ -35,7 +35,7 @@ class TrioGameTest extends TestCase
         $data = $this->createGameWithPlayers(2);
 
         $response = $this->actingAs($data['host'])
-            ->post(route('rooms.trio.start', $data['room']->room_code));
+            ->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
 
         $response->assertSessionHasErrors('error');
     }
@@ -45,7 +45,7 @@ class TrioGameTest extends TestCase
         $data = $this->createGameWithPlayers(6);
 
         $response = $this->actingAs($data['host'])
-            ->post(route('rooms.trio.start', $data['room']->room_code));
+            ->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
 
         $response->assertRedirect();
         $data['room']->refresh();
@@ -57,7 +57,7 @@ class TrioGameTest extends TestCase
         $data = $this->createGameWithPlayers(3);
 
         $this->actingAs($data['host'])
-            ->post(route('rooms.trio.start', $data['room']->room_code));
+            ->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
 
         $data['room']->refresh();
         foreach ($data['room']->connectedPlayers as $player) {
@@ -72,7 +72,7 @@ class TrioGameTest extends TestCase
         $data = $this->createGameWithPlayers(4);
 
         $this->actingAs($data['host'])
-            ->post(route('rooms.trio.start', $data['room']->room_code));
+            ->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
 
         $data['room']->refresh();
         foreach ($data['room']->connectedPlayers as $player) {
@@ -87,7 +87,7 @@ class TrioGameTest extends TestCase
         $data = $this->createGameWithPlayers(5);
 
         $this->actingAs($data['host'])
-            ->post(route('rooms.trio.start', $data['room']->room_code));
+            ->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
 
         $data['room']->refresh();
         foreach ($data['room']->connectedPlayers as $player) {
@@ -102,7 +102,7 @@ class TrioGameTest extends TestCase
         $data = $this->createGameWithPlayers(6);
 
         $this->actingAs($data['host'])
-            ->post(route('rooms.trio.start', $data['room']->room_code));
+            ->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
 
         $data['room']->refresh();
         foreach ($data['room']->connectedPlayers as $player) {
@@ -117,7 +117,7 @@ class TrioGameTest extends TestCase
         $data = $this->createGameWithPlayers(3);
 
         $this->actingAs($data['host'])
-            ->post(route('rooms.trio.start', $data['room']->room_code));
+            ->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
 
         $data['room']->refresh();
         foreach ($data['room']->connectedPlayers as $player) {
@@ -133,7 +133,7 @@ class TrioGameTest extends TestCase
         $data = $this->createGameWithPlayers(3);
 
         $this->actingAs($data['host'])
-            ->post(route('rooms.trio.start', $data['room']->room_code));
+            ->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
 
         $data['room']->refresh();
         foreach ($data['room']->settings['middle_grid'] as $card) {
@@ -146,7 +146,7 @@ class TrioGameTest extends TestCase
         $data = $this->createGameWithPlayers(3);
 
         $this->actingAs($data['host'])
-            ->post(route('rooms.trio.start', $data['room']->room_code));
+            ->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
 
         $data['room']->refresh();
         $this->assertNotNull($data['room']->thief_player_id);
@@ -156,7 +156,7 @@ class TrioGameTest extends TestCase
     public function test_player_can_ask_another_player_for_highest_card(): void
     {
         $data = $this->createGameWithPlayers(3);
-        $this->actingAs($data['host'])->post(route('rooms.trio.start', $data['room']->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
 
         $data['room']->refresh();
         $currentPlayer = $data['room']->connectedPlayers->find($data['room']->thief_player_id);
@@ -165,7 +165,7 @@ class TrioGameTest extends TestCase
         $highestCard = max($targetHand);
 
         $response = $this->actingAs($currentPlayer->user)
-            ->post(route('rooms.trio.revealCard', $data['room']->room_code), [
+            ->post(route('rooms.trio.revealCard', [$data['room']->game->slug, $data['room']->room_code]), [
                 'reveal_type' => 'ask_highest',
                 'target_player_id' => $targetPlayer->id,
                 'card_value' => $highestCard,
@@ -180,7 +180,7 @@ class TrioGameTest extends TestCase
     public function test_player_can_ask_another_player_for_lowest_card(): void
     {
         $data = $this->createGameWithPlayers(3);
-        $this->actingAs($data['host'])->post(route('rooms.trio.start', $data['room']->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
 
         $data['room']->refresh();
         $currentPlayer = $data['room']->connectedPlayers->find($data['room']->thief_player_id);
@@ -189,7 +189,7 @@ class TrioGameTest extends TestCase
         $lowestCard = min($targetHand);
 
         $response = $this->actingAs($currentPlayer->user)
-            ->post(route('rooms.trio.revealCard', $data['room']->room_code), [
+            ->post(route('rooms.trio.revealCard', [$data['room']->game->slug, $data['room']->room_code]), [
                 'reveal_type' => 'ask_lowest',
                 'target_player_id' => $targetPlayer->id,
                 'card_value' => $lowestCard,
@@ -204,14 +204,14 @@ class TrioGameTest extends TestCase
     public function test_player_can_flip_middle_card(): void
     {
         $data = $this->createGameWithPlayers(3);
-        $this->actingAs($data['host'])->post(route('rooms.trio.start', $data['room']->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
 
         $data['room']->refresh();
         $currentPlayer = $data['room']->connectedPlayers->find($data['room']->thief_player_id);
         $middleCard = $data['room']->settings['middle_grid'][0];
 
         $response = $this->actingAs($currentPlayer->user)
-            ->post(route('rooms.trio.revealCard', $data['room']->room_code), [
+            ->post(route('rooms.trio.revealCard', [$data['room']->game->slug, $data['room']->room_code]), [
                 'reveal_type' => 'flip_middle',
                 'middle_position' => 0,
                 'card_value' => $middleCard['value'],
@@ -226,13 +226,13 @@ class TrioGameTest extends TestCase
     public function test_player_cannot_reveal_out_of_turn(): void
     {
         $data = $this->createGameWithPlayers(3);
-        $this->actingAs($data['host'])->post(route('rooms.trio.start', $data['room']->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
 
         $data['room']->refresh();
         $notCurrentPlayer = $data['room']->connectedPlayers->where('id', '!=', $data['room']->thief_player_id)->first();
 
         $response = $this->actingAs($notCurrentPlayer->user)
-            ->post(route('rooms.trio.revealCard', $data['room']->room_code), [
+            ->post(route('rooms.trio.revealCard', [$data['room']->game->slug, $data['room']->room_code]), [
                 'reveal_type' => 'flip_middle',
                 'middle_position' => 0,
                 'card_value' => 1,
@@ -244,7 +244,7 @@ class TrioGameTest extends TestCase
     public function test_player_automatically_reveals_actual_highest_card_regardless_of_input(): void
     {
         $data = $this->createGameWithPlayers(3);
-        $this->actingAs($data['host'])->post(route('rooms.trio.start', $data['room']->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
 
         $data['room']->refresh();
         $currentPlayer = $data['room']->connectedPlayers->find($data['room']->thief_player_id);
@@ -254,7 +254,7 @@ class TrioGameTest extends TestCase
 
         // Send a wrong card_value (0) - backend should ignore it and determine the correct value
         $response = $this->actingAs($currentPlayer->user)
-            ->post(route('rooms.trio.revealCard', $data['room']->room_code), [
+            ->post(route('rooms.trio.revealCard', [$data['room']->game->slug, $data['room']->room_code]), [
                 'reveal_type' => 'ask_highest',
                 'target_player_id' => $targetPlayer->id,
                 'card_value' => 0,
@@ -271,7 +271,7 @@ class TrioGameTest extends TestCase
     public function test_player_automatically_reveals_actual_lowest_card_regardless_of_input(): void
     {
         $data = $this->createGameWithPlayers(3);
-        $this->actingAs($data['host'])->post(route('rooms.trio.start', $data['room']->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
 
         $data['room']->refresh();
         $currentPlayer = $data['room']->connectedPlayers->find($data['room']->thief_player_id);
@@ -281,7 +281,7 @@ class TrioGameTest extends TestCase
 
         // Send a wrong card_value (0) - backend should ignore it and determine the correct value
         $response = $this->actingAs($currentPlayer->user)
-            ->post(route('rooms.trio.revealCard', $data['room']->room_code), [
+            ->post(route('rooms.trio.revealCard', [$data['room']->game->slug, $data['room']->room_code]), [
                 'reveal_type' => 'ask_lowest',
                 'target_player_id' => $targetPlayer->id,
                 'card_value' => 0,
@@ -298,13 +298,13 @@ class TrioGameTest extends TestCase
     public function test_player_cannot_flip_already_face_up_middle_card(): void
     {
         $data = $this->createGameWithPlayers(3);
-        $this->actingAs($data['host'])->post(route('rooms.trio.start', $data['room']->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
 
         $data['room']->refresh();
         $currentPlayer = $data['room']->connectedPlayers->find($data['room']->thief_player_id);
 
         $this->actingAs($currentPlayer->user)
-            ->post(route('rooms.trio.revealCard', $data['room']->room_code), [
+            ->post(route('rooms.trio.revealCard', [$data['room']->game->slug, $data['room']->room_code]), [
                 'reveal_type' => 'flip_middle',
                 'middle_position' => 0,
                 'card_value' => $data['room']->settings['middle_grid'][0]['value'],
@@ -312,7 +312,7 @@ class TrioGameTest extends TestCase
 
         $data['room']->refresh();
         $response = $this->actingAs($currentPlayer->user)
-            ->post(route('rooms.trio.revealCard', $data['room']->room_code), [
+            ->post(route('rooms.trio.revealCard', [$data['room']->game->slug, $data['room']->room_code]), [
                 'reveal_type' => 'flip_middle',
                 'middle_position' => 0,
                 'card_value' => $data['room']->settings['middle_grid'][0]['value'],
@@ -324,7 +324,7 @@ class TrioGameTest extends TestCase
     public function test_turn_advances_to_next_player_in_order(): void
     {
         $data = $this->createGameWithPlayers(3);
-        $this->actingAs($data['host'])->post(route('rooms.trio.start', $data['room']->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
 
         $data['room']->refresh();
         $firstPlayer = $data['room']->connectedPlayers->find($data['room']->thief_player_id);
@@ -332,7 +332,7 @@ class TrioGameTest extends TestCase
 
         $targetPlayer = $data['room']->connectedPlayers->where('id', '!=', $firstPlayer->id)->first();
         $this->actingAs($firstPlayer->user)
-            ->post(route('rooms.trio.revealCard', $data['room']->room_code), [
+            ->post(route('rooms.trio.revealCard', [$data['room']->game->slug, $data['room']->room_code]), [
                 'reveal_type' => 'ask_highest',
                 'target_player_id' => $targetPlayer->id,
                 'card_value' => max($targetPlayer->game_data['hand']),
@@ -342,7 +342,7 @@ class TrioGameTest extends TestCase
         $middleCard = $data['room']->settings['middle_grid'][0];
 
         $this->actingAs($firstPlayer->user)
-            ->post(route('rooms.trio.revealCard', $data['room']->room_code), [
+            ->post(route('rooms.trio.revealCard', [$data['room']->game->slug, $data['room']->room_code]), [
                 'reveal_type' => 'flip_middle',
                 'middle_position' => 0,
                 'card_value' => $middleCard['value'],
@@ -351,7 +351,7 @@ class TrioGameTest extends TestCase
         $data['room']->refresh();
 
         $this->actingAs($firstPlayer->user)
-            ->post(route('rooms.trio.endTurn', $data['room']->room_code));
+            ->post(route('rooms.trio.endTurn', [$data['room']->game->slug, $data['room']->room_code]));
 
         $data['room']->refresh();
         $this->assertNotEquals($firstPlayerId, $data['room']->thief_player_id);
@@ -360,14 +360,14 @@ class TrioGameTest extends TestCase
     public function test_revealed_cards_hidden_after_turn_ends(): void
     {
         $data = $this->createGameWithPlayers(3);
-        $this->actingAs($data['host'])->post(route('rooms.trio.start', $data['room']->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
 
         $data['room']->refresh();
         $currentPlayer = $data['room']->connectedPlayers->find($data['room']->thief_player_id);
 
         $card0 = $data['room']->settings['middle_grid'][0];
         $this->actingAs($currentPlayer->user)
-            ->post(route('rooms.trio.revealCard', $data['room']->room_code), [
+            ->post(route('rooms.trio.revealCard', [$data['room']->game->slug, $data['room']->room_code]), [
                 'reveal_type' => 'flip_middle',
                 'middle_position' => 0,
                 'card_value' => $card0['value'],
@@ -376,7 +376,7 @@ class TrioGameTest extends TestCase
         $data['room']->refresh();
         $card1 = $data['room']->settings['middle_grid'][1];
         $this->actingAs($currentPlayer->user)
-            ->post(route('rooms.trio.revealCard', $data['room']->room_code), [
+            ->post(route('rooms.trio.revealCard', [$data['room']->game->slug, $data['room']->room_code]), [
                 'reveal_type' => 'flip_middle',
                 'middle_position' => 1,
                 'card_value' => $card1['value'],
@@ -384,7 +384,7 @@ class TrioGameTest extends TestCase
 
         $data['room']->refresh();
         $this->actingAs($currentPlayer->user)
-            ->post(route('rooms.trio.endTurn', $data['room']->room_code));
+            ->post(route('rooms.trio.endTurn', [$data['room']->game->slug, $data['room']->room_code]));
 
         $data['room']->refresh();
         foreach ($data['room']->settings['middle_grid'] as $card) {
@@ -395,7 +395,7 @@ class TrioGameTest extends TestCase
     public function test_player_wins_with_three_collected_trios(): void
     {
         $data = $this->createGameWithPlayers(3);
-        $this->actingAs($data['host'])->post(route('rooms.trio.start', $data['room']->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
 
         $data['room']->refresh();
         $currentPlayer = $data['room']->connectedPlayers->find($data['room']->thief_player_id);
@@ -413,7 +413,7 @@ class TrioGameTest extends TestCase
         $data['room']->update(['settings' => $settings]);
 
         $this->actingAs($currentPlayer->user)
-            ->post(route('rooms.trio.claimTrio', $data['room']->room_code));
+            ->post(route('rooms.trio.claimTrio', [$data['room']->game->slug, $data['room']->room_code]));
 
         $data['room']->refresh();
         $this->assertEquals('finished', $data['room']->status);

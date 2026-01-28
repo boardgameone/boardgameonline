@@ -71,7 +71,7 @@ class GameRoomTest extends TestCase
         $room = GameRoom::factory()->withHost($user)->forGame($game)->create();
         GamePlayer::factory()->forRoom($room)->forUser($user)->host()->create();
 
-        $response = $this->actingAs($user)->get(route('rooms.show', $room->room_code));
+        $response = $this->actingAs($user)->get(route('rooms.show', [$game->slug, $room->room_code]));
 
         $response->assertStatus(200);
         $response->assertInertia(fn ($page) => $page
@@ -93,7 +93,7 @@ class GameRoomTest extends TestCase
             'room_code' => $room->room_code,
         ]);
 
-        $response->assertRedirect(route('rooms.show', $room->room_code));
+        $response->assertRedirect(route('rooms.show', [$game->slug, $room->room_code]));
         $this->assertDatabaseHas('game_players', [
             'game_room_id' => $room->id,
             'user_id' => $player->id,
@@ -139,7 +139,7 @@ class GameRoomTest extends TestCase
         GamePlayer::factory()->forRoom($room)->forUser($host)->host()->create();
         GamePlayer::factory()->forRoom($room)->create();
 
-        $response = $this->actingAs($host)->post(route('rooms.start', $room->room_code));
+        $response = $this->actingAs($host)->post(route('rooms.start', [$game->slug, $room->room_code]));
 
         $response->assertRedirect();
         $this->assertDatabaseHas('game_rooms', [
@@ -157,7 +157,7 @@ class GameRoomTest extends TestCase
         GamePlayer::factory()->forRoom($room)->forUser($host)->host()->create();
         GamePlayer::factory()->forRoom($room)->forUser($player)->create();
 
-        $response = $this->actingAs($player)->post(route('rooms.start', $room->room_code));
+        $response = $this->actingAs($player)->post(route('rooms.start', [$game->slug, $room->room_code]));
 
         $response->assertStatus(403);
     }
@@ -169,7 +169,7 @@ class GameRoomTest extends TestCase
         $room = GameRoom::factory()->withHost($host)->forGame($game)->create();
         GamePlayer::factory()->forRoom($room)->forUser($host)->host()->create();
 
-        $response = $this->actingAs($host)->post(route('rooms.start', $room->room_code));
+        $response = $this->actingAs($host)->post(route('rooms.start', [$game->slug, $room->room_code]));
 
         $response->assertSessionHasErrors('error');
         $this->assertDatabaseHas('game_rooms', [
@@ -187,7 +187,7 @@ class GameRoomTest extends TestCase
         GamePlayer::factory()->forRoom($room)->forUser($host)->host()->create();
         GamePlayer::factory()->forRoom($room)->forUser($player)->create();
 
-        $response = $this->actingAs($player)->post(route('rooms.leave', $room->room_code));
+        $response = $this->actingAs($player)->post(route('rooms.leave', [$game->slug, $room->room_code]));
 
         $response->assertRedirect(route('games.show', $game->slug));
         $this->assertDatabaseHas('game_players', [
@@ -267,7 +267,7 @@ class GameRoomTest extends TestCase
             'nickname' => 'GuestPlayer',
         ]);
 
-        $response->assertRedirect(route('rooms.show', $room->room_code));
+        $response->assertRedirect(route('rooms.show', [$game->slug, $room->room_code]));
 
         $this->assertDatabaseHas('game_players', [
             'game_room_id' => $room->id,
@@ -329,7 +329,7 @@ class GameRoomTest extends TestCase
             'nickname' => 'GuestPlayer',
         ]);
 
-        $response->assertRedirect(route('rooms.show', $room->room_code));
+        $response->assertRedirect(route('rooms.show', [$game->slug, $room->room_code]));
 
         // Verify the guest player was created
         $this->assertDatabaseHas('game_players', [
@@ -367,5 +367,16 @@ class GameRoomTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertInertia(fn ($page) => $page->component('Rooms/Join'));
+    }
+
+    public function test_old_room_urls_redirect_to_new_format(): void
+    {
+        $game = Game::factory()->create(['slug' => 'trio']);
+        $room = GameRoom::factory()->forGame($game)->create();
+
+        $response = $this->get("/rooms/{$room->room_code}");
+
+        $response->assertRedirect(route('rooms.show', [$game->slug, $room->room_code]));
+        $response->assertStatus(301);
     }
 }

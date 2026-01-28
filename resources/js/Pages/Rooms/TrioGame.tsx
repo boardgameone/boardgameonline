@@ -51,6 +51,8 @@ export default function TrioGame({ auth, room, currentPlayer, isHost, gameState 
     const [selectedPlayer, setSelectedPlayer] = useState<number | null>(null);
     const [selectedRevealType, setSelectedRevealType] = useState<'ask_highest' | 'ask_lowest' | null>(null);
 
+    const gameSlug = room.game?.slug || '';
+
     // Form for guests to join directly
     const { data, setData, post, processing, errors } = useForm({
         nickname: '',
@@ -58,7 +60,7 @@ export default function TrioGame({ auth, room, currentPlayer, isHost, gameState 
 
     const handleJoin: FormEventHandler = (e) => {
         e.preventDefault();
-        post(route('rooms.joinDirect', room.room_code));
+        post(route('rooms.joinDirect', [gameSlug, room.room_code]));
     };
 
     // Check if user needs to join (not a player yet)
@@ -66,7 +68,7 @@ export default function TrioGame({ auth, room, currentPlayer, isHost, gameState 
     const isGuest = !auth.user;
 
     const handleStart = () => {
-        router.post(route('rooms.trio.start', room.room_code));
+        router.post(route('rooms.trio.start', [gameSlug, room.room_code]));
     };
 
     const handleRevealPlayerCard = (playerId: number, revealType: 'ask_highest' | 'ask_lowest') => {
@@ -75,7 +77,7 @@ export default function TrioGame({ auth, room, currentPlayer, isHost, gameState 
         const targetPlayer = gameState.players.find(p => p.id === playerId);
         if (!targetPlayer) return;
 
-        router.post(route('rooms.trio.revealCard', room.room_code), {
+        router.post(route('rooms.trio.revealCard', [gameSlug, room.room_code]), {
             reveal_type: revealType,
             target_player_id: playerId,
             card_value: 0,
@@ -85,7 +87,7 @@ export default function TrioGame({ auth, room, currentPlayer, isHost, gameState 
     const handleRevealMiddleCard = (position: number) => {
         if (!gameState) return;
 
-        router.post(route('rooms.trio.revealCard', room.room_code), {
+        router.post(route('rooms.trio.revealCard', [gameSlug, room.room_code]), {
             reveal_type: 'flip_middle',
             middle_position: position,
             card_value: 0,
@@ -93,15 +95,15 @@ export default function TrioGame({ auth, room, currentPlayer, isHost, gameState 
     };
 
     const handleClaimTrio = () => {
-        router.post(route('rooms.trio.claimTrio', room.room_code));
+        router.post(route('rooms.trio.claimTrio', [gameSlug, room.room_code]));
     };
 
     const handleEndTurn = () => {
-        router.post(route('rooms.trio.endTurn', room.room_code));
+        router.post(route('rooms.trio.endTurn', [gameSlug, room.room_code]));
     };
 
     const handleLeave = () => {
-        router.post(route('rooms.leave', room.room_code));
+        router.post(route('rooms.leave', [gameSlug, room.room_code]));
     };
 
     const connectedPlayers = room.players?.filter((p) => p.is_connected) || [];

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\RevealCardRequest;
+use App\Models\Game;
 use App\Models\GameCardReveal;
 use App\Models\GamePlayer;
 use App\Models\GameRoom;
@@ -14,8 +15,13 @@ use Inertia\Response;
 
 class TrioGameController extends Controller
 {
-    public function start(GameRoom $room): RedirectResponse
+    public function start(Game $game, GameRoom $room): RedirectResponse
     {
+        // Validate room belongs to this game
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
         $currentPlayer = $this->findCurrentPlayer($room);
 
         if (! $currentPlayer?->is_host) {
@@ -92,11 +98,16 @@ class TrioGameController extends Controller
             ],
         ]);
 
-        return redirect()->route('rooms.show', $room->room_code);
+        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
     }
 
-    public function revealCard(RevealCardRequest $request, GameRoom $room): RedirectResponse
+    public function revealCard(RevealCardRequest $request, Game $game, GameRoom $room): RedirectResponse
     {
+        // Validate room belongs to this game
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
         $currentPlayer = $this->findCurrentPlayer($room);
 
         if (! $currentPlayer) {
@@ -194,11 +205,16 @@ class TrioGameController extends Controller
         $settings['current_turn'] = $currentTurn;
         $room->update(['settings' => $settings]);
 
-        return redirect()->route('rooms.show', $room->room_code);
+        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
     }
 
-    public function claimTrio(GameRoom $room): RedirectResponse
+    public function claimTrio(Game $game, GameRoom $room): RedirectResponse
     {
+        // Validate room belongs to this game
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
         $currentPlayer = $this->findCurrentPlayer($room);
 
         if (! $currentPlayer) {
@@ -269,11 +285,16 @@ class TrioGameController extends Controller
             ]);
         }
 
-        return redirect()->route('rooms.show', $room->room_code);
+        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
     }
 
-    public function endTurn(GameRoom $room): RedirectResponse
+    public function endTurn(Game $game, GameRoom $room): RedirectResponse
     {
+        // Validate room belongs to this game
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
         $currentPlayer = $this->findCurrentPlayer($room);
 
         if (! $currentPlayer) {
@@ -314,11 +335,16 @@ class TrioGameController extends Controller
             'thief_player_id' => $nextPlayerId,
         ]);
 
-        return redirect()->route('rooms.show', $room->room_code);
+        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
     }
 
-    public function show(GameRoom $room): Response
+    public function show(Game $game, GameRoom $room): Response
     {
+        // Validate room belongs to this game
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
         $room->load([
             'game',
             'host:id,name',
