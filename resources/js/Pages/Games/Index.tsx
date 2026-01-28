@@ -129,7 +129,7 @@ function GameCard({ game }: Readonly<{ game: Game }>) {
                 {game.slug === 'trio' ? (
                     <TrioGameVisual />
                 ) : (
-                    <span className={`text-8xl group-hover:scale-125 transition-transform duration-500 drop-shadow-lg relative z-10 ${game.slug === 'cheese-thief' ? '-rotate-90' : ''}`}>
+                    <span className={`text-8xl group-hover:scale-125 transition-transform duration-500 drop-shadow-lg relative z-10 ${game.slug === 'cheese-thief' ? '-rotate-[100deg]' : ''}`}>
                         {gameEmoji}
                     </span>
                 )}

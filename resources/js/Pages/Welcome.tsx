@@ -142,7 +142,7 @@ function GameCard({ game }: { game: Game }) {
                 {game.slug === 'trio' ? (
                     <TrioGameVisualSmall />
                 ) : (
-                    <span className={`text-4xl sm:text-5xl ${game.slug === 'cheese-thief' ? '-rotate-90' : ''}`}>{gameEmoji}</span>
+                    <span className={`text-4xl sm:text-5xl group-hover:scale-125 transition-transform duration-500 drop-shadow-lg ${game.slug === 'cheese-thief' ? '-rotate-[100deg]' : ''}`}>{gameEmoji}</span>
                 )}
             </div>
             <div className="p-2 sm:p-3 text-center">

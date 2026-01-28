@@ -68,7 +68,7 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                 {/* Main content */}
                 <div className="lg:col-span-2 space-y-6">
                     {/* Game Hero */}
-                    <div className={`bg-white rounded-3xl shadow-xl overflow-hidden border-b-8 ${borderColor}`}>
+                    <div className={`group bg-white rounded-3xl shadow-xl overflow-hidden border-b-8 ${borderColor}`}>
                         <div className={`aspect-video bg-gradient-to-br ${gradient} flex items-center justify-center relative`}>
                             {game.slug === 'trio' ? (
                                 <TrioGameVisual />
