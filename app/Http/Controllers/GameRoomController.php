@@ -83,6 +83,7 @@ class GameRoomController extends Controller
             'peeks',
         ]);
 
+        // Find or auto-join current player FIRST (for all games)
         $currentPlayer = $this->findCurrentPlayer($room);
 
         if (! $currentPlayer && $room->isWaiting() && ! $room->isFull()) {
@@ -93,6 +94,11 @@ class GameRoomController extends Controller
                 $currentPlayer = $this->findCurrentPlayer($room);
                 $room->load('players');
             }
+        }
+
+        // Route to TRIO game controller if this is a TRIO game
+        if ($room->game?->slug === 'trio') {
+            return app(TrioGameController::class)->show($room);
         }
 
         // Build game state with visibility rules

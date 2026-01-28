@@ -3,6 +3,7 @@
 use App\Http\Controllers\GameController;
 use App\Http\Controllers\GameRoomController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\TrioGameController;
 use App\Models\Game;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -36,7 +37,7 @@ Route::post('/rooms/{room:room_code}/join-direct', [GameRoomController::class, '
 Route::post('/rooms/{room:room_code}/start', [GameRoomController::class, 'start'])->name('rooms.start');
 Route::post('/rooms/{room:room_code}/leave', [GameRoomController::class, 'leave'])->name('rooms.leave');
 
-// Game action routes
+// Game action routes (Cheese Thief)
 Route::post('/rooms/{room:room_code}/confirm-roll', [GameRoomController::class, 'confirmRoll'])->name('rooms.confirmRoll');
 Route::post('/rooms/{room:room_code}/peek', [GameRoomController::class, 'peek'])->name('rooms.peek');
 Route::post('/rooms/{room:room_code}/skip-peek', [GameRoomController::class, 'skipPeek'])->name('rooms.skipPeek');
@@ -50,6 +51,12 @@ Route::post('/rooms/{room:room_code}/voice/signal', [GameRoomController::class, 
 Route::get('/rooms/{room:room_code}/voice/signals', [GameRoomController::class, 'getSignals'])->name('rooms.voice.signals');
 Route::post('/rooms/{room:room_code}/voice/toggle-mute', [GameRoomController::class, 'toggleMute'])->name('rooms.voice.toggleMute');
 Route::get('/rooms/{room:room_code}/voice/status', [GameRoomController::class, 'getVoiceStatus'])->name('rooms.voice.status');
+
+// TRIO game routes
+Route::post('/rooms/{room:room_code}/trio/start', [TrioGameController::class, 'start'])->name('rooms.trio.start');
+Route::post('/rooms/{room:room_code}/trio/reveal-card', [TrioGameController::class, 'revealCard'])->name('rooms.trio.revealCard');
+Route::post('/rooms/{room:room_code}/trio/claim-trio', [TrioGameController::class, 'claimTrio'])->name('rooms.trio.claimTrio');
+Route::post('/rooms/{room:room_code}/trio/end-turn', [TrioGameController::class, 'endTurn'])->name('rooms.trio.endTurn');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

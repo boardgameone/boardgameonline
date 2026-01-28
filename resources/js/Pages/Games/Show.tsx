@@ -15,6 +15,16 @@ interface Props extends PageProps {
 
 export default function Show({ auth, game, waitingRooms }: Props) {
     const gameEmoji = getGameEmoji(game.slug);
+    const gradients: Record<string, string> = {
+        'cheese-thief': 'from-amber-600 to-amber-800',
+        'trio': 'from-blue-500 via-cyan-500 to-teal-500',
+    };
+    const borderColors: Record<string, string> = {
+        'cheese-thief': 'border-amber-800',
+        'trio': 'border-teal-500',
+    };
+    const gradient = gradients[game.slug] || 'from-amber-600 to-amber-800';
+    const borderColor = borderColors[game.slug] || 'border-amber-800';
 
     const { data, setData, post, processing, errors } = useForm({
         game_id: game.id,
@@ -58,9 +68,13 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                 {/* Main content */}
                 <div className="lg:col-span-2 space-y-6">
                     {/* Game Hero */}
-                    <div className="bg-white rounded-3xl shadow-xl overflow-hidden border-b-8 border-yellow-500">
-                        <div className="aspect-video bg-gradient-to-br from-yellow-400 to-yellow-500 flex items-center justify-center relative">
-                            <span className="text-9xl">{gameEmoji}</span>
+                    <div className={`bg-white rounded-3xl shadow-xl overflow-hidden border-b-8 ${borderColor}`}>
+                        <div className={`aspect-video bg-gradient-to-br ${gradient} flex items-center justify-center relative`}>
+                            {game.slug === 'trio' ? (
+                                <TrioGameVisual />
+                            ) : (
+                                <span className={`text-9xl ${game.slug === 'cheese-thief' ? '-rotate-90' : ''}`}>{gameEmoji}</span>
+                            )}
                             {/* Decorative elements */}
                             <div className="absolute top-4 left-4 text-4xl opacity-20 rotate-12">
                                 {'\u{2B50}'}
@@ -259,9 +273,37 @@ export default function Show({ auth, game, waitingRooms }: Props) {
     );
 }
 
+function TrioGameVisual() {
+    return (
+        <div className="relative">
+            {/* Three overlapping cards showing a trio */}
+            <div className="relative flex items-center justify-center">
+                {/* Card 1 - Left */}
+                <div className="absolute -left-16 w-32 h-44 bg-white rounded-2xl shadow-2xl border-4 border-white/90 flex flex-col items-center justify-center transform -rotate-12">
+                    <div className="text-6xl font-black text-purple-600">7</div>
+                    <div className="mt-2 text-purple-400 text-sm font-bold">★★★</div>
+                </div>
+
+                {/* Card 2 - Center */}
+                <div className="relative w-32 h-44 bg-white rounded-2xl shadow-2xl border-4 border-white/90 flex flex-col items-center justify-center z-10">
+                    <div className="text-6xl font-black text-indigo-600">7</div>
+                    <div className="mt-2 text-indigo-400 text-sm font-bold">★★★</div>
+                </div>
+
+                {/* Card 3 - Right */}
+                <div className="absolute -right-16 w-32 h-44 bg-white rounded-2xl shadow-2xl border-4 border-white/90 flex flex-col items-center justify-center transform rotate-12">
+                    <div className="text-6xl font-black text-pink-600">7</div>
+                    <div className="mt-2 text-pink-400 text-sm font-bold">★★★</div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function getGameEmoji(slug: string): string {
     const emojis: Record<string, string> = {
         'cheese-thief': '\u{1F9C0}',
+        'trio': '\u{1F0CF}',
     };
     return emojis[slug] || '\u{1F3B2}';
 }
