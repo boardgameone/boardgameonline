@@ -3,11 +3,12 @@ import axios from 'axios';
 import { FormEventHandler, useCallback, useEffect, useRef, useState } from 'react';
 
 interface Props {
+    gameSlug: string;
     roomCode: string;
     currentPlayerId: number | null;
 }
 
-export default function RoomChat({ roomCode, currentPlayerId }: Readonly<Props>) {
+export default function RoomChat({ gameSlug, roomCode, currentPlayerId }: Readonly<Props>) {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [sending, setSending] = useState(false);
@@ -23,7 +24,7 @@ export default function RoomChat({ roomCode, currentPlayerId }: Readonly<Props>)
         if (!currentPlayerId) return;
 
         try {
-            const response = await axios.get(route('rooms.messages', roomCode), {
+            const response = await axios.get(route('rooms.messages', [gameSlug, roomCode]), {
                 params: { after_id: lastMessageIdRef.current },
             });
 
@@ -36,7 +37,7 @@ export default function RoomChat({ roomCode, currentPlayerId }: Readonly<Props>)
         } catch {
             // Silently fail - will retry on next poll
         }
-    }, [roomCode, currentPlayerId]);
+    }, [gameSlug, roomCode, currentPlayerId]);
 
     // Poll for new messages
     useEffect(() => {
@@ -53,7 +54,7 @@ export default function RoomChat({ roomCode, currentPlayerId }: Readonly<Props>)
 
         setSending(true);
         try {
-            const response = await axios.post(route('rooms.chat', roomCode), {
+            const response = await axios.post(route('rooms.chat', [gameSlug, roomCode]), {
                 message: newMessage.trim(),
             });
 

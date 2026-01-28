@@ -36,7 +36,7 @@ class CheeseThiefGameTest extends TestCase
         $room = $data['room'];
         $host = $data['host'];
 
-        $this->actingAs($host)->post(route('rooms.start', $room->room_code));
+        $this->actingAs($host)->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
 
         $room->refresh();
         $this->assertEquals('playing', $room->status);
@@ -63,10 +63,10 @@ class CheeseThiefGameTest extends TestCase
         $players = $data['players'];
 
         // Start the game
-        $this->actingAs($host)->post(route('rooms.start', $room->room_code));
+        $this->actingAs($host)->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
 
         // Confirm roll as first player
-        $response = $this->actingAs($host)->post(route('rooms.confirmRoll', $room->room_code));
+        $response = $this->actingAs($host)->post(route('rooms.confirmRoll', [$room->game->slug, $room->room_code]));
 
         $response->assertRedirect();
         $players[0]->refresh();
@@ -80,11 +80,11 @@ class CheeseThiefGameTest extends TestCase
         $players = $data['players'];
 
         // Start the game
-        $this->actingAs($data['host'])->post(route('rooms.start', $room->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
 
         // All players confirm their rolls
         foreach ($players as $player) {
-            $this->actingAs($player->user)->post(route('rooms.confirmRoll', $room->room_code));
+            $this->actingAs($player->user)->post(route('rooms.confirmRoll', [$room->game->slug, $room->room_code]));
         }
 
         $room->refresh();
@@ -99,7 +99,7 @@ class CheeseThiefGameTest extends TestCase
         $players = $data['players'];
 
         // Start the game
-        $this->actingAs($data['host'])->post(route('rooms.start', $room->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
 
         // Set up a specific scenario: player 0 wakes up at hour 3, alone
         $players[0]->update(['die_value' => 3, 'game_data' => ['confirmed_roll' => true]]);
@@ -109,7 +109,7 @@ class CheeseThiefGameTest extends TestCase
         $room->update(['current_hour' => 3]);
 
         // Player 0 should be able to peek
-        $response = $this->actingAs($players[0]->user)->post(route('rooms.peek', $room->room_code), [
+        $response = $this->actingAs($players[0]->user)->post(route('rooms.peek', [$room->game->slug, $room->room_code]), [
             'target_player_id' => $players[1]->id,
         ]);
 
@@ -128,7 +128,7 @@ class CheeseThiefGameTest extends TestCase
         $players = $data['players'];
 
         // Start the game
-        $this->actingAs($data['host'])->post(route('rooms.start', $room->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
 
         // Set up: players 0 and 1 both wake up at hour 3
         $players[0]->update(['die_value' => 3, 'game_data' => ['confirmed_roll' => true]]);
@@ -138,7 +138,7 @@ class CheeseThiefGameTest extends TestCase
         $room->update(['current_hour' => 3]);
 
         // Player 0 should NOT be able to peek
-        $response = $this->actingAs($players[0]->user)->post(route('rooms.peek', $room->room_code), [
+        $response = $this->actingAs($players[0]->user)->post(route('rooms.peek', [$room->game->slug, $room->room_code]), [
             'target_player_id' => $players[2]->id,
         ]);
 
@@ -152,7 +152,7 @@ class CheeseThiefGameTest extends TestCase
         $players = $data['players'];
 
         // Start the game
-        $this->actingAs($data['host'])->post(route('rooms.start', $room->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
 
         // Make player 1 the thief
         $players[1]->update(['is_thief' => true]);
@@ -166,7 +166,7 @@ class CheeseThiefGameTest extends TestCase
         $room->update(['current_hour' => 3]);
 
         // Player 0 peeks at the thief (player 1)
-        $this->actingAs($players[0]->user)->post(route('rooms.peek', $room->room_code), [
+        $this->actingAs($players[0]->user)->post(route('rooms.peek', [$room->game->slug, $room->room_code]), [
             'target_player_id' => $players[1]->id,
         ]);
 
@@ -182,7 +182,7 @@ class CheeseThiefGameTest extends TestCase
         $players = $data['players'];
 
         // Start the game
-        $this->actingAs($data['host'])->post(route('rooms.start', $room->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
 
         // Set up: player 0 wakes up alone at hour 3
         $players[0]->update(['die_value' => 3, 'game_data' => ['confirmed_roll' => true]]);
@@ -191,7 +191,7 @@ class CheeseThiefGameTest extends TestCase
         $players[3]->update(['die_value' => 4, 'game_data' => ['confirmed_roll' => true]]);
         $room->update(['current_hour' => 3]);
 
-        $response = $this->actingAs($players[0]->user)->post(route('rooms.skipPeek', $room->room_code));
+        $response = $this->actingAs($players[0]->user)->post(route('rooms.skipPeek', [$room->game->slug, $room->room_code]));
 
         $response->assertRedirect();
         $players[0]->refresh();
@@ -205,12 +205,12 @@ class CheeseThiefGameTest extends TestCase
         $players = $data['players'];
 
         // Start the game and make player 0 the thief
-        $this->actingAs($data['host'])->post(route('rooms.start', $room->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
         $players[0]->update(['is_thief' => true]);
         $room->update(['thief_player_id' => $players[0]->id, 'current_hour' => 7]);
 
         // Thief selects accomplice
-        $response = $this->actingAs($players[0]->user)->post(route('rooms.selectAccomplice', $room->room_code), [
+        $response = $this->actingAs($players[0]->user)->post(route('rooms.selectAccomplice', [$room->game->slug, $room->room_code]), [
             'accomplice_player_id' => $players[1]->id,
         ]);
 
@@ -229,12 +229,12 @@ class CheeseThiefGameTest extends TestCase
         $players = $data['players'];
 
         // Start the game and make player 0 the thief
-        $this->actingAs($data['host'])->post(route('rooms.start', $room->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
         $players[0]->update(['is_thief' => true]);
         $room->update(['thief_player_id' => $players[0]->id, 'current_hour' => 7]);
 
         // Non-thief (player 1) tries to select accomplice
-        $response = $this->actingAs($players[1]->user)->post(route('rooms.selectAccomplice', $room->room_code), [
+        $response = $this->actingAs($players[1]->user)->post(route('rooms.selectAccomplice', [$room->game->slug, $room->room_code]), [
             'accomplice_player_id' => $players[2]->id,
         ]);
 
@@ -248,11 +248,11 @@ class CheeseThiefGameTest extends TestCase
         $players = $data['players'];
 
         // Start the game and advance to voting phase
-        $this->actingAs($data['host'])->post(route('rooms.start', $room->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
         $room->update(['current_hour' => 8]);
 
         // Player votes
-        $response = $this->actingAs($players[0]->user)->post(route('rooms.vote', $room->room_code), [
+        $response = $this->actingAs($players[0]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
             'voted_for_player_id' => $players[1]->id,
         ]);
 
@@ -269,11 +269,11 @@ class CheeseThiefGameTest extends TestCase
         $players = $data['players'];
 
         // Start the game and advance to voting phase
-        $this->actingAs($data['host'])->post(route('rooms.start', $room->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
         $room->update(['current_hour' => 8]);
 
         // Player tries to vote for themselves
-        $response = $this->actingAs($players[0]->user)->post(route('rooms.vote', $room->room_code), [
+        $response = $this->actingAs($players[0]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
             'voted_for_player_id' => $players[0]->id,
         ]);
 
@@ -287,14 +287,14 @@ class CheeseThiefGameTest extends TestCase
         $players = $data['players'];
 
         // Start the game, set thief and advance to voting phase
-        $this->actingAs($data['host'])->post(route('rooms.start', $room->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
         $players[0]->update(['is_thief' => true]);
         $room->update(['thief_player_id' => $players[0]->id, 'current_hour' => 8]);
 
         // All players vote for player 0 (the thief)
         foreach ($players as $index => $player) {
             $voteFor = $index === 0 ? $players[1]->id : $players[0]->id;
-            $this->actingAs($player->user)->post(route('rooms.vote', $room->room_code), [
+            $this->actingAs($player->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
                 'voted_for_player_id' => $voteFor,
             ]);
         }
@@ -312,21 +312,21 @@ class CheeseThiefGameTest extends TestCase
         $players = $data['players'];
 
         // Start the game, set thief and advance to voting phase
-        $this->actingAs($data['host'])->post(route('rooms.start', $room->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
         $players[0]->update(['is_thief' => true]);
         $room->update(['thief_player_id' => $players[0]->id, 'current_hour' => 8]);
 
         // Players 1, 2, 3 vote for player 0 (thief), player 0 votes for player 1
-        $this->actingAs($players[0]->user)->post(route('rooms.vote', $room->room_code), [
+        $this->actingAs($players[0]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
             'voted_for_player_id' => $players[1]->id,
         ]);
-        $this->actingAs($players[1]->user)->post(route('rooms.vote', $room->room_code), [
+        $this->actingAs($players[1]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
             'voted_for_player_id' => $players[0]->id,
         ]);
-        $this->actingAs($players[2]->user)->post(route('rooms.vote', $room->room_code), [
+        $this->actingAs($players[2]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
             'voted_for_player_id' => $players[0]->id,
         ]);
-        $this->actingAs($players[3]->user)->post(route('rooms.vote', $room->room_code), [
+        $this->actingAs($players[3]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
             'voted_for_player_id' => $players[0]->id,
         ]);
 
@@ -341,21 +341,21 @@ class CheeseThiefGameTest extends TestCase
         $players = $data['players'];
 
         // Start the game, set thief (player 0) and advance to voting phase
-        $this->actingAs($data['host'])->post(route('rooms.start', $room->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
         $players[0]->update(['is_thief' => true]);
         $room->update(['thief_player_id' => $players[0]->id, 'current_hour' => 8]);
 
         // Most players vote for player 1 (not the thief)
-        $this->actingAs($players[0]->user)->post(route('rooms.vote', $room->room_code), [
+        $this->actingAs($players[0]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
             'voted_for_player_id' => $players[1]->id,
         ]);
-        $this->actingAs($players[1]->user)->post(route('rooms.vote', $room->room_code), [
+        $this->actingAs($players[1]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
             'voted_for_player_id' => $players[2]->id,
         ]);
-        $this->actingAs($players[2]->user)->post(route('rooms.vote', $room->room_code), [
+        $this->actingAs($players[2]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
             'voted_for_player_id' => $players[1]->id,
         ]);
-        $this->actingAs($players[3]->user)->post(route('rooms.vote', $room->room_code), [
+        $this->actingAs($players[3]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
             'voted_for_player_id' => $players[1]->id,
         ]);
 
@@ -370,7 +370,7 @@ class CheeseThiefGameTest extends TestCase
         $players = $data['players'];
 
         // Start the game
-        $this->actingAs($data['host'])->post(route('rooms.start', $room->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
 
         // Reset all players' thief status and explicitly set player 1 as thief
         foreach ($players as $player) {
@@ -383,7 +383,7 @@ class CheeseThiefGameTest extends TestCase
         $players[2]->refresh();
 
         // View room as non-thief (player 2)
-        $response = $this->actingAs($players[2]->user)->get(route('rooms.show', $room->room_code));
+        $response = $this->actingAs($players[2]->user)->get(route('rooms.show', [$room->game->slug, $room->room_code]));
 
         $response->assertInertia(function ($page) {
             $page->component('Rooms/Show')
@@ -406,7 +406,7 @@ class CheeseThiefGameTest extends TestCase
         $players = $data['players'];
 
         // Start the game
-        $this->actingAs($data['host'])->post(route('rooms.start', $room->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
 
         // Reset all players' thief status and explicitly set player 0 as thief
         foreach ($players as $player) {
@@ -419,7 +419,7 @@ class CheeseThiefGameTest extends TestCase
         $players[0]->refresh();
 
         // View room as thief
-        $response = $this->actingAs($players[0]->user)->get(route('rooms.show', $room->room_code));
+        $response = $this->actingAs($players[0]->user)->get(route('rooms.show', [$room->game->slug, $room->room_code]));
 
         $response->assertInertia(function ($page) {
             $page->component('Rooms/Show')
@@ -435,7 +435,7 @@ class CheeseThiefGameTest extends TestCase
         $players = $data['players'];
 
         // Start the game and finish it
-        $this->actingAs($data['host'])->post(route('rooms.start', $room->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
         $players[0]->update(['is_thief' => true]);
         $players[1]->update(['is_accomplice' => true]);
         $room->update([
@@ -447,7 +447,7 @@ class CheeseThiefGameTest extends TestCase
         ]);
 
         // View as any player
-        $response = $this->actingAs($players[2]->user)->get(route('rooms.show', $room->room_code));
+        $response = $this->actingAs($players[2]->user)->get(route('rooms.show', [$room->game->slug, $room->room_code]));
 
         $response->assertInertia(function ($page) use ($players) {
             $page->component('Rooms/Show')
@@ -463,10 +463,10 @@ class CheeseThiefGameTest extends TestCase
         $room = $data['room'];
         $players = $data['players'];
 
-        $this->actingAs($data['host'])->post(route('rooms.start', $room->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
         $room->update(['current_hour' => 3]); // Night phase
 
-        $response = $this->actingAs($players[0]->user)->post(route('rooms.confirmRoll', $room->room_code));
+        $response = $this->actingAs($players[0]->user)->post(route('rooms.confirmRoll', [$room->game->slug, $room->room_code]));
 
         $response->assertSessionHasErrors('error');
     }
@@ -477,10 +477,10 @@ class CheeseThiefGameTest extends TestCase
         $room = $data['room'];
         $players = $data['players'];
 
-        $this->actingAs($data['host'])->post(route('rooms.start', $room->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
         $room->update(['current_hour' => 3]); // Night phase
 
-        $response = $this->actingAs($players[0]->user)->post(route('rooms.vote', $room->room_code), [
+        $response = $this->actingAs($players[0]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
             'voted_for_player_id' => $players[1]->id,
         ]);
 
@@ -493,16 +493,16 @@ class CheeseThiefGameTest extends TestCase
         $room = $data['room'];
         $players = $data['players'];
 
-        $this->actingAs($data['host'])->post(route('rooms.start', $room->room_code));
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
         $room->update(['current_hour' => 8]); // Voting phase
 
         // First vote
-        $this->actingAs($players[0]->user)->post(route('rooms.vote', $room->room_code), [
+        $this->actingAs($players[0]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
             'voted_for_player_id' => $players[1]->id,
         ]);
 
         // Try to vote again
-        $response = $this->actingAs($players[0]->user)->post(route('rooms.vote', $room->room_code), [
+        $response = $this->actingAs($players[0]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
             'voted_for_player_id' => $players[2]->id,
         ]);
 

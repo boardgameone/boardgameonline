@@ -21,7 +21,7 @@ class GameRoomChatTest extends TestCase
         $room = GameRoom::factory()->withHost($user)->forGame($game)->create();
         $player = GamePlayer::factory()->forRoom($room)->forUser($user)->host()->create();
 
-        $response = $this->actingAs($user)->post(route('rooms.chat', $room->room_code), [
+        $response = $this->actingAs($user)->post(route('rooms.chat', [$room->game->slug, $room->room_code]), [
             'message' => 'Hello everyone!',
         ]);
 
@@ -48,7 +48,7 @@ class GameRoomChatTest extends TestCase
             'message' => 'Test message',
         ]);
 
-        $response = $this->actingAs($user)->get(route('rooms.messages', $room->room_code));
+        $response = $this->actingAs($user)->get(route('rooms.messages', [$room->game->slug, $room->room_code]));
 
         $response->assertStatus(200);
         $response->assertJsonCount(1, 'messages');
@@ -75,6 +75,7 @@ class GameRoomChatTest extends TestCase
         ]);
 
         $response = $this->actingAs($user)->get(route('rooms.messages', [
+            'game' => $room->game->slug,
             'room' => $room->room_code,
             'after_id' => $message1->id,
         ]));
@@ -92,7 +93,7 @@ class GameRoomChatTest extends TestCase
         $room = GameRoom::factory()->withHost($host)->forGame($game)->create();
         GamePlayer::factory()->forRoom($room)->forUser($host)->host()->create();
 
-        $response = $this->actingAs($otherUser)->post(route('rooms.chat', $room->room_code), [
+        $response = $this->actingAs($otherUser)->post(route('rooms.chat', [$room->game->slug, $room->room_code]), [
             'message' => 'Hello!',
         ]);
 
@@ -106,7 +107,7 @@ class GameRoomChatTest extends TestCase
         $room = GameRoom::factory()->withHost($user)->forGame($game)->create();
         GamePlayer::factory()->forRoom($room)->forUser($user)->host()->create();
 
-        $response = $this->actingAs($user)->postJson(route('rooms.chat', $room->room_code), [
+        $response = $this->actingAs($user)->postJson(route('rooms.chat', [$room->game->slug, $room->room_code]), [
             'message' => '',
         ]);
 
@@ -120,7 +121,7 @@ class GameRoomChatTest extends TestCase
         $room = GameRoom::factory()->withHost($user)->forGame($game)->create();
         $player = GamePlayer::factory()->forRoom($room)->forUser($user)->host()->create();
 
-        $response = $this->actingAs($user)->post(route('rooms.chat', $room->room_code), [
+        $response = $this->actingAs($user)->post(route('rooms.chat', [$room->game->slug, $room->room_code]), [
             'message' => '  Hello with spaces  ',
         ]);
 
@@ -142,12 +143,12 @@ class GameRoomChatTest extends TestCase
         $player2 = GamePlayer::factory()->forRoom($room)->forUser($user2)->create();
 
         // User 1 sends a message
-        $this->actingAs($user1)->post(route('rooms.chat', $room->room_code), [
+        $this->actingAs($user1)->post(route('rooms.chat', [$room->game->slug, $room->room_code]), [
             'message' => 'Hello from user 1!',
         ]);
 
         // User 2 sends a message
-        $this->actingAs($user2)->post(route('rooms.chat', $room->room_code), [
+        $this->actingAs($user2)->post(route('rooms.chat', [$room->game->slug, $room->room_code]), [
             'message' => 'Hi from user 2!',
         ]);
 
@@ -164,7 +165,7 @@ class GameRoomChatTest extends TestCase
         ]);
 
         // User 2 can see both messages
-        $response = $this->actingAs($user2)->get(route('rooms.messages', $room->room_code));
+        $response = $this->actingAs($user2)->get(route('rooms.messages', [$room->game->slug, $room->room_code]));
         $response->assertStatus(200);
         $response->assertJsonCount(2, 'messages');
     }
@@ -185,7 +186,7 @@ class GameRoomChatTest extends TestCase
             'message' => 'Test message',
         ]);
 
-        $response = $this->actingAs($user)->get(route('rooms.messages', $room->room_code));
+        $response = $this->actingAs($user)->get(route('rooms.messages', [$room->game->slug, $room->room_code]));
 
         $response->assertStatus(200);
         $response->assertJsonFragment([
