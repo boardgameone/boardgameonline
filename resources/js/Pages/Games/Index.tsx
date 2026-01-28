@@ -76,12 +76,40 @@ export default function Index({ games }: Props) {
     );
 }
 
+function TrioGameVisual() {
+    return (
+        <div className="relative z-10 group-hover:scale-110 transition-transform duration-500">
+            {/* Three overlapping cards showing a trio */}
+            <div className="relative flex items-center justify-center">
+                {/* Card 1 - Left */}
+                <div className="absolute -left-12 w-24 h-32 bg-white rounded-xl shadow-2xl border-4 border-white/80 flex flex-col items-center justify-center transform -rotate-12 group-hover:-rotate-[16deg] transition-transform duration-300">
+                    <div className="text-5xl font-black text-purple-600">7</div>
+                    <div className="mt-1 text-purple-400 text-xs font-bold">★★★</div>
+                </div>
+
+                {/* Card 2 - Center */}
+                <div className="relative w-24 h-32 bg-white rounded-xl shadow-2xl border-4 border-white/80 flex flex-col items-center justify-center z-10 group-hover:scale-110 transition-transform duration-300">
+                    <div className="text-5xl font-black text-indigo-600">7</div>
+                    <div className="mt-1 text-indigo-400 text-xs font-bold">★★★</div>
+                </div>
+
+                {/* Card 3 - Right */}
+                <div className="absolute -right-12 w-24 h-32 bg-white rounded-xl shadow-2xl border-4 border-white/80 flex flex-col items-center justify-center transform rotate-12 group-hover:rotate-[16deg] transition-transform duration-300">
+                    <div className="text-5xl font-black text-pink-600">7</div>
+                    <div className="mt-1 text-pink-400 text-xs font-bold">★★★</div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function GameCard({ game }: Readonly<{ game: Game }>) {
     const gameEmoji = getGameEmoji(game.slug);
     const gradients: Record<string, string> = {
-        'cheese-thief': 'from-amber-400 via-yellow-400 to-orange-400',
+        'cheese-thief': 'from-amber-600 to-amber-800',
+        'trio': 'from-blue-500 via-cyan-500 to-teal-500',
     };
-    const gradient = gradients[game.slug] || 'from-blue-400 via-purple-400 to-pink-400';
+    const gradient = gradients[game.slug] || 'from-amber-600 to-amber-800';
 
     return (
         <Link
@@ -97,10 +125,14 @@ function GameCard({ game }: Readonly<{ game: Game }>) {
                     <div className="absolute top-1/2 left-1/2 w-12 h-12 bg-white/20 rounded-lg rotate-45 -translate-x-1/2 -translate-y-1/2" />
                 </div>
 
-                {/* Main emoji */}
-                <span className="text-8xl group-hover:scale-125 transition-transform duration-500 drop-shadow-lg relative z-10">
-                    {gameEmoji}
-                </span>
+                {/* Main game visual */}
+                {game.slug === 'trio' ? (
+                    <TrioGameVisual />
+                ) : (
+                    <span className={`text-8xl group-hover:scale-125 transition-transform duration-500 drop-shadow-lg relative z-10 ${game.slug === 'cheese-thief' ? '-rotate-90' : ''}`}>
+                        {gameEmoji}
+                    </span>
+                )}
 
                 {/* Play button overlay on hover */}
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
@@ -163,6 +195,7 @@ function GameCard({ game }: Readonly<{ game: Game }>) {
 function getGameEmoji(slug: string): string {
     const emojis: Record<string, string> = {
         'cheese-thief': '\u{1F9C0}',
+        'trio': '\u{1F0CF}',
     };
     return emojis[slug] || '\u{1F3B2}';
 }
