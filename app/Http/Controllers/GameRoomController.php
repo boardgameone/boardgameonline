@@ -36,7 +36,7 @@ class GameRoomController extends Controller
 
         $this->joinAsPlayer($room, true, $request->validated('nickname'));
 
-        return redirect()->route('rooms.show', $room->room_code);
+        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
     }
 
     public function showJoin(): Response
@@ -68,11 +68,16 @@ class GameRoomController extends Controller
             $existingPlayer->update(['is_connected' => true]);
         }
 
-        return redirect()->route('rooms.show', $room->room_code);
+        return redirect()->route('rooms.show', [$room->game->slug, $room->room_code]);
     }
 
-    public function show(GameRoom $room): Response
+    public function show(Game $game, GameRoom $room): Response
     {
+        // Validate room belongs to this game
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
         $room->load([
             'game',
             'host:id,name',
@@ -98,7 +103,7 @@ class GameRoomController extends Controller
 
         // Route to TRIO game controller if this is a TRIO game
         if ($room->game?->slug === 'trio') {
-            return app(TrioGameController::class)->show($room);
+            return app(TrioGameController::class)->show($game, $room);
         }
 
         // Build game state with visibility rules
@@ -116,8 +121,13 @@ class GameRoomController extends Controller
         ]);
     }
 
-    public function start(GameRoom $room): RedirectResponse
+    public function start(Game $game, GameRoom $room): RedirectResponse
     {
+        // Validate room belongs to this game
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
         $currentPlayer = $this->findCurrentPlayer($room);
 
         if (! $currentPlayer?->is_host) {
@@ -150,11 +160,16 @@ class GameRoomController extends Controller
             'thief_player_id' => $thiefPlayer->id,
         ]);
 
-        return redirect()->route('rooms.show', $room->room_code);
+        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
     }
 
-    public function confirmRoll(GameRoom $room): RedirectResponse
+    public function confirmRoll(Game $game, GameRoom $room): RedirectResponse
     {
+        // Validate room belongs to this game
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
         $currentPlayer = $this->findCurrentPlayer($room);
 
         if (! $currentPlayer) {
@@ -173,11 +188,16 @@ class GameRoomController extends Controller
             $this->advanceToNextPhase($room);
         }
 
-        return redirect()->route('rooms.show', $room->room_code);
+        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
     }
 
-    public function peek(PeekRequest $request, GameRoom $room): RedirectResponse
+    public function peek(PeekRequest $request, Game $game, GameRoom $room): RedirectResponse
     {
+        // Validate room belongs to this game
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
         $currentPlayer = $this->findCurrentPlayer($room);
 
         if (! $currentPlayer) {
@@ -237,11 +257,16 @@ class GameRoomController extends Controller
             $this->advanceToNextPhase($room);
         }
 
-        return redirect()->route('rooms.show', $room->room_code);
+        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
     }
 
-    public function skipPeek(GameRoom $room): RedirectResponse
+    public function skipPeek(Game $game, GameRoom $room): RedirectResponse
     {
+        // Validate room belongs to this game
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
         $currentPlayer = $this->findCurrentPlayer($room);
 
         if (! $currentPlayer) {
@@ -272,11 +297,16 @@ class GameRoomController extends Controller
             $this->advanceToNextPhase($room);
         }
 
-        return redirect()->route('rooms.show', $room->room_code);
+        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
     }
 
-    public function selectAccomplice(SelectAccompliceRequest $request, GameRoom $room): RedirectResponse
+    public function selectAccomplice(SelectAccompliceRequest $request, Game $game, GameRoom $room): RedirectResponse
     {
+        // Validate room belongs to this game
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
         $currentPlayer = $this->findCurrentPlayer($room);
 
         if (! $currentPlayer) {
@@ -305,11 +335,16 @@ class GameRoomController extends Controller
         // Advance to voting
         $this->advanceToNextPhase($room);
 
-        return redirect()->route('rooms.show', $room->room_code);
+        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
     }
 
-    public function vote(VoteRequest $request, GameRoom $room): RedirectResponse
+    public function vote(VoteRequest $request, Game $game, GameRoom $room): RedirectResponse
     {
+        // Validate room belongs to this game
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
         $currentPlayer = $this->findCurrentPlayer($room);
 
         if (! $currentPlayer) {
@@ -353,11 +388,16 @@ class GameRoomController extends Controller
             ]);
         }
 
-        return redirect()->route('rooms.show', $room->room_code);
+        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
     }
 
-    public function leave(GameRoom $room): RedirectResponse
+    public function leave(Game $game, GameRoom $room): RedirectResponse
     {
+        // Validate room belongs to this game
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
         $player = $this->findCurrentPlayer($room);
 
         if ($player) {
@@ -378,8 +418,13 @@ class GameRoomController extends Controller
     /**
      * Join a room directly via link (for guests who need to provide nickname).
      */
-    public function joinDirect(JoinGameRoomRequest $request, GameRoom $room): RedirectResponse
+    public function joinDirect(JoinGameRoomRequest $request, Game $game, GameRoom $room): RedirectResponse
     {
+        // Validate room belongs to this game
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
         if (! $room->isWaiting()) {
             return back()->withErrors(['nickname' => 'This room is no longer accepting players.']);
         }
@@ -396,14 +441,19 @@ class GameRoomController extends Controller
             $existingPlayer->update(['is_connected' => true]);
         }
 
-        return redirect()->route('rooms.show', $room->room_code);
+        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
     }
 
     /**
      * Send a chat message in the room.
      */
-    public function sendMessage(Request $request, GameRoom $room): JsonResponse
+    public function sendMessage(Request $request, Game $game, GameRoom $room): JsonResponse
     {
+        // Validate room belongs to this game
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
         $currentPlayer = $this->findCurrentPlayer($room);
 
         if (! $currentPlayer) {
@@ -438,8 +488,13 @@ class GameRoomController extends Controller
     /**
      * Get chat messages for the room.
      */
-    public function getMessages(Request $request, GameRoom $room): JsonResponse
+    public function getMessages(Request $request, Game $game, GameRoom $room): JsonResponse
     {
+        // Validate room belongs to this game
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
         $currentPlayer = $this->findCurrentPlayer($room);
 
         if (! $currentPlayer) {
@@ -651,8 +706,13 @@ class GameRoomController extends Controller
     /**
      * Send a WebRTC signal to another player.
      */
-    public function sendSignal(Request $request, GameRoom $room): JsonResponse
+    public function sendSignal(Request $request, Game $game, GameRoom $room): JsonResponse
     {
+        // Validate room belongs to this game
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
         $currentPlayer = $this->findCurrentPlayer($room);
 
         if (! $currentPlayer) {
@@ -685,8 +745,13 @@ class GameRoomController extends Controller
     /**
      * Get pending WebRTC signals for the current player.
      */
-    public function getSignals(Request $request, GameRoom $room): JsonResponse
+    public function getSignals(Request $request, Game $game, GameRoom $room): JsonResponse
     {
+        // Validate room belongs to this game
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
         $currentPlayer = $this->findCurrentPlayer($room);
 
         if (! $currentPlayer) {
@@ -717,8 +782,13 @@ class GameRoomController extends Controller
     /**
      * Toggle mute status for the current player.
      */
-    public function toggleMute(GameRoom $room): JsonResponse
+    public function toggleMute(Game $game, GameRoom $room): JsonResponse
     {
+        // Validate room belongs to this game
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
         $currentPlayer = $this->findCurrentPlayer($room);
 
         if (! $currentPlayer) {
@@ -736,8 +806,13 @@ class GameRoomController extends Controller
     /**
      * Get voice status of all players (mute state).
      */
-    public function getVoiceStatus(GameRoom $room): JsonResponse
+    public function getVoiceStatus(Game $game, GameRoom $room): JsonResponse
     {
+        // Validate room belongs to this game
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
         $currentPlayer = $this->findCurrentPlayer($room);
 
         if (! $currentPlayer) {

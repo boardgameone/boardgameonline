@@ -17,7 +17,8 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
     const [copiedCode, setCopiedCode] = useState(false);
     const [copiedLink, setCopiedLink] = useState(false);
 
-    const roomLink = route('rooms.show', room.room_code);
+    const gameSlug = room.game?.slug || '';
+    const roomLink = route('rooms.show', [gameSlug, room.room_code]);
 
     // Form for guests to join directly
     const { data, setData, post, processing, errors } = useForm({
@@ -26,7 +27,7 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
 
     const handleJoin: FormEventHandler = (e) => {
         e.preventDefault();
-        post(route('rooms.joinDirect', room.room_code));
+        post(route('rooms.joinDirect', [gameSlug, room.room_code]));
     };
 
     // Check if user needs to join (not a player yet)
@@ -37,11 +38,11 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
     usePoll(2500, {}, { keepAlive: room.status !== 'finished' });
 
     const handleStart = () => {
-        router.post(route('rooms.start', room.room_code));
+        router.post(route('rooms.start', [gameSlug, room.room_code]));
     };
 
     const handleLeave = () => {
-        router.post(route('rooms.leave', room.room_code));
+        router.post(route('rooms.leave', [gameSlug, room.room_code]));
     };
 
     const copyRoomCode = () => {
@@ -349,12 +350,12 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
 
                     {/* Voice Chat */}
                     {currentPlayer && (
-                        <VoiceChat roomCode={room.room_code} currentPlayerId={currentPlayer.id} />
+                        <VoiceChat gameSlug={gameSlug} roomCode={room.room_code} currentPlayerId={currentPlayer.id} />
                     )}
 
                     {/* Chat */}
                     {currentPlayer && (
-                        <RoomChat roomCode={room.room_code} currentPlayerId={currentPlayer.id} />
+                        <RoomChat gameSlug={gameSlug} roomCode={room.room_code} currentPlayerId={currentPlayer.id} />
                     )}
                 </div>
             </div>

@@ -225,7 +225,7 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                                     {waitingRooms.map((room) => (
                                         <li key={room.id}>
                                             <Link
-                                                href={route('rooms.show', room.room_code)}
+                                                href={route('rooms.show', [game.slug, room.room_code])}
                                                 className="block rounded-xl border-2 border-gray-100 p-4 transition hover:border-green-400 hover:bg-green-50"
                                             >
                                                 <div className="flex items-center justify-between">
