@@ -15,6 +15,11 @@ interface Props {
     currentPlayerId: number;
 }
 
+interface ConnectionState {
+    iceConnectionState: string;
+    connectionState: string;
+}
+
 interface CallData {
     playerId: number;
     call: MediaConnection;
@@ -29,6 +34,7 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
     const [speakingPlayers, setSpeakingPlayers] = useState<Set<number>>(new Set());
     const [error, setError] = useState<string | null>(null);
     const [connectionStatus, setConnectionStatus] = useState<string>('');
+    const [connectionStates, setConnectionStates] = useState<Map<number, ConnectionState>>(new Map());
 
     const peerRef = useRef<Peer | null>(null);
     const localStreamRef = useRef<MediaStream | null>(null);
@@ -89,8 +95,13 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
 
     // Handle incoming stream
     const handleStream = useCallback((stream: MediaStream, playerId: number) => {
-        console.log(`Received stream from player ${playerId}`);
-        console.log(`Stream tracks:`, stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, muted: t.muted })));
+        const tracks = stream.getAudioTracks();
+        console.log(`[Voice] Received stream from player ${playerId}`, {
+            tracks: tracks.length,
+            enabled: tracks[0]?.enabled,
+            readyState: tracks[0]?.readyState,
+            muted: tracks[0]?.muted,
+        });
         setConnectionStatus(`Receiving audio from player ${playerId}`);
 
         // Remove existing audio element
@@ -105,27 +116,29 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
         audioElement.autoplay = true;
         audioElement.setAttribute('playsinline', 'true');
         audioElement.volume = 1;
-        // Make sure audio is not muted
         audioElement.muted = false;
         document.body.appendChild(audioElement);
 
-        // Debug: Log audio element state
-        console.log(`Audio element created for player ${playerId}:`, {
+        console.log(`[Voice] Audio element created for player ${playerId}:`, {
             volume: audioElement.volume,
             muted: audioElement.muted,
             paused: audioElement.paused,
+            tracks: stream.getAudioTracks().length,
         });
 
-        // Play audio
+        // Play audio with error handling
         audioElement.play()
             .then(() => {
-                console.log(`Audio playing for player ${playerId}, paused:`, audioElement.paused);
+                console.log(`[Voice] Audio playing successfully for player ${playerId}`);
             })
             .catch((err) => {
-                console.error(`Failed to play audio:`, err);
-                // Retry on click
+                console.error(`[Voice] Audio autoplay failed for player ${playerId}:`, err);
+                console.log('[Voice] User interaction required to play audio');
+                // Retry on user interaction
                 const clickHandler = () => {
-                    audioElement.play();
+                    audioElement.play()
+                        .then(() => console.log(`[Voice] Audio resumed after user interaction`))
+                        .catch(e => console.error('[Voice] Still failed:', e));
                     document.removeEventListener('click', clickHandler);
                 };
                 document.addEventListener('click', clickHandler);
@@ -169,24 +182,63 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
         }
 
         const peerId = getPeerId(playerId);
-        console.log(`Calling player ${playerId} (${peerId})`);
+        console.log(`[Voice] Calling player ${playerId} (${peerId}) with stream:`, localStreamRef.current);
 
         try {
             const call = peerRef.current.call(peerId, localStreamRef.current);
 
+            // Monitor ICE connection state for actual P2P connection
+            if (call.peerConnection) {
+                const updateConnectionState = () => {
+                    const iceState = call.peerConnection.iceConnectionState;
+                    const connectionState = call.peerConnection.connectionState;
+                    console.log(`[Voice] ICE connection to player ${playerId}: ${iceState}, connection: ${connectionState}`);
+
+                    setConnectionStates(prev => {
+                        const next = new Map(prev);
+                        next.set(playerId, { iceConnectionState: iceState, connectionState: connectionState || 'unknown' });
+                        return next;
+                    });
+
+                    // Retry on failure
+                    if (iceState === 'failed' || iceState === 'disconnected') {
+                        console.log(`[Voice] Connection ${iceState} for player ${playerId}, will retry...`);
+                        setTimeout(() => {
+                            callsRef.current.delete(playerId);
+                            callPlayer(playerId);
+                        }, 2000);
+                    }
+                };
+
+                call.peerConnection.addEventListener('iceconnectionstatechange', updateConnectionState);
+                call.peerConnection.addEventListener('connectionstatechange', updateConnectionState);
+                updateConnectionState(); // Initial state
+            }
+
             call.on('stream', (remoteStream) => {
+                console.log(`[Voice] Received stream from player ${playerId}`, remoteStream);
                 handleStream(remoteStream, playerId);
             });
 
             call.on('close', () => {
-                console.log(`Call closed with player ${playerId}`);
+                console.log(`[Voice] Call closed with player ${playerId}`);
+                setConnectionStates(prev => {
+                    const next = new Map(prev);
+                    next.delete(playerId);
+                    return next;
+                });
                 cleanupCall(playerId);
             });
 
             call.on('error', (err) => {
-                console.error(`Call error with player ${playerId}:`, err);
+                console.error(`[Voice] Call error with player ${playerId}:`, err);
                 // Remove from calls so we can try again later
                 callsRef.current.delete(playerId);
+                setConnectionStates(prev => {
+                    const next = new Map(prev);
+                    next.delete(playerId);
+                    return next;
+                });
             });
 
             callsRef.current.set(playerId, { playerId, call });
@@ -213,10 +265,11 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
             console.log('Got microphone access');
             localStreamRef.current = stream;
 
-            // Mute by default
+            // Start unmuted by default so audio transmits
             stream.getAudioTracks().forEach(track => {
-                track.enabled = false;
+                track.enabled = true;
             });
+            console.log('[Voice] Local audio tracks enabled (unmuted by default)');
 
             // Setup local speaking indicator
             setupAudioLevelDetection(stream, currentPlayerId);
@@ -233,6 +286,22 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
                     iceServers: [
                         { urls: 'stun:stun.l.google.com:19302' },
                         { urls: 'stun:stun1.l.google.com:19302' },
+                        // TURN servers for NAT/firewall traversal
+                        {
+                            urls: 'turn:openrelay.metered.ca:80',
+                            username: 'openrelayproject',
+                            credential: 'openrelayproject',
+                        },
+                        {
+                            urls: 'turn:openrelay.metered.ca:443',
+                            username: 'openrelayproject',
+                            credential: 'openrelayproject',
+                        },
+                        {
+                            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+                            username: 'openrelayproject',
+                            credential: 'openrelayproject',
+                        },
                     ],
                 },
             });
@@ -240,9 +309,9 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
             peerRef.current = peer;
 
             peer.on('open', async (id) => {
-                console.log(`Peer connected with ID: ${id}`);
+                console.log(`[Voice] Peer opened, ID: ${id}`);
                 setIsConnected(true);
-                setIsMuted(true);
+                setIsMuted(false); // Match the unmuted default
                 setConnectionStatus('Connected to peer server');
 
                 // Start polling for player status
@@ -284,21 +353,47 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
 
             // Handle incoming calls
             peer.on('call', (call) => {
-                console.log(`Incoming call from: ${call.peer}`);
+                console.log(`[Voice] Incoming call from:`, call.peer);
 
                 // Extract player ID from peer ID
                 const match = call.peer.match(/player-(\d+)$/);
                 const playerId = match ? parseInt(match[1], 10) : 0;
 
                 if (playerId && localStreamRef.current) {
+                    console.log(`[Voice] Answering call from player ${playerId} with stream:`, localStreamRef.current);
                     call.answer(localStreamRef.current);
 
+                    // Monitor ICE connection state for incoming calls
+                    if (call.peerConnection) {
+                        const updateConnectionState = () => {
+                            const iceState = call.peerConnection.iceConnectionState;
+                            const connectionState = call.peerConnection.connectionState;
+                            console.log(`[Voice] ICE connection from player ${playerId}: ${iceState}, connection: ${connectionState}`);
+
+                            setConnectionStates(prev => {
+                                const next = new Map(prev);
+                                next.set(playerId, { iceConnectionState: iceState, connectionState: connectionState || 'unknown' });
+                                return next;
+                            });
+                        };
+
+                        call.peerConnection.addEventListener('iceconnectionstatechange', updateConnectionState);
+                        call.peerConnection.addEventListener('connectionstatechange', updateConnectionState);
+                        updateConnectionState();
+                    }
+
                     call.on('stream', (remoteStream) => {
+                        console.log(`[Voice] Received stream from incoming call, player ${playerId}`, remoteStream);
                         handleStream(remoteStream, playerId);
                     });
 
                     call.on('close', () => {
-                        console.log(`Call closed with player ${playerId}`);
+                        console.log(`[Voice] Incoming call closed with player ${playerId}`);
+                        setConnectionStates(prev => {
+                            const next = new Map(prev);
+                            next.delete(playerId);
+                            return next;
+                        });
                         cleanupCall(playerId);
                     });
 
@@ -307,24 +402,24 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
             });
 
             peer.on('error', (err) => {
-                console.error('Peer error:', err);
+                console.error('[Voice] Peer error:', err.type, err);
                 if (err.type === 'unavailable-id') {
                     setError('Another session is already connected. Please close other tabs.');
                 } else if (err.type === 'peer-unavailable') {
                     // This is normal - the other peer might not be connected yet
-                    console.log('Peer not available yet, will retry...');
+                    console.log('[Voice] Peer not available yet, will retry...');
                 } else {
                     setError(`Connection error: ${err.type}`);
                 }
             });
 
             peer.on('disconnected', () => {
-                console.log('Peer disconnected');
+                console.log('[Voice] Peer disconnected from signal server');
                 setConnectionStatus('Disconnected from peer server');
             });
 
         } catch (err) {
-            console.error('Failed to connect:', err);
+            console.error('[Voice] Failed to connect:', err);
             setError('Failed to access microphone. Please allow microphone access.');
             setConnectionStatus('Failed');
         }
@@ -332,7 +427,7 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
 
     // Disconnect from voice chat
     const disconnect = useCallback(() => {
-        console.log('Disconnecting from voice chat');
+        console.log('[Voice] Disconnecting from voice chat');
 
         if (statusPollingRef.current) {
             clearInterval(statusPollingRef.current);
@@ -361,6 +456,7 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
         setIsMuted(true);
         setSpeakingPlayers(new Set());
         setConnectionStatus('');
+        setConnectionStates(new Map());
     }, [cleanupCall]);
 
     // Toggle mute
@@ -370,11 +466,11 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
         const newMutedState = !isMuted;
         localStreamRef.current.getAudioTracks().forEach(track => {
             track.enabled = !newMutedState;
-            console.log(`Audio track enabled: ${track.enabled}`);
         });
 
         setIsMuted(newMutedState);
-        console.log(`Mute toggled: ${newMutedState ? 'muted' : 'unmuted'}`);
+        console.log(`[Voice] Toggle mute: ${newMutedState ? 'muted' : 'unmuted'}, tracks enabled:`,
+            localStreamRef.current.getAudioTracks()[0]?.enabled);
 
         try {
             await axios.post(route('rooms.voice.toggleMute', [gameSlug, roomCode]));
@@ -487,46 +583,61 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
                             {/* Players List */}
                             <div className="space-y-2">
                                 <p className="text-xs font-bold text-gray-500 uppercase">In Voice</p>
-                                {players.map((player) => (
-                                    <div
-                                        key={player.id}
-                                        className={`flex items-center gap-3 p-2 rounded-xl transition ${
-                                            speakingPlayers.has(player.id)
-                                                ? 'bg-green-50 ring-2 ring-green-400'
-                                                : 'bg-gray-50'
-                                        }`}
-                                    >
+                                {players.map((player) => {
+                                    const connState = connectionStates.get(player.id);
+                                    const isActuallyConnected = connState?.iceConnectionState === 'connected' ||
+                                        connState?.iceConnectionState === 'completed';
+                                    const isConnecting = connState?.iceConnectionState === 'checking' ||
+                                        connState?.iceConnectionState === 'new';
+
+                                    return (
                                         <div
-                                            className={`relative flex h-10 w-10 items-center justify-center rounded-full text-white font-bold shadow-sm ${
-                                                speakingPlayers.has(player.id) ? 'animate-pulse' : ''
+                                            key={player.id}
+                                            className={`flex items-center gap-3 p-2 rounded-xl transition ${
+                                                speakingPlayers.has(player.id)
+                                                    ? 'bg-green-50 ring-2 ring-green-400'
+                                                    : 'bg-gray-50'
                                             }`}
-                                            style={{ backgroundColor: player.avatar_color }}
                                         >
-                                            {player.nickname.charAt(0).toUpperCase()}
-                                            {speakingPlayers.has(player.id) && (
-                                                <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-green-500 rounded-full border-2 border-white" />
+                                            <div
+                                                className={`relative flex h-10 w-10 items-center justify-center rounded-full text-white font-bold shadow-sm ${
+                                                    speakingPlayers.has(player.id) ? 'animate-pulse' : ''
+                                                }`}
+                                                style={{ backgroundColor: player.avatar_color }}
+                                            >
+                                                {player.nickname.charAt(0).toUpperCase()}
+                                                {speakingPlayers.has(player.id) && (
+                                                    <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-green-500 rounded-full border-2 border-white" />
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-medium text-gray-900 truncate text-sm">
+                                                    {player.nickname}
+                                                    {player.id === currentPlayerId && (
+                                                        <span className="text-green-600"> (You)</span>
+                                                    )}
+                                                </p>
+                                                {player.id !== currentPlayerId && connState && (
+                                                    <p className="text-xs text-gray-500">
+                                                        {isActuallyConnected && '🟢 Connected'}
+                                                        {isConnecting && '🟡 Connecting...'}
+                                                        {!isActuallyConnected && !isConnecting && `🔴 ${connState.iceConnectionState}`}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            {player.is_muted ? (
+                                                <svg className="h-4 w-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                                                </svg>
+                                            ) : (
+                                                <svg className="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 01-3 3z" />
+                                                </svg>
                                             )}
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="font-medium text-gray-900 truncate text-sm">
-                                                {player.nickname}
-                                                {player.id === currentPlayerId && (
-                                                    <span className="text-green-600"> (You)</span>
-                                                )}
-                                            </p>
-                                        </div>
-                                        {player.is_muted ? (
-                                            <svg className="h-4 w-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-                                            </svg>
-                                        ) : (
-                                            <svg className="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 01-3 3z" />
-                                            </svg>
-                                        )}
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     )}

@@ -1,3 +1,5 @@
+import RoomChat from '@/Components/RoomChat';
+import VoiceChat from '@/Components/VoiceChat';
 import GameLayout from '@/Layouts/GameLayout';
 import { GamePlayer, GameRoom, PageProps } from '@/types';
 import { Head, Link, router, useForm, usePoll } from '@inertiajs/react';
@@ -50,8 +52,11 @@ export default function TrioGame({ auth, room, currentPlayer, isHost, gameState 
 
     const [selectedPlayer, setSelectedPlayer] = useState<number | null>(null);
     const [selectedRevealType, setSelectedRevealType] = useState<'ask_highest' | 'ask_lowest' | null>(null);
+    const [copiedCode, setCopiedCode] = useState(false);
+    const [copiedLink, setCopiedLink] = useState(false);
 
     const gameSlug = room.game?.slug || '';
+    const roomLink = route('rooms.show', [gameSlug, room.room_code]);
 
     // Form for guests to join directly
     const { data, setData, post, processing, errors } = useForm({
@@ -106,6 +111,18 @@ export default function TrioGame({ auth, room, currentPlayer, isHost, gameState 
         router.post(route('rooms.leave', [gameSlug, room.room_code]));
     };
 
+    const copyRoomCode = () => {
+        navigator.clipboard.writeText(room.room_code);
+        setCopiedCode(true);
+        setTimeout(() => setCopiedCode(false), 2000);
+    };
+
+    const copyRoomLink = () => {
+        navigator.clipboard.writeText(roomLink);
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2000);
+    };
+
     const connectedPlayers = room.players?.filter((p) => p.is_connected) || [];
     const minPlayers = room.game?.min_players || 3;
     const canStart = connectedPlayers.length >= minPlayers && room.status === 'waiting';
@@ -153,7 +170,10 @@ export default function TrioGame({ auth, room, currentPlayer, isHost, gameState 
             <Head title={`TRIO - Room ${room.room_code}`} />
 
             <div className="py-8">
-                <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <div className="grid gap-6 lg:grid-cols-3">
+                        {/* Main content */}
+                        <div className="lg:col-span-2">
                     {/* Show join form for guests who need to enter nickname */}
                     {needsToJoin && isGuest && (
                         <div className="rounded-xl bg-white p-8 shadow-lg">
@@ -409,8 +429,137 @@ export default function TrioGame({ auth, room, currentPlayer, isHost, gameState 
                             )}
                         </div>
                     )}
+                        </div>
+
+                        {/* Sidebar */}
+                        <div className="space-y-6">
+                            {/* Room Code & Link */}
+                            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                                <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 px-6 py-4">
+                                    <h3 className="text-lg font-bold text-yellow-900 flex items-center gap-2">
+                                        {'\u{1F511}'} Invite Friends
+                                    </h3>
+                                </div>
+                                <div className="p-6 space-y-4">
+                                    {/* Room Code */}
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                                            Room Code
+                                        </label>
+                                        <div className="flex items-center gap-2">
+                                            <code className="flex-1 rounded-xl bg-gray-100 px-4 py-3 text-center text-2xl font-mono font-black tracking-[0.3em] text-gray-900">
+                                                {room.room_code}
+                                            </code>
+                                            <button
+                                                onClick={copyRoomCode}
+                                                className={`rounded-xl p-3 transition hover:scale-105 ${
+                                                    copiedCode
+                                                        ? 'bg-green-100 text-green-600'
+                                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                }`}
+                                                title="Copy room code"
+                                            >
+                                                {copiedCode ? (
+                                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                ) : (
+                                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                    </svg>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Divider */}
+                                    <div className="relative">
+                                        <div className="absolute inset-0 flex items-center">
+                                            <div className="w-full border-t border-gray-200" />
+                                        </div>
+                                        <div className="relative flex justify-center text-sm">
+                                            <span className="bg-white px-3 text-gray-500">or share link</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Room Link */}
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                                            Direct Link
+                                        </label>
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-1 rounded-xl bg-gray-100 px-3 py-3 text-sm text-gray-600 truncate font-medium">
+                                                {roomLink}
+                                            </div>
+                                            <button
+                                                onClick={copyRoomLink}
+                                                className={`rounded-xl p-3 transition hover:scale-105 ${
+                                                    copiedLink
+                                                        ? 'bg-green-100 text-green-600'
+                                                        : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                                                }`}
+                                                title="Copy link"
+                                            >
+                                                {copiedLink ? (
+                                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                ) : (
+                                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                                    </svg>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <p className="text-xs text-gray-500 text-center">
+                                        Friends can join directly with the link!
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Game Info */}
+                            {room.game && (
+                                <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6">
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 text-3xl shadow-md">
+                                            {getGameEmoji(room.game.slug)}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-gray-900">
+                                                {room.game.name}
+                                            </h3>
+                                            <p className="text-sm text-gray-500">
+                                                {room.game.min_players}-{room.game.max_players} players
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Voice Chat */}
+                            {currentPlayer && (
+                                <VoiceChat gameSlug={gameSlug} roomCode={room.room_code} currentPlayerId={currentPlayer.id} />
+                            )}
+
+                            {/* Chat */}
+                            {currentPlayer && (
+                                <RoomChat gameSlug={gameSlug} roomCode={room.room_code} currentPlayerId={currentPlayer.id} />
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
         </GameLayout>
     );
+}
+
+function getGameEmoji(slug?: string): string {
+    if (!slug) return '\u{1F3B2}';
+    const emojis: Record<string, string> = {
+        'cheese-thief': '\u{1F9C0}',
+        'trio': '\u{1F3B4}',
+    };
+    return emojis[slug] || '\u{1F3B2}';
 }

@@ -12,6 +12,7 @@ export default function RoomChat({ gameSlug, roomCode, currentPlayerId }: Readon
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [sending, setSending] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [isOpen, setIsOpen] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const lastMessageIdRef = useRef(0);
@@ -39,6 +40,13 @@ export default function RoomChat({ gameSlug, roomCode, currentPlayerId }: Readon
         }
     }, [gameSlug, roomCode, currentPlayerId]);
 
+    // Debug logging at component mount
+    useEffect(() => {
+        console.log('[Chat] Current player ID:', currentPlayerId);
+        console.log('[Chat] Game slug:', gameSlug);
+        console.log('[Chat] Room code:', roomCode);
+    }, [currentPlayerId, gameSlug, roomCode]);
+
     // Poll for new messages
     useEffect(() => {
         if (!currentPlayerId) return;
@@ -53,10 +61,17 @@ export default function RoomChat({ gameSlug, roomCode, currentPlayerId }: Readon
         if (!newMessage.trim() || sending || !currentPlayerId) return;
 
         setSending(true);
+        setError(null); // Clear previous errors
+
+        console.log('[Chat] Submitting message:', newMessage.trim());
+        console.log('[Chat] POST to:', route('rooms.chat', [gameSlug, roomCode]));
+
         try {
             const response = await axios.post(route('rooms.chat', [gameSlug, roomCode]), {
                 message: newMessage.trim(),
             });
+
+            console.log('[Chat] Response:', response.data);
 
             if (response.data.success) {
                 const msg = response.data.message as ChatMessage;
@@ -65,8 +80,27 @@ export default function RoomChat({ gameSlug, roomCode, currentPlayerId }: Readon
                 setNewMessage('');
                 setTimeout(scrollToBottom, 100);
             }
-        } catch {
-            // Handle error silently
+        } catch (err: any) {
+            console.error('[Chat] Failed to send message:', err);
+            console.error('[Chat] Error details:', {
+                status: err.response?.status,
+                statusText: err.response?.statusText,
+                data: err.response?.data,
+                message: err.message,
+            });
+
+            // Show user-friendly error message
+            if (err.response?.status === 403) {
+                setError('You must be a player in this room to send messages.');
+            } else if (err.response?.status === 422) {
+                setError('Invalid message. Please check your input.');
+            } else if (err.response?.data?.message) {
+                setError(err.response.data.message);
+            } else {
+                setError('Failed to send message. Please try again.');
+            }
+
+            // Don't clear the message input on error so user can retry
         } finally {
             setSending(false);
         }
@@ -140,6 +174,11 @@ export default function RoomChat({ gameSlug, roomCode, currentPlayerId }: Readon
 
                     {/* Input */}
                     <form onSubmit={handleSubmit} className="p-3 border-t border-gray-100">
+                        {error && (
+                            <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded text-red-600 text-sm">
+                                {error}
+                            </div>
+                        )}
                         <div className="flex gap-2">
                             <input
                                 type="text"
