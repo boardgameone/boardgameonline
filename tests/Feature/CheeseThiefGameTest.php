@@ -379,8 +379,8 @@ class CheeseThiefGameTest extends TestCase
         $players[1]->update(['is_thief' => true]);
         $room->update(['thief_player_id' => $players[1]->id]);
 
-        // Refresh player 2 to get updated state
-        $players[2]->refresh();
+        // Refresh player 2 to get updated state and explicitly load user relationship
+        $players[2]->refresh()->load('user');
 
         // View room as non-thief (player 2)
         $response = $this->actingAs($players[2]->user)->get(route('rooms.show', [$room->game->slug, $room->room_code]));
