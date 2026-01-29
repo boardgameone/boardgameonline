@@ -111,6 +111,7 @@ export default function TrioGame({
                 gameSlug={gameSlug}
                 players={gameState.players}
                 winner={gameState.room.winner}
+                isHost={isHost}
             />
         );
     }

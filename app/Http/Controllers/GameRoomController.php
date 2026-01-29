@@ -416,6 +416,61 @@ class GameRoomController extends Controller
     }
 
     /**
+     * Reset a finished game to allow playing again with the same players.
+     */
+    public function reset(Game $game, GameRoom $room): RedirectResponse
+    {
+        // Validate room belongs to this game
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
+        $currentPlayer = $this->findCurrentPlayer($room);
+
+        // Authorization: Only host can reset
+        if (! $currentPlayer?->is_host) {
+            abort(403, 'Only the host can reset the game.');
+        }
+
+        // Only allow reset from finished games
+        if (! $room->isFinished()) {
+            return back()->withErrors(['error' => 'Can only reset finished games.']);
+        }
+
+        // Reset room state
+        $room->update([
+            'status' => 'waiting',
+            'current_hour' => 0,
+            'thief_player_id' => null,
+            'accomplice_player_id' => null,
+            'winner' => null,
+            'settings' => null,
+            'started_at' => null,
+            'ended_at' => null,
+        ]);
+
+        // Reset all players
+        foreach ($room->players as $player) {
+            $player->update([
+                'is_thief' => false,
+                'is_accomplice' => false,
+                'die_value' => null,
+                'has_stolen_cheese' => false,
+                'turn_order' => null,
+                'game_data' => [],
+            ]);
+        }
+
+        // Clear game-specific data
+        $room->peeks()->delete();
+        $room->votes()->delete();
+        $room->actions()->delete();
+        $room->cardReveals()->delete();
+
+        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
+    }
+
+    /**
      * Join a room directly via link (for guests who need to provide nickname).
      */
     public function joinDirect(JoinGameRoomRequest $request, Game $game, GameRoom $room): RedirectResponse
@@ -700,6 +755,7 @@ class GameRoomController extends Controller
             'current_player_id' => $currentPlayer?->id,
             'is_thief' => $isThief,
             'is_accomplice' => $isAccomplice,
+            'isHost' => $currentPlayer?->is_host ?? false,
         ];
     }
 

@@ -199,10 +199,11 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                             )}
 
                             {/* Show game UI when playing or finished */}
-                            {(room.status === 'playing' || room.status === 'finished') && gameState && (
+                            {(room.status === 'playing' || room.status === 'finished') && gameState && room.game && (
                                 <CheeseThiefGame
                                     gameState={gameState}
                                     roomCode={room.room_code}
+                                    gameSlug={room.game.slug}
                                 />
                             )}
                         </div>

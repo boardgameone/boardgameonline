@@ -144,6 +144,14 @@ class GameRoom extends Model
         return $this->hasMany(ChatMessage::class);
     }
 
+    /**
+     * @return HasMany<GameCardReveal, $this>
+     */
+    public function cardReveals(): HasMany
+    {
+        return $this->hasMany(GameCardReveal::class);
+    }
+
     public function isWaiting(): bool
     {
         return $this->status === 'waiting';

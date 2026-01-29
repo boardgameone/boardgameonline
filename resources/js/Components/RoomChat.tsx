@@ -13,7 +13,7 @@ export default function RoomChat({ gameSlug, roomCode, currentPlayerId }: Readon
     const [newMessage, setNewMessage] = useState('');
     const [sending, setSending] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [isMinimized, setIsMinimized] = useState(false);
+    const [isMinimized, setIsMinimized] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const lastMessageIdRef = useRef(0);
 

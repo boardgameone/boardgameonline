@@ -1,19 +1,38 @@
 import { GameState, GameStatePlayer } from '@/types';
 import { router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSound, useRandomSound } from '@/hooks/useSound';
 import PlayerCircle from './components/PlayerCircle';
 
 interface VotingPhaseProps {
     gameState: GameState;
     roomCode: string;
+    gameSlug: string;
 }
 
-export default function VotingPhase({ gameState, roomCode }: VotingPhaseProps) {
+export default function VotingPhase({ gameState, roomCode, gameSlug }: VotingPhaseProps) {
     const [selectedPlayer, setSelectedPlayer] = useState<GameStatePlayer | null>(null);
 
     const currentPlayer = gameState.players.find((p) => p.id === gameState.current_player_id);
     const canVote = gameState.can_vote;
     const hasVoted = currentPlayer?.has_voted ?? false;
+
+    // Sound effects
+    const { play: playChatter, stop: stopChatter } = useSound('/sounds/cheese-thief/voting-chatter.mp3', {
+        volume: 0.3,
+        loop: true
+    });
+    const { playRandom: playSqueak } = useRandomSound([
+        '/sounds/cheese-thief/mouse-squeak-1.mp3',
+        '/sounds/cheese-thief/mouse-squeak-2.mp3',
+        '/sounds/cheese-thief/mouse-squeak-3.mp3',
+    ], { volume: 0.6 });
+
+    // Play ambient chatter during voting phase
+    useEffect(() => {
+        playChatter();
+        return () => stopChatter();
+    }, []);
 
     // Players you can vote for (everyone except yourself)
     const votablePlayerIds = gameState.players
@@ -22,7 +41,8 @@ export default function VotingPhase({ gameState, roomCode }: VotingPhaseProps) {
 
     const handleVote = () => {
         if (selectedPlayer) {
-            router.post(route('rooms.vote', roomCode), {
+            playSqueak();
+            router.post(route('rooms.vote', [gameSlug, roomCode]), {
                 voted_for_player_id: selectedPlayer.id,
             });
         }
