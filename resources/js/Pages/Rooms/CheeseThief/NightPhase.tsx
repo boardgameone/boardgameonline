@@ -1,6 +1,7 @@
 import { GameState, GameStatePlayer } from '@/types';
 import { router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSound, useRandomSound } from '@/hooks/useSound';
 import PlayerCircle from './components/PlayerCircle';
 
 interface NightPhaseProps {
@@ -17,6 +18,38 @@ export default function NightPhase({ gameState, roomCode }: NightPhaseProps) {
     const canPeek = gameState.can_peek;
     const canSkipPeek = gameState.can_skip_peek;
 
+    // Sound effects
+    const { play: playPeek } = useSound('/sounds/cheese-thief/peek.mp3', { volume: 0.7 });
+    const { play: playCheeseMunch } = useSound('/sounds/cheese-thief/cheese-munch.mp3', { volume: 0.8 });
+    const { play: playSneaking, stop: stopSneaking } = useSound('/sounds/cheese-thief/sneaking.mp3', {
+        volume: 0.3,
+        loop: true
+    });
+    const { playRandom: playSqueak } = useRandomSound([
+        '/sounds/cheese-thief/mouse-squeak-1.mp3',
+        '/sounds/cheese-thief/mouse-squeak-2.mp3',
+        '/sounds/cheese-thief/mouse-squeak-3.mp3',
+    ], { volume: 0.6 });
+
+    // Play sneaking sound when awake and alone
+    useEffect(() => {
+        if (isAwake && isAlone) {
+            playSneaking();
+        } else {
+            stopSneaking();
+        }
+
+        return () => stopSneaking();
+    }, [isAwake, isAlone]);
+
+    // Play cheese munch sound when cheese is stolen
+    useEffect(() => {
+        if (gameState.cheese_stolen) {
+            playCheeseMunch();
+            playSqueak();
+        }
+    }, [gameState.cheese_stolen]);
+
     // Players you can peek at (everyone except yourself)
     const peekablePlayerIds = gameState.players
         .filter((p) => p.id !== gameState.current_player_id)
@@ -24,6 +57,8 @@ export default function NightPhase({ gameState, roomCode }: NightPhaseProps) {
 
     const handlePeek = () => {
         if (selectedPlayer) {
+            playPeek();
+            playSqueak();
             router.post(route('rooms.peek', roomCode), {
                 target_player_id: selectedPlayer.id,
             });

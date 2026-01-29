@@ -4,6 +4,7 @@ import NightPhase from './NightPhase';
 import AccomplicePhase from './AccomplicePhase';
 import VotingPhase from './VotingPhase';
 import ResultsPhase from './ResultsPhase';
+import SoundToggle from './components/SoundToggle';
 
 interface CheeseThiefGameProps {
     gameState: GameState;
@@ -46,6 +47,7 @@ export default function CheeseThiefGame({ gameState, roomCode }: CheeseThiefGame
 
     return (
         <div className="mx-auto max-w-2xl p-6">
+            <SoundToggle />
             {renderPhase()}
         </div>
     );

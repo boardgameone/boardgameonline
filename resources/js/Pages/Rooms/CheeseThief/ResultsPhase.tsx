@@ -1,4 +1,6 @@
 import { GameState } from '@/types';
+import { useEffect } from 'react';
+import { useSound } from '@/hooks/useSound';
 import PlayerCircle from './components/PlayerCircle';
 
 interface ResultsPhaseProps {
@@ -12,6 +14,10 @@ export default function ResultsPhase({ gameState, roomCode }: ResultsPhaseProps)
     const accomplicePlayer = gameState.players.find((p) => p.id === gameState.accomplice_player_id);
     const currentPlayer = gameState.players.find((p) => p.id === gameState.current_player_id);
 
+    // Sound effects
+    const { play: playVictory } = useSound('/sounds/cheese-thief/victory.mp3', { volume: 0.8 });
+    const { play: playDefeat } = useSound('/sounds/cheese-thief/defeat.mp3', { volume: 0.8 });
+
     // Sort players by vote count
     const sortedPlayers = [...gameState.players].sort((a, b) => {
         const votesA = gameState.vote_counts[a.id] || 0;
@@ -23,6 +29,15 @@ export default function ResultsPhase({ gameState, roomCode }: ResultsPhaseProps)
     const isThief = gameState.is_thief;
     const isAccomplice = gameState.is_accomplice;
     const playerWon = winner === 'thief' ? (isThief || isAccomplice) : (!isThief && !isAccomplice);
+
+    // Play victory or defeat sound when results load
+    useEffect(() => {
+        if (playerWon) {
+            playVictory();
+        } else {
+            playDefeat();
+        }
+    }, [playerWon]);
 
     return (
         <div className="flex flex-col items-center gap-6">
