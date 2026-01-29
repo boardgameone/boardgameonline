@@ -22,6 +22,7 @@ export default function PlayerCircle({
 }: PlayerCircleProps) {
     const isNightPhase = currentHour >= 1 && currentHour <= 6;
     const isAwake = (playerId: number) => awakePlayerIds.includes(playerId);
+    const currentPlayerIsAwake = currentPlayerId ? awakePlayerIds.includes(currentPlayerId) : false;
     const isClickable = (playerId: number) => clickablePlayerIds.includes(playerId);
 
     return (
@@ -41,14 +42,14 @@ export default function PlayerCircle({
                             ${isSelf ? 'ring-2 ring-blue-500 bg-blue-50' : 'bg-white'}
                             ${clickable ? 'cursor-pointer hover:bg-gray-100 hover:scale-105' : 'cursor-default'}
                             ${isNightPhase && !awake ? 'opacity-50' : ''}
-                            ${player.has_stolen_cheese ? 'ring-2 ring-yellow-500' : ''}
+                            ${player.has_stolen_cheese && (isSelf || currentPlayerIsAwake) ? 'ring-2 ring-yellow-500' : ''}
                         `}
                     >
                         {/* Avatar */}
                         <div
                             className={`
                                 flex h-14 w-14 items-center justify-center rounded-full text-white font-bold text-xl
-                                ${isNightPhase && awake ? 'ring-4 ring-yellow-400 animate-pulse' : ''}
+                                ${isNightPhase && awake && (isSelf || currentPlayerIsAwake) ? 'ring-4 ring-yellow-400 animate-pulse' : ''}
                             `}
                             style={{ backgroundColor: player.avatar_color }}
                         >
@@ -63,17 +64,17 @@ export default function PlayerCircle({
 
                         {/* Status indicators */}
                         <div className="flex items-center gap-1 text-xs">
-                            {isNightPhase && awake && (
+                            {isNightPhase && awake && (isSelf || currentPlayerIsAwake) && (
                                 <span className="text-yellow-600" title="Awake">
                                     {'\u{1F441}'}
                                 </span>
                             )}
-                            {isNightPhase && !awake && (
+                            {isNightPhase && !awake && (isSelf || currentPlayerIsAwake) && (
                                 <span className="text-gray-400" title="Sleeping">
                                     {'\u{1F4A4}'}
                                 </span>
                             )}
-                            {player.has_stolen_cheese && (
+                            {player.has_stolen_cheese && (isSelf || currentPlayerIsAwake) && (
                                 <span title="Cheese stolen!">
                                     {'\u{1F9C0}'}
                                 </span>
@@ -93,7 +94,10 @@ export default function PlayerCircle({
                         {/* Die display */}
                         {showDice && (
                             <div className="mt-1">
-                                <DieDisplay value={player.die_value} size="sm" />
+                                <DieDisplay
+                                    value={isSelf || currentPlayerIsAwake ? player.die_value : null}
+                                    size="sm"
+                                />
                             </div>
                         )}
 

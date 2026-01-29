@@ -19,7 +19,10 @@
       "mcp__laravel-boost__application-info",
       "Bash(php artisan migrate:status:*)",
       "Bash(php artisan tinker:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(exit)",
+      "mcp__laravel-boost__last-error",
+      "Bash(php artisan:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

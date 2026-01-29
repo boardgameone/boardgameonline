@@ -7,9 +7,10 @@ import PlayerCircle from './components/PlayerCircle';
 interface RollingPhaseProps {
     gameState: GameState;
     roomCode: string;
+    gameSlug: string;
 }
 
-export default function RollingPhase({ gameState, roomCode }: RollingPhaseProps) {
+export default function RollingPhase({ gameState, roomCode, gameSlug }: RollingPhaseProps) {
     const currentPlayer = gameState.players.find((p) => p.id === gameState.current_player_id);
     const confirmedCount = gameState.players.filter((p) => p.has_confirmed_roll).length;
     const hasConfirmed = currentPlayer?.has_confirmed_roll ?? false;
@@ -19,7 +20,7 @@ export default function RollingPhase({ gameState, roomCode }: RollingPhaseProps)
 
     const handleConfirm = () => {
         playDieRoll();
-        router.post(route('rooms.confirmRoll', roomCode));
+        router.post(route('rooms.confirmRoll', [gameSlug, roomCode]));
     };
 
     return (

@@ -7,9 +7,10 @@ import PlayerCircle from './components/PlayerCircle';
 interface VotingPhaseProps {
     gameState: GameState;
     roomCode: string;
+    gameSlug: string;
 }
 
-export default function VotingPhase({ gameState, roomCode }: VotingPhaseProps) {
+export default function VotingPhase({ gameState, roomCode, gameSlug }: VotingPhaseProps) {
     const [selectedPlayer, setSelectedPlayer] = useState<GameStatePlayer | null>(null);
 
     const currentPlayer = gameState.players.find((p) => p.id === gameState.current_player_id);
@@ -41,7 +42,7 @@ export default function VotingPhase({ gameState, roomCode }: VotingPhaseProps) {
     const handleVote = () => {
         if (selectedPlayer) {
             playSqueak();
-            router.post(route('rooms.vote', roomCode), {
+            router.post(route('rooms.vote', [gameSlug, roomCode]), {
                 voted_for_player_id: selectedPlayer.id,
             });
         }

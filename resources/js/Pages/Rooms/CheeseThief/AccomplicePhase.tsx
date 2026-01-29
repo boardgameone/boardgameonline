@@ -7,9 +7,10 @@ import PlayerCircle from './components/PlayerCircle';
 interface AccomplicePhaseProps {
     gameState: GameState;
     roomCode: string;
+    gameSlug: string;
 }
 
-export default function AccomplicePhase({ gameState, roomCode }: AccomplicePhaseProps) {
+export default function AccomplicePhase({ gameState, roomCode, gameSlug }: AccomplicePhaseProps) {
     const [selectedPlayer, setSelectedPlayer] = useState<GameStatePlayer | null>(null);
 
     const canSelectAccomplice = gameState.can_select_accomplice;
@@ -26,7 +27,7 @@ export default function AccomplicePhase({ gameState, roomCode }: AccomplicePhase
     const handleSelectAccomplice = () => {
         if (selectedPlayer) {
             playWhisper();
-            router.post(route('rooms.selectAccomplice', roomCode), {
+            router.post(route('rooms.selectAccomplice', [gameSlug, roomCode]), {
                 accomplice_player_id: selectedPlayer.id,
             });
         }

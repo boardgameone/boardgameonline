@@ -7,9 +7,10 @@ import PlayerCircle from './components/PlayerCircle';
 interface NightPhaseProps {
     gameState: GameState;
     roomCode: string;
+    gameSlug: string;
 }
 
-export default function NightPhase({ gameState, roomCode }: NightPhaseProps) {
+export default function NightPhase({ gameState, roomCode, gameSlug }: NightPhaseProps) {
     const [selectedPlayer, setSelectedPlayer] = useState<GameStatePlayer | null>(null);
 
     const currentPlayer = gameState.players.find((p) => p.id === gameState.current_player_id);
@@ -59,14 +60,14 @@ export default function NightPhase({ gameState, roomCode }: NightPhaseProps) {
         if (selectedPlayer) {
             playPeek();
             playSqueak();
-            router.post(route('rooms.peek', roomCode), {
+            router.post(route('rooms.peek', [gameSlug, roomCode]), {
                 target_player_id: selectedPlayer.id,
             });
         }
     };
 
     const handleSkip = () => {
-        router.post(route('rooms.skipPeek', roomCode));
+        router.post(route('rooms.skipPeek', [gameSlug, roomCode]));
     };
 
     const handlePlayerClick = (player: GameStatePlayer) => {

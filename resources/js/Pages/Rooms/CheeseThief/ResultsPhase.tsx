@@ -6,9 +6,10 @@ import PlayerCircle from './components/PlayerCircle';
 interface ResultsPhaseProps {
     gameState: GameState;
     roomCode: string;
+    gameSlug: string;
 }
 
-export default function ResultsPhase({ gameState, roomCode }: ResultsPhaseProps) {
+export default function ResultsPhase({ gameState, roomCode, gameSlug }: ResultsPhaseProps) {
     const winner = gameState.winner;
     const thiefPlayer = gameState.players.find((p) => p.id === gameState.thief_player_id);
     const accomplicePlayer = gameState.players.find((p) => p.id === gameState.accomplice_player_id);
