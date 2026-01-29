@@ -1,4 +1,5 @@
 import Dropdown from '@/Components/Dropdown';
+import GameIcon from '@/Components/GameIcon';
 import { User } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useState } from 'react';
@@ -62,7 +63,7 @@ export default function GameLayout({
                                 <NavLink
                                     href={route('games.index')}
                                     active={route().current('games.*')}
-                                    icon={<span className="text-lg">{'\u{1F3AE}'}</span>}
+                                    icon={<GameIcon name="gamepad" />}
                                 >
                                     Games
                                 </NavLink>
@@ -70,7 +71,7 @@ export default function GameLayout({
                                     <NavLink
                                         href={route('dashboard')}
                                         active={route().current('dashboard')}
-                                        icon={<span className="text-lg">{'\u{1F3E0}'}</span>}
+                                        icon={<GameIcon name="home" />}
                                     >
                                         Dashboard
                                     </NavLink>
@@ -214,7 +215,7 @@ export default function GameLayout({
                                 href={route('games.index')}
                                 active={route().current('games.*')}
                             >
-                                <span className="text-lg mr-2">{'\u{1F3AE}'}</span>
+                                <GameIcon name="gamepad" className="mr-2" />
                                 Games
                             </MobileNavLink>
                             {user && (
@@ -222,7 +223,7 @@ export default function GameLayout({
                                     href={route('dashboard')}
                                     active={route().current('dashboard')}
                                 >
-                                    <span className="text-lg mr-2">{'\u{1F3E0}'}</span>
+                                    <GameIcon name="home" className="mr-2" />
                                     Dashboard
                                 </MobileNavLink>
                             )}
@@ -306,8 +307,8 @@ export default function GameLayout({
             {/* Footer - hidden in fullHeight mode */}
             {!fullHeight && (
                 <footer className="py-6 text-center">
-                    <p className="text-yellow-800 font-medium text-sm">
-                        {'\u{1F3B2}'} Play together, anywhere! {'\u{1F3AE}'}
+                    <p className="text-yellow-800 font-medium text-sm flex items-center justify-center gap-2">
+                        <GameIcon name="dice" size="sm" /> Play together, anywhere! <GameIcon name="gamepad" size="sm" />
                     </p>
                 </footer>
             )}

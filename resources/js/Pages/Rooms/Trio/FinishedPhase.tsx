@@ -1,7 +1,9 @@
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import StackedTrio from './components/StackedTrio';
+import SoundToggle from '../CheeseThief/components/SoundToggle';
 import { useSound } from '@/hooks/useSound';
+import GameIcon from '@/Components/GameIcon';
 
 interface Player {
     id: number;
@@ -82,15 +84,22 @@ export default function FinishedPhase({ roomCode, gameSlug, players, winner, isH
                 ))}
             </div>
 
+            {/* Sound toggle */}
+            <div className="relative z-20 flex justify-end mb-4">
+                <SoundToggle />
+            </div>
+
             {/* Winner celebration */}
             <div className="relative z-10 space-y-6">
                 <div className="rounded-2xl bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-500 p-10 text-center shadow-2xl border-4 border-yellow-600 animate-slideIn">
-                    <div className="text-8xl mb-4 animate-bounce">🏆</div>
+                    <div className="text-yellow-700 mb-4 animate-bounce flex justify-center">
+                        <GameIcon name="trophy" className="h-20 w-20" />
+                    </div>
                     <h1 className="text-5xl font-black text-yellow-900 mb-3">
                         {winningPlayer?.nickname} Wins!
                     </h1>
-                    <p className="text-2xl text-yellow-800 font-bold">
-                        Collected 3 trios! 🎉
+                    <p className="text-2xl text-yellow-800 font-bold flex items-center justify-center gap-2">
+                        Collected 3 trios! <GameIcon name="party" />
                     </p>
 
                     {/* Winner avatar */}
@@ -144,9 +153,9 @@ export default function FinishedPhase({ roomCode, gameSlug, players, winner, isH
 
                                         {/* Name and score */}
                                         <div>
-                                            <p className="font-bold text-gray-900">
+                                            <p className="font-bold text-gray-900 flex items-center gap-1">
                                                 {player.nickname}
-                                                {index === 0 && ' 👑'}
+                                                {index === 0 && <GameIcon name="crown" size="sm" className="text-yellow-500" />}
                                             </p>
                                             <p className="text-sm text-gray-600 font-semibold">
                                                 {player.trios_count} trio{player.trios_count !== 1 ? 's' : ''}
@@ -183,13 +192,13 @@ export default function FinishedPhase({ roomCode, gameSlug, players, winner, isH
                                 : 'from-gray-400 to-gray-500 border-gray-600 cursor-not-allowed opacity-50'
                         }`}
                     >
-                        🔄 Play Again {!isHost && '(Host Only)'}
+                        <GameIcon name="refresh" className="inline-block mr-1" /> Play Again {!isHost && '(Host Only)'}
                     </button>
                     <button
                         onClick={handleNewRoom}
                         className="rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4 text-lg font-black text-white shadow-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 hover:scale-105 active:scale-95 border-b-4 border-blue-700"
                     >
-                        🏠 New Room
+                        <GameIcon name="home" className="inline-block mr-1" /> New Room
                     </button>
                 </div>
             </div>

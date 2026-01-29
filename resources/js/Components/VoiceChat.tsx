@@ -1,6 +1,7 @@
 import axios from 'axios';
 import Peer, { MediaConnection } from 'peerjs';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import GameIcon from '@/Components/GameIcon';
 
 interface VoicePlayer {
     id: number;
@@ -549,7 +550,7 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
             {/* Header */}
             <div className="bg-gradient-to-r from-brand-cyan to-brand-teal px-4 py-3 flex items-center justify-between">
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
-                    {'\u{1F3A4}'} Voice
+                    <GameIcon name="microphone" /> Voice
                     {isConnected && (
                         <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">
                             On

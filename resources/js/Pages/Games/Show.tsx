@@ -2,6 +2,7 @@ import GameLayout from '@/Layouts/GameLayout';
 import { Game, GameRoom, PageProps, User } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
+import GameIcon from '@/Components/GameIcon';
 
 interface WaitingRoom extends GameRoom {
     host?: User;
@@ -14,7 +15,6 @@ interface Props extends PageProps {
 }
 
 export default function Show({ auth, game, waitingRooms }: Props) {
-    const gameEmoji = getGameEmoji(game.slug);
     const gradients: Record<string, string> = {
         'cheese-thief': 'from-amber-600 to-amber-800',
         'trio': 'from-blue-500 via-cyan-500 to-teal-500',
@@ -72,21 +72,25 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                         <div className={`aspect-video bg-gradient-to-br ${gradient} flex items-center justify-center relative`}>
                             {game.slug === 'trio' ? (
                                 <TrioGameVisual />
+                            ) : game.slug === 'cheese-thief' ? (
+                                <span className="text-9xl -rotate-[100deg]">{'\u{1F9C0}'}</span>
                             ) : (
-                                <span className={`text-9xl ${game.slug === 'cheese-thief' ? '-rotate-90' : ''}`}>{gameEmoji}</span>
+                                <div className="text-white">
+                                    <GameIcon name={getGameIcon(game.slug)} className="h-32 w-32" />
+                                </div>
                             )}
                             {/* Decorative elements */}
-                            <div className="absolute top-4 left-4 text-4xl opacity-20 rotate-12">
-                                {'\u{2B50}'}
+                            <div className="absolute top-4 left-4 opacity-20 rotate-12 text-white">
+                                <GameIcon name="star" size="lg" />
                             </div>
-                            <div className="absolute top-4 right-4 text-3xl opacity-20 -rotate-12">
-                                {'\u{1F3B2}'}
+                            <div className="absolute top-4 right-4 opacity-20 -rotate-12 text-white">
+                                <GameIcon name="dice" size="lg" />
                             </div>
-                            <div className="absolute bottom-4 left-4 text-3xl opacity-20 -rotate-12">
-                                {'\u{1F3B2}'}
+                            <div className="absolute bottom-4 left-4 opacity-20 -rotate-12 text-white">
+                                <GameIcon name="dice" size="lg" />
                             </div>
-                            <div className="absolute bottom-4 right-4 text-4xl opacity-20 rotate-12">
-                                {'\u{2B50}'}
+                            <div className="absolute bottom-4 right-4 opacity-20 rotate-12 text-white">
+                                <GameIcon name="star" size="lg" />
                             </div>
                         </div>
                         <div className="p-6 sm:p-8">
@@ -115,7 +119,7 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                     {game.rules && (
                         <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8">
                             <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
-                                {'\u{1F4D6}'} How to Play
+                                <GameIcon name="book" /> How to Play
                             </h2>
                             <div className="mt-6 space-y-6">
                                 {Object.entries(game.rules).map(([key, value]) => (
@@ -150,7 +154,7 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                     <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
                         <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
                             <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                                {'\u{1F3AE}'} Create a Room
+                                <GameIcon name="gamepad" /> Create a Room
                             </h2>
                         </div>
                         <div className="p-6">
@@ -217,7 +221,7 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
                             <div className="bg-gradient-to-r from-green-500 to-green-600 px-6 py-4">
                                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                                    {'\u{1F7E2}'} Open Rooms
+                                    <GameIcon name="circle" size="sm" className="text-green-300" /> Open Rooms
                                 </h2>
                             </div>
                             <div className="p-4">
@@ -255,7 +259,7 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                     {/* Join with Code */}
                     <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6">
                         <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                            {'\u{1F517}'} Have a Room Code?
+                            <GameIcon name="link" /> Have a Room Code?
                         </h2>
                         <p className="mt-2 text-sm text-gray-600">
                             Join a friend's room directly using their room code.
@@ -300,12 +304,12 @@ function TrioGameVisual() {
     );
 }
 
-function getGameEmoji(slug: string): string {
-    const emojis: Record<string, string> = {
-        'cheese-thief': '\u{1F9C0}',
-        'trio': '\u{1F0CF}',
+function getGameIcon(slug: string): 'cheese' | 'card' | 'dice' {
+    const icons: Record<string, 'cheese' | 'card' | 'dice'> = {
+        'cheese-thief': 'cheese',
+        'trio': 'card',
     };
-    return emojis[slug] || '\u{1F3B2}';
+    return icons[slug] || 'dice';
 }
 
 function UsersIcon() {

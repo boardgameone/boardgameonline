@@ -1,3 +1,4 @@
+import GameIcon from '@/Components/GameIcon';
 import GameLayout from '@/Layouts/GameLayout';
 import { PageProps } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
@@ -47,8 +48,8 @@ export default function Join({ auth }: PageProps) {
                 <div className="bg-white rounded-3xl shadow-xl overflow-hidden border-b-8 border-blue-500">
                     {/* Header */}
                     <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-8 text-center">
-                        <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full mb-4">
-                            <span className="text-5xl">{'\u{1F517}'}</span>
+                        <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full mb-4 text-white">
+                            <GameIcon name="link" size="xl" />
                         </div>
                         <h1 className="text-2xl font-black text-white">
                             Join a Room
@@ -172,19 +173,19 @@ export default function Join({ auth }: PageProps) {
                 {/* Tips */}
                 <div className="mt-6 bg-white/60 backdrop-blur-sm rounded-2xl p-5">
                     <h3 className="font-bold text-yellow-900 flex items-center gap-2">
-                        {'\u{1F4A1}'} Tips
+                        <GameIcon name="lightbulb" size="sm" /> Tips
                     </h3>
                     <ul className="mt-2 space-y-2 text-sm text-yellow-800">
                         <li className="flex items-start gap-2">
-                            <span className="text-yellow-600">{'\u{2022}'}</span>
+                            <span className="text-yellow-600"><GameIcon name="circle" size="xs" /></span>
                             Ask your friend for the room code
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="text-yellow-600">{'\u{2022}'}</span>
+                            <span className="text-yellow-600"><GameIcon name="circle" size="xs" /></span>
                             Codes are 6 characters (letters and numbers)
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="text-yellow-600">{'\u{2022}'}</span>
+                            <span className="text-yellow-600"><GameIcon name="circle" size="xs" /></span>
                             Make sure the room hasn't started yet
                         </li>
                     </ul>

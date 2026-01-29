@@ -5,7 +5,9 @@ import PlayerStats from './components/PlayerStats';
 import TurnReveals from './components/TurnReveals';
 import TrioCelebration from './components/TrioCelebration';
 import TrioCard from './components/TrioCard';
+import SoundToggle from '../CheeseThief/components/SoundToggle';
 import { useSound } from '@/hooks/useSound';
+import GameIcon from '@/Components/GameIcon';
 
 interface Player {
     id: number;
@@ -167,24 +169,27 @@ export default function PlayingPhase({
     return (
         <div className="h-full flex flex-col gap-2 lg:gap-3">
             {/* Compact turn banner */}
-            <div className={`rounded-lg px-4 py-2 text-center border-2 transition-all duration-300 flex-shrink-0 ${
+            <div className={`rounded-lg px-4 py-2 border-2 transition-all duration-300 flex-shrink-0 ${
                 currentTurnPlayer?.id === currentPlayerId
                     ? 'bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-400'
                     : 'bg-blue-50 border-blue-200'
             }`}>
-                <div className="flex items-center justify-center gap-4">
-                    <span className={`font-bold ${
-                        currentTurnPlayer?.id === currentPlayerId ? 'text-yellow-900' : 'text-blue-900'
-                    }`}>
-                        {currentTurnPlayer?.id === currentPlayerId
-                            ? "🎯 Your turn!"
-                            : `${currentTurnPlayer?.nickname}'s turn`}
-                    </span>
-                    <span className="text-sm font-medium" style={{
-                        color: currentTurnPlayer?.id === currentPlayerId ? '#78350f' : '#1e40af'
-                    }}>
-                        Turn {currentTurn.turn_number} • {currentTurn.reveals.length} reveal{currentTurn.reveals.length !== 1 ? 's' : ''}
-                    </span>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <span className={`font-bold ${
+                            currentTurnPlayer?.id === currentPlayerId ? 'text-yellow-900' : 'text-blue-900'
+                        }`}>
+                            {currentTurnPlayer?.id === currentPlayerId
+                                ? <><GameIcon name="target" className="inline-block mr-1" /> Your turn!</>
+                                : `${currentTurnPlayer?.nickname}'s turn`}
+                        </span>
+                        <span className="text-sm font-medium" style={{
+                            color: currentTurnPlayer?.id === currentPlayerId ? '#78350f' : '#1e40af'
+                        }}>
+                            Turn {currentTurn.turn_number} • {currentTurn.reveals.length} reveal{currentTurn.reveals.length !== 1 ? 's' : ''}
+                        </span>
+                    </div>
+                    <SoundToggle />
                 </div>
             </div>
 

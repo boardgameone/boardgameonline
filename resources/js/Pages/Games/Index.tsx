@@ -1,6 +1,7 @@
 import GameLayout from '@/Layouts/GameLayout';
 import { Game, PageProps } from '@/types';
 import { Head, Link } from '@inertiajs/react';
+import GameIcon from '@/Components/GameIcon';
 
 interface Props extends PageProps {
     games: Game[];
@@ -21,7 +22,7 @@ export default function Index({ games }: Props) {
                     <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-6">
                         <div className="text-center sm:text-left">
                             <div className="flex items-center gap-3 justify-center sm:justify-start">
-                                <span className="text-5xl">{'\u{1F3AE}'}</span>
+                                <GameIcon name="gamepad" size="xl" className="text-white" />
                                 <h1 className="text-3xl sm:text-4xl font-black text-white">
                                     Game Library
                                 </h1>
@@ -47,7 +48,7 @@ export default function Index({ games }: Props) {
             <div className="mb-6 flex items-center gap-3">
                 <div className="h-1 flex-1 bg-gradient-to-r from-transparent via-blue-400 to-transparent rounded-full" />
                 <h2 className="text-xl font-bold text-gray-700 flex items-center gap-2">
-                    <span>{'\u{2B50}'}</span> Available Games <span>{'\u{2B50}'}</span>
+                    <GameIcon name="star" className="text-yellow-500" /> Available Games <GameIcon name="star" className="text-yellow-500" />
                 </h2>
                 <div className="h-1 flex-1 bg-gradient-to-r from-transparent via-blue-400 to-transparent rounded-full" />
             </div>
@@ -62,7 +63,7 @@ export default function Index({ games }: Props) {
             {games.length === 0 && (
                 <div className="text-center py-20">
                     <div className="inline-flex items-center justify-center w-32 h-32 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full mb-6 shadow-inner">
-                        <span className="text-6xl opacity-40">{'\u{1F3B2}'}</span>
+                        <GameIcon name="dice" size="2xl" className="opacity-40 text-gray-500" />
                     </div>
                     <p className="text-gray-600 font-bold text-xl">
                         No games available yet
@@ -104,7 +105,7 @@ function TrioGameVisual() {
 }
 
 function GameCard({ game }: Readonly<{ game: Game }>) {
-    const gameEmoji = getGameEmoji(game.slug);
+    const gameIconName = getGameIcon(game.slug);
     const gradients: Record<string, string> = {
         'cheese-thief': 'from-amber-600 to-amber-800',
         'trio': 'from-blue-500 via-cyan-500 to-teal-500',
@@ -128,10 +129,12 @@ function GameCard({ game }: Readonly<{ game: Game }>) {
                 {/* Main game visual */}
                 {game.slug === 'trio' ? (
                     <TrioGameVisual />
+                ) : game.slug === 'cheese-thief' ? (
+                    <span className="text-7xl group-hover:scale-125 transition-transform duration-500 drop-shadow-lg relative z-10 -rotate-[100deg]">{'\u{1F9C0}'}</span>
                 ) : (
-                    <span className={`text-8xl group-hover:scale-125 transition-transform duration-500 drop-shadow-lg relative z-10 ${game.slug === 'cheese-thief' ? '-rotate-[100deg]' : ''}`}>
-                        {gameEmoji}
-                    </span>
+                    <div className="group-hover:scale-125 transition-transform duration-500 drop-shadow-lg relative z-10 text-white">
+                        <GameIcon name={gameIconName} className="h-24 w-24" />
+                    </div>
                 )}
 
                 {/* Play button overlay on hover */}
@@ -183,8 +186,8 @@ function GameCard({ game }: Readonly<{ game: Game }>) {
 
                 {/* Play Button */}
                 <div className="mt-6">
-                    <div className="w-full rounded-full bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-3 font-bold text-white text-center shadow-lg group-hover:shadow-xl transition-all group-hover:from-blue-700 group-hover:to-purple-700">
-                        Play Now {'\u{1F680}'}
+                    <div className="w-full rounded-full bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-3 font-bold text-white text-center shadow-lg group-hover:shadow-xl transition-all group-hover:from-blue-700 group-hover:to-purple-700 flex items-center justify-center gap-2">
+                        Play Now <GameIcon name="rocket" size="sm" />
                     </div>
                 </div>
             </div>
@@ -192,10 +195,10 @@ function GameCard({ game }: Readonly<{ game: Game }>) {
     );
 }
 
-function getGameEmoji(slug: string): string {
-    const emojis: Record<string, string> = {
-        'cheese-thief': '\u{1F9C0}',
-        'trio': '\u{1F0CF}',
+function getGameIcon(slug: string): 'cheese' | 'card' | 'dice' {
+    const icons: Record<string, 'cheese' | 'card' | 'dice'> = {
+        'cheese-thief': 'cheese',
+        'trio': 'card',
     };
-    return emojis[slug] || '\u{1F3B2}';
+    return icons[slug] || 'dice';
 }

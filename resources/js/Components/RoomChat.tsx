@@ -1,6 +1,7 @@
 import { ChatMessage } from '@/types';
 import axios from 'axios';
 import { FormEventHandler, useCallback, useEffect, useRef, useState } from 'react';
+import GameIcon from '@/Components/GameIcon';
 
 interface Props {
     gameSlug: string;
@@ -133,7 +134,7 @@ export default function RoomChat({ gameSlug, roomCode, currentPlayerId }: Readon
             {/* Header */}
             <div className="bg-gradient-to-r from-brand-teal to-brand-cyan px-4 py-3 flex items-center justify-between">
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
-                    {'\u{1F4AC}'} Chat
+                    <GameIcon name="chat" /> Chat
                 </h3>
                 <button
                     onClick={() => setIsMinimized(true)}
@@ -151,7 +152,9 @@ export default function RoomChat({ gameSlug, roomCode, currentPlayerId }: Readon
                     <div className="flex-1 overflow-y-auto p-4 space-y-3">
                         {messages.length === 0 ? (
                             <div className="text-center py-8">
-                                <span className="text-4xl opacity-50">{'\u{1F4AD}'}</span>
+                                <div className="opacity-50 flex justify-center text-gray-400 mb-2">
+                                    <GameIcon name="thought" size="xl" />
+                                </div>
                                 <p className="text-gray-400 text-sm mt-2">No messages yet</p>
                                 <p className="text-gray-400 text-xs">Say hi to your fellow players!</p>
                             </div>

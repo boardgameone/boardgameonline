@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Game, GameRoom, PageProps } from '@/types';
 import { Head, Link } from '@inertiajs/react';
+import GameIcon from '@/Components/GameIcon';
 
 interface Props extends PageProps {
     recentGames?: Game[];
@@ -22,8 +23,8 @@ export default function Dashboard({ auth, recentGames = [], activeRooms = [], st
                 <div className="bg-white rounded-3xl shadow-xl overflow-hidden border-b-8 border-yellow-500">
                     <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-8 sm:px-8">
                         <div className="flex flex-col sm:flex-row items-center gap-6">
-                            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm text-5xl shadow-lg">
-                                {'\u{1F3AE}'}
+                            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm shadow-lg text-white">
+                                <GameIcon name="gamepad" size="xl" />
                             </div>
                             <div className="text-center sm:text-left">
                                 <h1 className="text-2xl sm:text-3xl font-black text-white">
@@ -67,8 +68,8 @@ export default function Dashboard({ auth, recentGames = [], activeRooms = [], st
                     className="group bg-white rounded-2xl shadow-lg p-6 transition hover:scale-105 hover:shadow-xl border-b-4 border-yellow-400"
                 >
                     <div className="flex items-center gap-4">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 text-3xl shadow-md group-hover:scale-110 transition">
-                            {'\u{1F3B2}'}
+                        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 shadow-md group-hover:scale-110 transition text-white">
+                            <GameIcon name="dice" size="lg" />
                         </div>
                         <div>
                             <h3 className="font-bold text-gray-900 text-lg">Browse Games</h3>
@@ -82,8 +83,8 @@ export default function Dashboard({ auth, recentGames = [], activeRooms = [], st
                     className="group bg-white rounded-2xl shadow-lg p-6 transition hover:scale-105 hover:shadow-xl border-b-4 border-blue-400"
                 >
                     <div className="flex items-center gap-4">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-3xl shadow-md group-hover:scale-110 transition">
-                            {'\u{1F517}'}
+                        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-md group-hover:scale-110 transition text-white">
+                            <GameIcon name="link" size="lg" />
                         </div>
                         <div>
                             <h3 className="font-bold text-gray-900 text-lg">Join Room</h3>
@@ -97,8 +98,8 @@ export default function Dashboard({ auth, recentGames = [], activeRooms = [], st
                     className="group bg-white rounded-2xl shadow-lg p-6 transition hover:scale-105 hover:shadow-xl border-b-4 border-purple-400 sm:col-span-2 lg:col-span-1"
                 >
                     <div className="flex items-center gap-4">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 text-3xl shadow-md group-hover:scale-110 transition">
-                            {'\u{1F464}'}
+                        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-md group-hover:scale-110 transition text-white">
+                            <GameIcon name="user" size="lg" />
                         </div>
                         <div>
                             <h3 className="font-bold text-gray-900 text-lg">Your Profile</h3>
@@ -113,7 +114,7 @@ export default function Dashboard({ auth, recentGames = [], activeRooms = [], st
                 <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
                     <div className="px-6 py-4 bg-gradient-to-r from-green-500 to-green-600">
                         <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                            {'\u{1F3AE}'} Your Active Rooms
+                            <GameIcon name="gamepad" /> Your Active Rooms
                         </h2>
                     </div>
                     <div className="p-6">
@@ -126,9 +127,13 @@ export default function Dashboard({ auth, recentGames = [], activeRooms = [], st
                                         className="flex items-center justify-between p-4 rounded-xl bg-gray-50 hover:bg-yellow-50 transition border-2 border-transparent hover:border-yellow-300"
                                     >
                                         <div className="flex items-center gap-3">
-                                            <span className="text-2xl">
-                                                {getGameEmoji(room.game?.slug)}
-                                            </span>
+                                            <div className="text-2xl text-amber-600">
+                                                {room.game?.slug === 'cheese-thief' ? (
+                                                    <span className="text-3xl">{'\u{1F9C0}'}</span>
+                                                ) : (
+                                                    <GameIcon name={getGameIcon(room.game?.slug)} size="lg" />
+                                                )}
+                                            </div>
                                             <div>
                                                 <p className="font-bold text-gray-900">
                                                     {room.name || room.game?.name}
@@ -152,7 +157,9 @@ export default function Dashboard({ auth, recentGames = [], activeRooms = [], st
                             </div>
                         ) : (
                             <div className="text-center py-8">
-                                <div className="text-5xl mb-3 opacity-50">{'\u{1F3AE}'}</div>
+                                <div className="mb-3 opacity-50 flex justify-center text-gray-400">
+                                    <GameIcon name="gamepad" size="xl" />
+                                </div>
                                 <p className="text-gray-500 font-medium">No active rooms</p>
                                 <Link
                                     href={route('games.index')}
@@ -169,7 +176,7 @@ export default function Dashboard({ auth, recentGames = [], activeRooms = [], st
                 <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
                     <div className="px-6 py-4 bg-gradient-to-r from-purple-500 to-purple-600">
                         <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                            {'\u{1F3C6}'} Featured Games
+                            <GameIcon name="trophy" /> Featured Games
                         </h2>
                     </div>
                     <div className="p-6">
@@ -181,8 +188,12 @@ export default function Dashboard({ auth, recentGames = [], activeRooms = [], st
                                         href={route('games.show', game.slug)}
                                         className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 hover:bg-purple-50 transition border-2 border-transparent hover:border-purple-300"
                                     >
-                                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 text-2xl shadow-sm">
-                                            {getGameEmoji(game.slug)}
+                                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 shadow-sm text-white">
+                                            {game.slug === 'cheese-thief' ? (
+                                                <span className="text-2xl">{'\u{1F9C0}'}</span>
+                                            ) : (
+                                                <GameIcon name={getGameIcon(game.slug)} size="lg" />
+                                            )}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="font-bold text-gray-900 truncate">
@@ -210,7 +221,9 @@ export default function Dashboard({ auth, recentGames = [], activeRooms = [], st
                             </div>
                         ) : (
                             <div className="text-center py-8">
-                                <div className="text-5xl mb-3 opacity-50">{'\u{1F3B2}'}</div>
+                                <div className="mb-3 opacity-50 flex justify-center text-gray-400">
+                                    <GameIcon name="dice" size="xl" />
+                                </div>
                                 <p className="text-gray-500 font-medium">Discover new games</p>
                                 <Link
                                     href={route('games.index')}
@@ -227,10 +240,11 @@ export default function Dashboard({ auth, recentGames = [], activeRooms = [], st
     );
 }
 
-function getGameEmoji(slug?: string): string {
-    if (!slug) return '\u{1F3B2}';
-    const emojis: Record<string, string> = {
-        'cheese-thief': '\u{1F9C0}',
+function getGameIcon(slug?: string): 'cheese' | 'card' | 'dice' {
+    if (!slug) return 'dice';
+    const icons: Record<string, 'cheese' | 'card' | 'dice'> = {
+        'cheese-thief': 'cheese',
+        'trio': 'card',
     };
-    return emojis[slug] || '\u{1F3B2}';
+    return icons[slug] || 'dice';
 }

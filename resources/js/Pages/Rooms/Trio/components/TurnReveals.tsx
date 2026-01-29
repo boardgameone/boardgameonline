@@ -1,4 +1,5 @@
 import TrioCard from './TrioCard';
+import GameIcon from '@/Components/GameIcon';
 
 interface Reveal {
     value: number;
@@ -59,7 +60,7 @@ export default function TurnReveals({
                     <h3 className="font-bold text-amber-900 text-sm mb-2 flex items-center gap-2">
                         <span>Current Reveals</span>
                         {isTrioValid && canClaim && (
-                            <span className="text-green-600 animate-pulse">✨</span>
+                            <GameIcon name="sparkles" size="sm" className="text-green-600 animate-pulse" />
                         )}
                     </h3>
 
@@ -91,7 +92,7 @@ export default function TurnReveals({
                                     onClick={onClaimTrio}
                                     className="rounded-lg bg-gradient-to-r from-green-500 to-green-600 px-4 py-2 text-white text-sm font-bold shadow hover:from-green-600 hover:to-green-700 transition-all duration-200 hover:scale-105 active:scale-95"
                                 >
-                                    🎉 Claim!
+                                    <GameIcon name="party" size="sm" className="inline-block mr-1" /> Claim!
                                 </button>
                             )}
                             {canEndTurn && !canContinue && (
@@ -99,7 +100,7 @@ export default function TurnReveals({
                                     onClick={onEndTurn}
                                     className="rounded-lg bg-gradient-to-r from-red-500 to-red-600 px-4 py-2 text-white text-sm font-bold shadow hover:from-red-600 hover:to-red-700 transition-all duration-200 hover:scale-105 active:scale-95"
                                 >
-                                    ❌ End
+                                    <GameIcon name="x" size="sm" className="inline-block mr-1" /> End
                                 </button>
                             )}
                         </div>
@@ -119,7 +120,7 @@ export default function TurnReveals({
             <h3 className="font-bold text-amber-900 mb-4 flex items-center gap-2">
                 <span>Current Turn Reveals</span>
                 {isTrioValid && canClaim && (
-                    <span className="text-green-600 animate-pulse">✨</span>
+                    <GameIcon name="sparkles" size="sm" className="text-green-600 animate-pulse" />
                 )}
             </h3>
 
@@ -150,7 +151,7 @@ export default function TurnReveals({
                         onClick={onClaimTrio}
                         className="flex-1 rounded-lg bg-gradient-to-r from-green-500 to-green-600 px-6 py-3 text-white font-bold shadow-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 hover:scale-105 active:scale-95 border-b-4 border-green-700"
                     >
-                        🎉 Claim Trio!
+                        <GameIcon name="party" className="inline-block mr-1" /> Claim Trio!
                     </button>
                 )}
                 {canEndTurn && !canContinue && (
@@ -158,7 +159,7 @@ export default function TurnReveals({
                         onClick={onEndTurn}
                         className="flex-1 rounded-lg bg-gradient-to-r from-red-500 to-red-600 px-6 py-3 text-white font-bold shadow-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 hover:scale-105 active:scale-95 border-b-4 border-red-700 animate-shake"
                     >
-                        ❌ End Turn
+                        <GameIcon name="x" className="inline-block mr-1" /> End Turn
                     </button>
                 )}
             </div>

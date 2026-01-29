@@ -1,3 +1,4 @@
+import GameIcon from '@/Components/GameIcon';
 import RoomChat from '@/Components/RoomChat';
 import VoiceChat from '@/Components/VoiceChat';
 import GameLayout from '@/Layouts/GameLayout';
@@ -124,9 +125,13 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                             {/* Room Header */}
                             <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5">
                                 <div className="flex items-center gap-4">
-                                    <span className="text-4xl">
-                                        {getGameEmoji(room.game?.slug)}
-                                    </span>
+                                    <div className="text-white">
+                                        {room.game?.slug === 'cheese-thief' ? (
+                                            <span className="text-5xl">{'\u{1F9C0}'}</span>
+                                        ) : (
+                                            <GameIcon name={getGameIcon(room.game?.slug)} size="xl" />
+                                        )}
+                                    </div>
                                     <div>
                                         <h1 className="text-xl font-black text-white">
                                             {room.name || room.game?.name || 'Game Room'}
@@ -142,8 +147,8 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                                 {/* Show join form for guests who need to enter nickname */}
                                 {needsToJoin && isGuest && (
                                     <div className="text-center py-8">
-                                        <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-400 to-green-500 rounded-full mb-4 shadow-lg">
-                                            <span className="text-4xl">{'\u{1F44B}'}</span>
+                                        <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-400 to-green-500 rounded-full mb-4 shadow-lg text-white">
+                                            <GameIcon name="wave" size="xl" />
                                         </div>
                                         <h3 className="text-xl font-black text-gray-900 mb-2">
                                             Join this game!
@@ -185,7 +190,7 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                                     <>
                                         <div className="flex items-center justify-between mb-6">
                                             <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                                                {'\u{1F465}'} Players
+                                                <GameIcon name="users" className="inline-block mr-1" /> Players
                                             </h3>
                                             <p className="text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
                                                 {Math.max(0, minPlayers - connectedPlayers.length) > 0
@@ -220,7 +225,7 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
                             <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 px-6 py-4">
                                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                    {'\u{1F511}'} Invite Friends
+                                    <GameIcon name="key" className="inline-block mr-1" /> Invite Friends
                                 </h3>
                             </div>
                             <div className="p-6 space-y-4">
@@ -305,7 +310,7 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                         {/* Actions */}
                         <div className="bg-white rounded-2xl shadow-lg p-6">
                             <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
-                                {'\u{1F3AE}'} Actions
+                                <GameIcon name="gamepad" className="inline-block mr-1" /> Actions
                             </h3>
                             <div className="space-y-3">
                                 {isHost ? (
@@ -319,7 +324,7 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                                 ) : (
                                     <div className="text-center py-3 bg-yellow-50 rounded-xl">
                                         <p className="text-sm text-yellow-700 font-medium">
-                                            {'\u{23F3}'} Waiting for host to start...
+                                            <GameIcon name="hourglass" className="inline-block mr-1" /> Waiting for host to start...
                                         </p>
                                     </div>
                                 )}
@@ -336,8 +341,12 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                         {room.game && (
                             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6">
                                 <div className="flex items-center gap-4">
-                                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 text-3xl shadow-md">
-                                        {getGameEmoji(room.game.slug)}
+                                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 shadow-md text-white">
+                                        {room.game.slug === 'cheese-thief' ? (
+                                            <span className="text-3xl">{'\u{1F9C0}'}</span>
+                                        ) : (
+                                            <GameIcon name={getGameIcon(room.game.slug)} size="lg" />
+                                        )}
                                     </div>
                                     <div>
                                         <h3 className="font-bold text-gray-900">
@@ -393,7 +402,7 @@ function PlayerCard({
                 </p>
                 {player.is_host && (
                     <span className="inline-flex items-center text-xs text-yellow-600 font-bold">
-                        {'\u{1F451}'} Host
+                        <GameIcon name="crown" size="xs" className="inline-block mr-1" /> Host
                     </span>
                 )}
             </div>
@@ -430,10 +439,11 @@ function EmptySlot() {
     );
 }
 
-function getGameEmoji(slug?: string): string {
-    if (!slug) return '\u{1F3B2}';
-    const emojis: Record<string, string> = {
-        'cheese-thief': '\u{1F9C0}',
+function getGameIcon(slug?: string): 'cheese' | 'card' | 'dice' {
+    if (!slug) return 'dice';
+    const icons: Record<string, 'cheese' | 'card' | 'dice'> = {
+        'cheese-thief': 'cheese',
+        'trio': 'card',
     };
-    return emojis[slug] || '\u{1F3B2}';
+    return icons[slug] || 'dice';
 }
