@@ -1,10 +1,11 @@
 import { router } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import MiddleGrid from './components/MiddleGrid';
 import PlayerStats from './components/PlayerStats';
 import TurnReveals from './components/TurnReveals';
 import TrioCelebration from './components/TrioCelebration';
 import TrioCard from './components/TrioCard';
+import { useSound } from '@/hooks/useSound';
 
 interface Player {
     id: number;
@@ -68,12 +69,55 @@ export default function PlayingPhase({
     const myPlayer = players.find(p => p.id === currentPlayerId);
     const myHand = myPlayer?.hand;
 
+    const { play: playCardFlip } = useSound('/sounds/trio/card-flip.mp3', { volume: 0.6 });
+    const { play: playMatch } = useSound('/sounds/trio/match.mp3', { volume: 0.7 });
+    const { play: playMismatch } = useSound('/sounds/trio/mismatch.mp3', { volume: 0.5 });
+    const { play: playTrioClaim } = useSound('/sounds/trio/trio-claim.mp3', { volume: 0.85 });
+    const { play: playTurnTransition } = useSound('/sounds/trio/turn-transition.mp3', { volume: 0.5 });
+
+    const prevTurnNumber = useRef(currentTurn.turn_number);
+    const prevRevealCount = useRef(currentTurn.reveals.length);
+
+    // Detect card reveals and play appropriate sounds
+    useEffect(() => {
+        const currentRevealCount = currentTurn.reveals.length;
+
+        if (currentRevealCount > prevRevealCount.current) {
+            playCardFlip();
+
+            setTimeout(() => {
+                if (currentRevealCount >= 2) {
+                    const lastReveal = currentTurn.reveals[currentRevealCount - 1];
+                    const secondLastReveal = currentTurn.reveals[currentRevealCount - 2];
+
+                    if (lastReveal.value === secondLastReveal.value) {
+                        playMatch();
+                    } else {
+                        playMismatch();
+                    }
+                }
+            }, 200);
+        }
+
+        prevRevealCount.current = currentRevealCount;
+    }, [currentTurn.reveals.length]);
+
+    // Detect turn transitions
+    useEffect(() => {
+        if (currentTurn.turn_number > prevTurnNumber.current) {
+            playTurnTransition();
+        }
+        prevTurnNumber.current = currentTurn.turn_number;
+    }, [currentTurn.turn_number]);
+
     // Detect when a trio is claimed
     useEffect(() => {
         const previousTrioCount = myPlayer?.trios_count || 0;
         const currentTrioCount = myPlayer?.trios_count || 0;
 
         if (currentTrioCount > previousTrioCount && myPlayer?.collected_trios.length) {
+            playTrioClaim();
+
             const latestTrio = myPlayer.collected_trios[myPlayer.collected_trios.length - 1];
             setLastTrioClaimed({
                 player: myPlayer.nickname,

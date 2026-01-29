@@ -1,6 +1,7 @@
 import WaitingPhase from './WaitingPhase';
 import PlayingPhase from './PlayingPhase';
 import FinishedPhase from './FinishedPhase';
+import SoundToggle from '../CheeseThief/components/SoundToggle';
 
 interface Player {
     id: number;
@@ -76,50 +77,49 @@ export default function TrioGame({
 }: TrioGameProps) {
     const status = gameState?.room.status || 'waiting';
 
-    // Render appropriate phase
-    if (status === 'waiting') {
-        return (
-            <WaitingPhase
-                roomCode={roomCode}
-                gameSlug={gameSlug}
-                players={players}
-                isHost={isHost}
-                minPlayers={minPlayers}
-                maxPlayers={maxPlayers}
-            />
-        );
-    }
-
-    if (status === 'playing' && gameState) {
-        return (
-            <PlayingPhase
-                roomCode={roomCode}
-                gameSlug={gameSlug}
-                players={gameState.players}
-                middleGrid={gameState.middle_grid}
-                currentTurn={gameState.current_turn}
-                permissions={gameState.permissions}
-                currentPlayerId={currentPlayerId}
-            />
-        );
-    }
-
-    if (status === 'finished' && gameState) {
-        return (
-            <FinishedPhase
-                roomCode={roomCode}
-                gameSlug={gameSlug}
-                players={gameState.players}
-                winner={gameState.room.winner}
-                isHost={isHost}
-            />
-        );
-    }
-
-    // Fallback
     return (
-        <div className="text-center text-gray-500 py-12">
-            <p className="text-lg">Unknown game status: {status}</p>
+        <div className="relative">
+            <SoundToggle />
+
+            {status === 'waiting' && (
+                <WaitingPhase
+                    roomCode={roomCode}
+                    gameSlug={gameSlug}
+                    players={players}
+                    isHost={isHost}
+                    minPlayers={minPlayers}
+                    maxPlayers={maxPlayers}
+                />
+            )}
+
+            {status === 'playing' && gameState && (
+                <PlayingPhase
+                    roomCode={roomCode}
+                    gameSlug={gameSlug}
+                    players={gameState.players}
+                    middleGrid={gameState.middle_grid}
+                    currentTurn={gameState.current_turn}
+                    permissions={gameState.permissions}
+                    currentPlayerId={currentPlayerId}
+                />
+            )}
+
+            {status === 'finished' && gameState && (
+                <FinishedPhase
+                    roomCode={roomCode}
+                    gameSlug={gameSlug}
+                    players={gameState.players}
+                    winner={gameState.room.winner}
+                    isHost={isHost}
+                    currentPlayerId={currentPlayerId}
+                />
+            )}
+
+            {status !== 'waiting' && status !== 'playing' && status !== 'finished' && (
+                <div className="text-center text-gray-500 py-12">
+                    <p className="text-lg">Unknown game status: {status}</p>
+                </div>
+            )}
         </div>
     );
 }

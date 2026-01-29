@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trio Sound Effects Tester</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        .subtitle {
+            text-align: center;
+            opacity: 0.9;
+            margin-bottom: 30px;
+        }
+        .sound-grid {
+            display: grid;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .sound-item {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+        }
+        .sound-item:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .sound-info {
+            flex: 1;
+        }
+        .sound-name {
+            font-weight: bold;
+            font-size: 1.2em;
+            margin-bottom: 5px;
+        }
+        .sound-desc {
+            opacity: 0.8;
+            font-size: 0.9em;
+        }
+        button {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1em;
+        }
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        button:active {
+            transform: scale(0.95);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            margin-left: 10px;
+            font-weight: bold;
+        }
+        .status.loaded {
+            background: #10b981;
+            color: white;
+        }
+        .status.missing {
+            background: #ef4444;
+            color: white;
+        }
+        .test-all {
+            text-align: center;
+            margin-top: 30px;
+        }
+        .test-all button {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 15px 40px;
+            font-size: 1.1em;
+        }
+        .info-box {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Trio Sound Tester</h1>
+        <p class="subtitle">Test all sound effects before playing</p>
+
+        <div class="info-box">
+            <strong>Instructions:</strong> Click each button to test individual sounds.
+            The "Test All" button will play all sounds in sequence with delays.
+        </div>
+
+        <div class="sound-grid" id="soundGrid"></div>
+
+        <div class="test-all">
+            <button id="testAllBtn">🎵 Test All Sounds</button>
+        </div>
+    </div>
+
+    <script>
+        const sounds = [
+            {
+                name: 'card-flip.mp3',
+                title: 'Card Flip',
+                description: 'Plays when revealing cards',
+                volume: 0.6,
+                emoji: '🃏'
+            },
+            {
+                name: 'match.mp3',
+                title: 'Match',
+                description: 'Plays when two cards match',
+                volume: 0.7,
+                emoji: '✨'
+            },
+            {
+                name: 'mismatch.mp3',
+                title: 'Mismatch',
+                description: 'Plays when cards don\'t match',
+                volume: 0.5,
+                emoji: '❌'
+            },
+            {
+                name: 'trio-claim.mp3',
+                title: 'Trio Claim',
+                description: 'Plays when claiming a trio',
+                volume: 0.85,
+                emoji: '🎉'
+            },
+            {
+                name: 'turn-transition.mp3',
+                title: 'Turn Transition',
+                description: 'Plays when turn changes',
+                volume: 0.5,
+                emoji: '🔄'
+            },
+            {
+                name: 'game-start.mp3',
+                title: 'Game Start',
+                description: 'Plays when game begins',
+                volume: 0.7,
+                emoji: '🚀'
+            },
+            {
+                name: '../cheese-thief/victory.mp3',
+                title: 'Victory',
+                description: 'Plays when you win (from Cheese Thief)',
+                volume: 0.8,
+                emoji: '👑'
+            },
+            {
+                name: '../cheese-thief/defeat.mp3',
+                title: 'Defeat',
+                description: 'Plays when you lose (from Cheese Thief)',
+                volume: 0.8,
+                emoji: '😢'
+            }
+        ];
+
+        const audioElements = new Map();
+        const soundGrid = document.getElementById('soundGrid');
+
+        // Create audio elements and UI
+        sounds.forEach((sound, index) => {
+            const audio = new Audio(sound.name);
+            audio.volume = sound.volume;
+
+            // Check if file exists
+            audio.addEventListener('canplaythrough', () => {
+                document.getElementById(`status-${index}`).className = 'status loaded';
+                document.getElementById(`status-${index}`).textContent = '✓ Loaded';
+                document.getElementById(`btn-${index}`).disabled = false;
+            });
+
+            audio.addEventListener('error', () => {
+                document.getElementById(`status-${index}`).className = 'status missing';
+                document.getElementById(`status-${index}`).textContent = '✗ Missing';
+            });
+
+            audioElements.set(index, audio);
+
+            // Create UI element
+            const item = document.createElement('div');
+            item.className = 'sound-item';
+            item.innerHTML = `
+                <div class="sound-info">
+                    <div class="sound-name">
+                        ${sound.emoji} ${sound.title}
+                        <span id="status-${index}" class="status">Loading...</span>
+                    </div>
+                    <div class="sound-desc">${sound.description} (Volume: ${sound.volume})</div>
+                </div>
+                <button id="btn-${index}" disabled>Play</button>
+            `;
+
+            soundGrid.appendChild(item);
+
+            // Add click handler
+            document.getElementById(`btn-${index}`).addEventListener('click', () => {
+                audio.currentTime = 0;
+                audio.play().catch(err => {
+                    console.error('Failed to play:', err);
+                    alert('Failed to play sound. Check browser console.');
+                });
+            });
+        });
+
+        // Test all sounds
+        document.getElementById('testAllBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('testAllBtn');
+            btn.disabled = true;
+            btn.textContent = 'Playing...';
+
+            for (let i = 0; i < sounds.length; i++) {
+                const audio = audioElements.get(i);
+                if (audio.readyState >= 2) { // Can play
+                    audio.currentTime = 0;
+                    await audio.play().catch(err => console.error('Failed:', err));
+
+                    // Wait for sound to finish + small delay
+                    await new Promise(resolve => {
+                        audio.addEventListener('ended', resolve, { once: true });
+                    });
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+            }
+
+            btn.disabled = false;
+            btn.textContent = '🎵 Test All Sounds';
+        });
+    </script>
+</body>
+</html>
