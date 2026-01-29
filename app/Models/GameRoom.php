@@ -22,6 +22,7 @@ class GameRoom extends Model
         'name',
         'status',
         'current_hour',
+        'hour_started_at',
         'thief_player_id',
         'accomplice_player_id',
         'winner',
@@ -38,6 +39,7 @@ class GameRoom extends Model
         return [
             'settings' => 'array',
             'current_hour' => 'integer',
+            'hour_started_at' => 'datetime',
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
         ];
@@ -212,8 +214,27 @@ class GameRoom extends Model
     }
 
     /**
+     * Check if the hour timer has expired (15 seconds elapsed).
+     */
+    public function isHourTimerExpired(): bool
+    {
+        if ($this->current_hour < 1 || $this->current_hour > 6) {
+            return false; // Only night hours have timers
+        }
+
+        if (! $this->hour_started_at) {
+            return false;
+        }
+
+        $timerDuration = config('games.cheese_thief.night_hour_timer_seconds', 15);
+
+        return $this->hour_started_at->diffInSeconds(now()) >= $timerDuration;
+    }
+
+    /**
      * Check if the current night hour phase is complete.
      * A night hour is complete when:
+     * - The 15-second timer has expired, or
      * - No one woke up (0 players), or
      * - Multiple players woke up (2+), or
      * - Exactly 1 player woke up and has completed their action.
@@ -222,6 +243,11 @@ class GameRoom extends Model
     {
         $hour = $this->current_hour;
         if ($hour < 1 || $hour > 6) {
+            return true;
+        }
+
+        // Check if timer has expired
+        if ($this->isHourTimerExpired()) {
             return true;
         }
 
