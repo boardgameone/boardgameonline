@@ -30,11 +30,11 @@ export default function RollingPhase({ gameState, roomCode }: RollingPhaseProps)
             </div>
 
             {/* Your Die */}
-            <div className="flex flex-col items-center gap-4 rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-50 p-8 shadow-lg">
+            <div className="flex flex-col items-center gap-4 rounded-2xl bg-gradient-to-br from-teal-50 to-cyan-50 p-8 shadow-lg">
                 <DieDisplay value={currentPlayer?.die_value ?? null} size="lg" />
                 <p className="text-lg font-medium text-gray-700">
                     You wake up at{' '}
-                    <span className="font-bold text-indigo-600">
+                    <span className="font-bold text-brand-teal">
                         {currentPlayer?.die_value ?? '?'} AM
                     </span>
                 </p>
@@ -53,7 +53,7 @@ export default function RollingPhase({ gameState, roomCode }: RollingPhaseProps)
                     rounded-xl px-8 py-4 text-lg font-semibold transition-all
                     ${hasConfirmed
                         ? 'bg-green-100 text-green-700 cursor-not-allowed'
-                        : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-105'
+                        : 'bg-brand-teal text-white hover:bg-teal-600 hover:scale-105'
                     }
                 `}
             >

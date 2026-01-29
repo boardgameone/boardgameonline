@@ -12,11 +12,18 @@ export default function Welcome({ auth, featuredGames }: Props) {
             <div className="h-screen bg-yellow-400 flex flex-col overflow-hidden">
                 {/* Nav */}
                 <nav className="flex items-center justify-between p-4 sm:p-6 shrink-0">
-                    <img
-                        src="/images/logo.png"
-                        alt="Board Game Online"
-                        className="h-10 sm:h-12 w-auto drop-shadow-lg"
-                    />
+                    <Link href="/" className="group">
+                        <div className="relative">
+                            <div className="absolute inset-0 bg-white rounded-2xl blur-sm opacity-50 group-hover:opacity-75 transition" />
+                            <div className="relative bg-white rounded-2xl p-2 sm:p-2.5 shadow-lg group-hover:scale-105 transition">
+                                <img
+                                    src="/images/logo.png"
+                                    alt="Board Game Online"
+                                    className="h-8 sm:h-10 w-auto"
+                                />
+                            </div>
+                        </div>
+                    </Link>
                     <div className="flex gap-2 sm:gap-3">
                         {auth.user ? (
                             <Link

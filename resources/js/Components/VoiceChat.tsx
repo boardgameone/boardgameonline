@@ -27,7 +27,7 @@ interface CallData {
 }
 
 export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Readonly<Props>) {
-    const [isOpen, setIsOpen] = useState(true);
+    const [isMinimized, setIsMinimized] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
     const [isMuted, setIsMuted] = useState(true);
     const [players, setPlayers] = useState<VoicePlayer[]>([]);
@@ -491,32 +491,54 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
         fetchVoiceStatus();
     }, [fetchVoiceStatus]);
 
-    return (
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-            {/* Header */}
+    // Minimized floating button
+    if (isMinimized) {
+        return (
             <button
-                onClick={() => setIsOpen(!isOpen)}
-                className="w-full bg-gradient-to-r from-green-500 to-green-600 px-6 py-4 flex items-center justify-between"
+                onClick={() => setIsMinimized(false)}
+                className={`fixed bottom-24 right-4 z-40 rounded-full p-4 shadow-2xl hover:scale-110 transition-transform ${
+                    isConnected
+                        ? 'bg-gradient-to-r from-brand-cyan to-brand-teal text-white'
+                        : 'bg-gray-300 text-gray-600'
+                }`}
+                title="Open Voice Chat"
             >
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    {'\u{1F3A4}'} Voice Chat
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+                {isConnected && (
+                    <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
+                        {players.length}
+                    </span>
+                )}
+            </button>
+        );
+    }
+
+    return (
+        <div className="fixed bottom-24 right-4 z-40 w-80 bg-white rounded-2xl shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-brand-cyan to-brand-teal px-4 py-3 flex items-center justify-between">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    {'\u{1F3A4}'} Voice
                     {isConnected && (
                         <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">
-                            Connected
+                            On
                         </span>
                     )}
                 </h3>
-                <svg
-                    className={`h-5 w-5 text-white transition-transform ${isOpen ? 'rotate-180' : ''}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                <button
+                    onClick={() => setIsMinimized(true)}
+                    className="text-white/80 hover:text-white transition"
+                    title="Minimize"
                 >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-            </button>
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+            </div>
 
-            {isOpen && (
+            <div className="max-h-[40vh] overflow-y-auto">
                 <div className="p-4">
                     {error && (
                         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
@@ -534,7 +556,7 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
                     {!isConnected ? (
                         <button
                             onClick={connect}
-                            className="w-full rounded-full bg-green-600 px-6 py-3 font-bold text-white shadow-lg transition hover:scale-105 hover:bg-green-700 border-b-4 border-green-800 flex items-center justify-center gap-2"
+                            className="w-full rounded-full bg-brand-cyan px-6 py-3 font-bold text-white shadow-lg transition hover:scale-105 hover:bg-cyan-600 border-b-4 border-cyan-700 flex items-center justify-center gap-2"
                         >
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
@@ -642,7 +664,7 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
                         </div>
                     )}
                 </div>
-            )}
+            </div>
         </div>
     );
 }

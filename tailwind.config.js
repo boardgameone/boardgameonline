@@ -20,6 +20,8 @@ export default {
                     navy: '#2a3f5f',
                     yellow: '#f9b233',
                     blue: '#5b9bd5',
+                    teal: '#14b8a6',
+                    cyan: '#06b6d4',
                 },
             },
             keyframes: {
