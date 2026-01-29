@@ -22,7 +22,9 @@
       "Bash(npx tsc:*)",
       "Bash(exit)",
       "mcp__laravel-boost__last-error",
-      "Bash(php artisan:*)"
+      "Bash(php artisan:*)",
+      "Bash(chmod:*)",
+      "Bash(./check-sounds.sh:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

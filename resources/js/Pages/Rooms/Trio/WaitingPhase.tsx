@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import TutorialModal from './components/TutorialModal';
+import { useSound } from '@/hooks/useSound';
 
 interface Player {
     id: number;
@@ -31,7 +32,10 @@ export default function WaitingPhase({
     const connectedPlayers = players.filter((p) => p.is_connected);
     const canStart = connectedPlayers.length >= minPlayers;
 
+    const { play: playGameStart } = useSound('/sounds/trio/game-start.mp3', { volume: 0.7 });
+
     const handleStart = () => {
+        playGameStart();
         router.post(route('rooms.trio.start', [gameSlug, roomCode]));
     };
 

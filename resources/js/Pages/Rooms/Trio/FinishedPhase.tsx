@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import TrioCard from './components/TrioCard';
+import { useSound } from '@/hooks/useSound';
 
 interface Player {
     id: number;
@@ -16,10 +17,14 @@ interface FinishedPhaseProps {
     players: Player[];
     winner: string | null;
     isHost: boolean;
+    currentPlayerId?: number;
 }
 
-export default function FinishedPhase({ roomCode, gameSlug, players, winner, isHost }: FinishedPhaseProps) {
+export default function FinishedPhase({ roomCode, gameSlug, players, winner, isHost, currentPlayerId }: FinishedPhaseProps) {
     const [confettiPieces, setConfettiPieces] = useState<Array<{ id: number; left: number; delay: number; color: string }>>([]);
+
+    const { play: playVictory } = useSound('/sounds/cheese-thief/victory.mp3', { volume: 0.8 });
+    const { play: playDefeat } = useSound('/sounds/cheese-thief/defeat.mp3', { volume: 0.8 });
 
     useEffect(() => {
         // Generate confetti
@@ -30,6 +35,16 @@ export default function FinishedPhase({ roomCode, gameSlug, players, winner, isH
             color: ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'][Math.floor(Math.random() * 6)],
         }));
         setConfettiPieces(pieces);
+
+        // Play victory or defeat sound
+        const currentPlayer = players.find(p => p.id === currentPlayerId);
+        if (currentPlayer) {
+            if (currentPlayer.trios_count >= 3) {
+                playVictory();
+            } else {
+                playDefeat();
+            }
+        }
 
         // Haptic feedback
         if (navigator.vibrate) {
