@@ -104,202 +104,205 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                 </span>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-                {/* Main content */}
-                <div>
-                    <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-                        {/* Room Header */}
-                        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5">
-                            <div className="flex items-center gap-4">
-                                <span className="text-4xl">
-                                    {getGameEmoji(room.game?.slug)}
-                                </span>
-                                <div>
-                                    <h1 className="text-xl font-black text-white">
-                                        {room.name || room.game?.name || 'Game Room'}
-                                    </h1>
-                                    <p className="text-blue-100">
-                                        {room.game?.name} - {connectedPlayers.length}/{maxPlayers} players
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+            {/* Playing/Finished: Simplified full-width layout */}
+            {(room.status === 'playing' || room.status === 'finished') && gameState && room.game && (
+                <div className="mx-auto max-w-5xl">
+                    <CheeseThiefGame
+                        gameState={gameState}
+                        roomCode={room.room_code}
+                        gameSlug={room.game.slug}
+                    />
+                </div>
+            )}
 
-                        <div className="p-6">
-                            {/* Show join form for guests who need to enter nickname */}
-                            {needsToJoin && isGuest && (
-                                <div className="text-center py-8">
-                                    <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-400 to-green-500 rounded-full mb-4 shadow-lg">
-                                        <span className="text-4xl">{'\u{1F44B}'}</span>
-                                    </div>
-                                    <h3 className="text-xl font-black text-gray-900 mb-2">
-                                        Join this game!
-                                    </h3>
-                                    <p className="text-gray-500 mb-6">
-                                        Enter your nickname to join the room
-                                    </p>
-                                    <form onSubmit={handleJoin} className="max-w-xs mx-auto space-y-4">
-                                        <div>
-                                            <input
-                                                type="text"
-                                                value={data.nickname}
-                                                onChange={(e) => setData('nickname', e.target.value)}
-                                                placeholder="Your nickname"
-                                                maxLength={20}
-                                                className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-400 focus:ring-green-400 transition-colors font-medium text-center"
-                                                autoFocus
-                                                required
-                                            />
-                                            {errors.nickname && (
-                                                <p className="mt-2 text-sm text-red-600 font-medium">
-                                                    {errors.nickname}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <button
-                                            type="submit"
-                                            disabled={processing || data.nickname.length < 2}
-                                            className="w-full rounded-full bg-green-500 px-6 py-3 font-bold text-white shadow-lg transition hover:scale-105 hover:bg-green-600 border-b-4 border-green-700 disabled:opacity-50 disabled:hover:scale-100"
-                                        >
-                                            {processing ? 'Joining...' : 'Join Room'}
-                                        </button>
-                                    </form>
-                                </div>
-                            )}
-
-                            {/* Show lobby player list when waiting and user has joined */}
-                            {room.status === 'waiting' && (!needsToJoin || !isGuest) && (
-                                <>
-                                    <div className="flex items-center justify-between mb-6">
-                                        <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                                            {'\u{1F465}'} Players
-                                        </h3>
-                                        <p className="text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                                            {Math.max(0, minPlayers - connectedPlayers.length) > 0
-                                                ? `Need ${minPlayers - connectedPlayers.length} more`
-                                                : 'Ready to start!'}
+            {/* Waiting: Full layout with sidebar */}
+            {room.status === 'waiting' && (
+                <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+                    {/* Main content */}
+                    <div>
+                        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+                            {/* Room Header */}
+                            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5">
+                                <div className="flex items-center gap-4">
+                                    <span className="text-4xl">
+                                        {getGameEmoji(room.game?.slug)}
+                                    </span>
+                                    <div>
+                                        <h1 className="text-xl font-black text-white">
+                                            {room.name || room.game?.name || 'Game Room'}
+                                        </h1>
+                                        <p className="text-blue-100">
+                                            {room.game?.name} - {connectedPlayers.length}/{maxPlayers} players
                                         </p>
                                     </div>
+                                </div>
+                            </div>
 
-                                    <div className="grid gap-3 sm:grid-cols-2">
-                                        {connectedPlayers.map((player) => (
-                                            <PlayerCard
-                                                key={player.id}
-                                                player={player}
-                                                isCurrentUser={player.id === currentPlayer?.id}
-                                            />
-                                        ))}
-                                        {Array.from({
-                                            length: Math.max(0, minPlayers - connectedPlayers.length),
-                                        }).map((_, i) => (
-                                            <EmptySlot key={`empty-${i}`} />
-                                        ))}
+                            <div className="p-6">
+                                {/* Show join form for guests who need to enter nickname */}
+                                {needsToJoin && isGuest && (
+                                    <div className="text-center py-8">
+                                        <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-400 to-green-500 rounded-full mb-4 shadow-lg">
+                                            <span className="text-4xl">{'\u{1F44B}'}</span>
+                                        </div>
+                                        <h3 className="text-xl font-black text-gray-900 mb-2">
+                                            Join this game!
+                                        </h3>
+                                        <p className="text-gray-500 mb-6">
+                                            Enter your nickname to join the room
+                                        </p>
+                                        <form onSubmit={handleJoin} className="max-w-xs mx-auto space-y-4">
+                                            <div>
+                                                <input
+                                                    type="text"
+                                                    value={data.nickname}
+                                                    onChange={(e) => setData('nickname', e.target.value)}
+                                                    placeholder="Your nickname"
+                                                    maxLength={20}
+                                                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-400 focus:ring-green-400 transition-colors font-medium text-center"
+                                                    autoFocus
+                                                    required
+                                                />
+                                                {errors.nickname && (
+                                                    <p className="mt-2 text-sm text-red-600 font-medium">
+                                                        {errors.nickname}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <button
+                                                type="submit"
+                                                disabled={processing || data.nickname.length < 2}
+                                                className="w-full rounded-full bg-green-500 px-6 py-3 font-bold text-white shadow-lg transition hover:scale-105 hover:bg-green-600 border-b-4 border-green-700 disabled:opacity-50 disabled:hover:scale-100"
+                                            >
+                                                {processing ? 'Joining...' : 'Join Room'}
+                                            </button>
+                                        </form>
                                     </div>
-                                </>
-                            )}
+                                )}
 
-                            {/* Show game UI when playing or finished */}
-                            {(room.status === 'playing' || room.status === 'finished') && gameState && room.game && (
-                                <CheeseThiefGame
-                                    gameState={gameState}
-                                    roomCode={room.room_code}
-                                    gameSlug={room.game.slug}
-                                />
-                            )}
-                        </div>
-                    </div>
-                </div>
+                                {/* Show lobby player list when waiting and user has joined */}
+                                {!needsToJoin || !isGuest ? (
+                                    <>
+                                        <div className="flex items-center justify-between mb-6">
+                                            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                                {'\u{1F465}'} Players
+                                            </h3>
+                                            <p className="text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                                                {Math.max(0, minPlayers - connectedPlayers.length) > 0
+                                                    ? `Need ${minPlayers - connectedPlayers.length} more`
+                                                    : 'Ready to start!'}
+                                            </p>
+                                        </div>
 
-                {/* Sidebar */}
-                <div className="space-y-6">
-                    {/* Room Code & Link */}
-                    <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                        <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 px-6 py-4">
-                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                {'\u{1F511}'} Invite Friends
-                            </h3>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            {/* Room Code */}
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">
-                                    Room Code
-                                </label>
-                                <div className="flex items-center gap-2">
-                                    <code className="flex-1 rounded-xl bg-gray-100 px-4 py-3 text-center text-2xl font-mono font-black tracking-[0.3em] text-gray-900">
-                                        {room.room_code}
-                                    </code>
-                                    <button
-                                        onClick={copyRoomCode}
-                                        className={`rounded-xl p-3 transition hover:scale-105 ${
-                                            copiedCode
-                                                ? 'bg-green-100 text-green-600'
-                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                        }`}
-                                        title="Copy room code"
-                                    >
-                                        {copiedCode ? (
-                                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                            </svg>
-                                        ) : (
-                                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                            </svg>
-                                        )}
-                                    </button>
-                                </div>
+                                        <div className="grid gap-3 sm:grid-cols-2">
+                                            {connectedPlayers.map((player) => (
+                                                <PlayerCard
+                                                    key={player.id}
+                                                    player={player}
+                                                    isCurrentUser={player.id === currentPlayer?.id}
+                                                />
+                                            ))}
+                                            {Array.from({
+                                                length: Math.max(0, minPlayers - connectedPlayers.length),
+                                            }).map((_, i) => (
+                                                <EmptySlot key={`empty-${i}`} />
+                                            ))}
+                                        </div>
+                                    </>
+                                ) : null}
                             </div>
-
-                            {/* Divider */}
-                            <div className="relative">
-                                <div className="absolute inset-0 flex items-center">
-                                    <div className="w-full border-t border-gray-200" />
-                                </div>
-                                <div className="relative flex justify-center text-sm">
-                                    <span className="bg-white px-3 text-gray-500">or share link</span>
-                                </div>
-                            </div>
-
-                            {/* Room Link */}
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">
-                                    Direct Link
-                                </label>
-                                <div className="flex items-center gap-2">
-                                    <div className="flex-1 rounded-xl bg-gray-100 px-3 py-3 text-sm text-gray-600 truncate font-medium">
-                                        {roomLink}
-                                    </div>
-                                    <button
-                                        onClick={copyRoomLink}
-                                        className={`rounded-xl p-3 transition hover:scale-105 ${
-                                            copiedLink
-                                                ? 'bg-green-100 text-green-600'
-                                                : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
-                                        }`}
-                                        title="Copy link"
-                                    >
-                                        {copiedLink ? (
-                                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                            </svg>
-                                        ) : (
-                                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                                            </svg>
-                                        )}
-                                    </button>
-                                </div>
-                            </div>
-
-                            <p className="text-xs text-gray-500 text-center">
-                                Friends can join directly with the link!
-                            </p>
                         </div>
                     </div>
 
-                    {/* Actions */}
-                    {room.status === 'waiting' && (
+                    {/* Sidebar */}
+                    <div className="space-y-6">
+                        {/* Room Code & Link */}
+                        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                            <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 px-6 py-4">
+                                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                    {'\u{1F511}'} Invite Friends
+                                </h3>
+                            </div>
+                            <div className="p-6 space-y-4">
+                                {/* Room Code */}
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                        Room Code
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <code className="flex-1 rounded-xl bg-gray-100 px-4 py-3 text-center text-2xl font-mono font-black tracking-[0.3em] text-gray-900">
+                                            {room.room_code}
+                                        </code>
+                                        <button
+                                            onClick={copyRoomCode}
+                                            className={`rounded-xl p-3 transition hover:scale-105 ${
+                                                copiedCode
+                                                    ? 'bg-green-100 text-green-600'
+                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                            }`}
+                                            title="Copy room code"
+                                        >
+                                            {copiedCode ? (
+                                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                </svg>
+                                            ) : (
+                                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                </svg>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Divider */}
+                                <div className="relative">
+                                    <div className="absolute inset-0 flex items-center">
+                                        <div className="w-full border-t border-gray-200" />
+                                    </div>
+                                    <div className="relative flex justify-center text-sm">
+                                        <span className="bg-white px-3 text-gray-500">or share link</span>
+                                    </div>
+                                </div>
+
+                                {/* Room Link */}
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                        Direct Link
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex-1 rounded-xl bg-gray-100 px-3 py-3 text-sm text-gray-600 truncate font-medium">
+                                            {roomLink}
+                                        </div>
+                                        <button
+                                            onClick={copyRoomLink}
+                                            className={`rounded-xl p-3 transition hover:scale-105 ${
+                                                copiedLink
+                                                    ? 'bg-green-100 text-green-600'
+                                                    : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                                            }`}
+                                            title="Copy link"
+                                        >
+                                            {copiedLink ? (
+                                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                </svg>
+                                            ) : (
+                                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                                </svg>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <p className="text-xs text-gray-500 text-center">
+                                    Friends can join directly with the link!
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Actions */}
                         <div className="bg-white rounded-2xl shadow-lg p-6">
                             <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
                                 {'\u{1F3AE}'} Actions
@@ -328,28 +331,28 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                                 </button>
                             </div>
                         </div>
-                    )}
 
-                    {/* Game Info */}
-                    {room.game && (
-                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6">
-                            <div className="flex items-center gap-4">
-                                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 text-3xl shadow-md">
-                                    {getGameEmoji(room.game.slug)}
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-gray-900">
-                                        {room.game.name}
-                                    </h3>
-                                    <p className="text-sm text-gray-500">
-                                        {room.game.min_players}-{room.game.max_players} players
-                                    </p>
+                        {/* Game Info */}
+                        {room.game && (
+                            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 text-3xl shadow-md">
+                                        {getGameEmoji(room.game.slug)}
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-gray-900">
+                                            {room.game.name}
+                                        </h3>
+                                        <p className="text-sm text-gray-500">
+                                            {room.game.min_players}-{room.game.max_players} players
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Overlay Chat and Voice Components */}
             {currentPlayer && (
