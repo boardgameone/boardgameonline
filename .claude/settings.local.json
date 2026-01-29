@@ -12,7 +12,13 @@
       "mcp__laravel-boost__database-query",
       "mcp__laravel-boost__tinker",
       "Bash(npm install:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "mcp__laravel-boost__database-schema",
+      "Bash(xargs:*)",
+      "Bash(grep:*)",
+      "mcp__laravel-boost__application-info",
+      "Bash(php artisan migrate:status:*)",
+      "Bash(php artisan tinker:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
