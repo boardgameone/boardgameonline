@@ -12,10 +12,10 @@ export default function StackedTrio({ cards, size = 'sm' }: StackedTrioProps) {
 
     // Size-specific dimensions for the container
     const containerSizes = {
-        xs: 'w-14 h-16',
-        sm: 'w-20 h-24',
-        md: 'w-24 h-32',
-        lg: 'w-28 h-36',
+        xs: 'w-[3.5rem] h-[4.25rem]',
+        sm: 'w-[5.5rem] h-[6.5rem]',
+        md: 'w-[6.5rem] h-[8.5rem]',
+        lg: 'w-[7.5rem] h-[9.5rem]',
     };
 
     return (

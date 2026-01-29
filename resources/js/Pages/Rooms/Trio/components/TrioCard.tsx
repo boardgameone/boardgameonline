@@ -36,17 +36,17 @@ export default function TrioCard({
     className = '',
 }: TrioCardProps) {
     const sizeClasses = {
-        xs: 'w-10 h-14 text-sm',
-        sm: 'w-16 h-20 text-xl',
-        md: 'w-20 h-28 text-3xl',
-        lg: 'w-24 h-32 text-4xl',
+        xs: 'w-[2.75rem] h-[3.75rem] text-sm',
+        sm: 'w-[4.5rem] h-[5.5rem] text-xl',
+        md: 'w-[5.5rem] h-[7.5rem] text-2xl',
+        lg: 'w-[6.5rem] h-[8.5rem] text-3xl',
     };
 
     const cornerNumberClasses = {
         xs: 'text-[0.35rem]',
-        sm: 'text-[0.5rem]',
-        md: 'text-xs',
-        lg: 'text-sm',
+        sm: 'text-[0.55rem]',
+        md: 'text-[0.65rem]',
+        lg: 'text-xs',
     };
 
     const interactiveClasses = !disabled && onClick
@@ -65,15 +65,32 @@ export default function TrioCard({
             >
                 {/* Front face (face down) */}
                 <div
-                    className={`card-face-front rounded-lg bg-gradient-to-br from-gray-400 to-gray-500 text-white font-bold flex items-center justify-center shadow-xl border-4 border-black ${interactiveClasses} ${disabledClasses}`}
+                    className={`card-face-front rounded-lg bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 text-white font-bold flex items-center justify-center shadow-xl border-4 border-blue-900 overflow-hidden ${interactiveClasses} ${disabledClasses}`}
                 >
-                    {faceUp ? null : '❓'}
+                    {/* Decorative pattern for card back */}
+                    <div className="absolute inset-0 opacity-30">
+                        <div className="absolute inset-2 border-2 border-white/50 rounded" />
+                        <div className="absolute inset-3 border border-white/30 rounded" />
+                        {/* Diamond pattern */}
+                        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                            <pattern id="cardBackPattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+                                <path d="M10 0 L20 10 L10 20 L0 10 Z" fill="white" fillOpacity="0.15" />
+                            </pattern>
+                            <rect x="0" y="0" width="100" height="100" fill="url(#cardBackPattern)" />
+                        </svg>
+                    </div>
+                    {/* Center emblem */}
+                    <div className="relative z-10 flex items-center justify-center">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/20 flex items-center justify-center border-2 border-white/40">
+                            <span className="text-white/90 font-black text-lg sm:text-xl">T</span>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Back face (face up) */}
                 {value && cardColor && (
                     <div
-                        className={`card-face-back rounded-lg shadow-xl border-4 border-black relative overflow-hidden flex items-center justify-center ${interactiveClasses} ${disabledClasses}`}
+                        className={`card-face-back rounded-lg shadow-xl border-4 border-blue-900 relative overflow-hidden flex items-center justify-center ${interactiveClasses} ${disabledClasses}`}
                         style={{ backgroundColor: cardColor.bg }}
                     >
                         {/* Background Pattern */}

@@ -276,9 +276,6 @@ export default function PlayingPhase({
 
                         {/* Middle grid - compact, not stretched */}
                         <div className="rounded-xl bg-white p-3 shadow-lg flex-shrink-0">
-                            <h3 className="font-bold text-gray-900 mb-2 text-center text-sm">
-                                Middle Grid
-                            </h3>
                             <div className="flex justify-center">
                                 <MiddleGrid
                                     cards={middleGrid}
