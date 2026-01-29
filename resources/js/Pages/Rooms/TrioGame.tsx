@@ -89,37 +89,17 @@ export default function TrioGamePage({ auth, room, currentPlayer, isHost, gameSt
     const minPlayers = room.game?.min_players || 3;
     const maxPlayers = room.game?.max_players || 8;
 
+    // Use fullHeight mode only during playing phase
+    const isPlaying = room.status === 'playing';
+
     return (
-        <GameLayout
-            header={
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <Link
-                            href={room.game ? route('games.show', room.game.slug) : route('games.index')}
-                            className="text-gray-500 hover:text-gray-700"
-                        >
-                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                            </svg>
-                        </Link>
-                        <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                            {room.name || 'TRIO'}
-                        </h2>
-                    </div>
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        room.status === 'waiting' ? 'bg-yellow-100 text-yellow-800' :
-                        room.status === 'playing' ? 'bg-green-100 text-green-800' :
-                        'bg-gray-100 text-gray-800'
-                    }`}>
-                        {room.status.charAt(0).toUpperCase() + room.status.slice(1)}
-                    </span>
-                </div>
-            }
-        >
+        <GameLayout fullHeight={isPlaying}>
             <Head title={`TRIO - Room ${room.room_code}`} />
 
-            <div className="py-8">
-                <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+            <div className={isPlaying ? 'h-full py-2' : 'py-8'}>
+                <div className={`mx-auto px-4 sm:px-6 lg:px-8 ${
+                    isPlaying ? 'max-w-full h-full' : 'max-w-5xl'
+                }`}>
                     {/* Show join form for guests who need to enter nickname */}
                     {needsToJoin && isGuest && (
                         <div className="rounded-xl bg-white p-8 shadow-lg">

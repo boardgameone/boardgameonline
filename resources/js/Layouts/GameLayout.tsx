@@ -5,10 +5,12 @@ import { PropsWithChildren, ReactNode, useState } from 'react';
 
 interface GameLayoutProps {
     header?: ReactNode;
+    fullHeight?: boolean;
 }
 
 export default function GameLayout({
     header,
+    fullHeight = false,
     children,
 }: PropsWithChildren<GameLayoutProps>) {
     const { auth } = usePage<{ auth: { user: User | null } }>().props;
@@ -18,7 +20,9 @@ export default function GameLayout({
         useState(false);
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-yellow-400 to-yellow-500">
+        <div className={`bg-gradient-to-b from-yellow-400 to-yellow-500 ${
+            fullHeight ? 'h-screen flex flex-col overflow-hidden' : 'min-h-screen'
+        }`}>
             {/* Nav */}
             <nav className="relative">
                 {/* Gradient Background */}
@@ -291,18 +295,22 @@ export default function GameLayout({
                 </header>
             )}
 
-            <main className="py-6 sm:py-8">
-                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <main className={fullHeight ? 'flex-1 overflow-auto' : 'py-6 sm:py-8'}>
+                <div className={`mx-auto px-4 sm:px-6 lg:px-8 ${
+                    fullHeight ? 'max-w-full h-full' : 'max-w-7xl'
+                }`}>
                     {children}
                 </div>
             </main>
 
-            {/* Footer */}
-            <footer className="py-6 text-center">
-                <p className="text-yellow-800 font-medium text-sm">
-                    {'\u{1F3B2}'} Play together, anywhere! {'\u{1F3AE}'}
-                </p>
-            </footer>
+            {/* Footer - hidden in fullHeight mode */}
+            {!fullHeight && (
+                <footer className="py-6 text-center">
+                    <p className="text-yellow-800 font-medium text-sm">
+                        {'\u{1F3B2}'} Play together, anywhere! {'\u{1F3AE}'}
+                    </p>
+                </footer>
+            )}
         </div>
     );
 }

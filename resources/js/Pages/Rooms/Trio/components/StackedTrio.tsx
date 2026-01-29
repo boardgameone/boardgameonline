@@ -2,7 +2,7 @@ import TrioCard from './TrioCard';
 
 interface StackedTrioProps {
     cards: number[];
-    size?: 'sm' | 'md' | 'lg';
+    size?: 'xs' | 'sm' | 'md' | 'lg';
 }
 
 export default function StackedTrio({ cards, size = 'sm' }: StackedTrioProps) {
@@ -12,6 +12,7 @@ export default function StackedTrio({ cards, size = 'sm' }: StackedTrioProps) {
 
     // Size-specific dimensions for the container
     const containerSizes = {
+        xs: 'w-14 h-16',
         sm: 'w-20 h-24',
         md: 'w-24 h-32',
         lg: 'w-28 h-36',

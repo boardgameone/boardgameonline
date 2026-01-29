@@ -3,7 +3,7 @@ import { CardPattern } from './CardPattern';
 interface TrioCardProps {
     value?: number | null;
     faceUp?: boolean;
-    size?: 'sm' | 'md' | 'lg';
+    size?: 'xs' | 'sm' | 'md' | 'lg';
     disabled?: boolean;
     onClick?: () => void;
     className?: string;
@@ -36,12 +36,14 @@ export default function TrioCard({
     className = '',
 }: TrioCardProps) {
     const sizeClasses = {
+        xs: 'w-10 h-14 text-sm',
         sm: 'w-16 h-20 text-xl',
         md: 'w-20 h-28 text-3xl',
         lg: 'w-24 h-32 text-4xl',
     };
 
     const cornerNumberClasses = {
+        xs: 'text-[0.35rem]',
         sm: 'text-[0.5rem]',
         md: 'text-xs',
         lg: 'text-sm',

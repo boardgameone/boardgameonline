@@ -16,6 +16,7 @@ interface PlayerStatsProps {
     canReveal: boolean;
     onAskHighest: (playerId: number) => void;
     onAskLowest: (playerId: number) => void;
+    compact?: boolean;
 }
 
 export default function PlayerStats({
@@ -24,25 +25,30 @@ export default function PlayerStats({
     canReveal,
     onAskHighest,
     onAskLowest,
+    compact = false,
 }: PlayerStatsProps) {
     return (
-        <div className="space-y-3">
+        <div className={compact ? 'space-y-2' : 'space-y-3'}>
             {players.map((player, index) => (
                 <div
                     key={player.id}
-                    className={`rounded-xl border-2 p-4 transition-all duration-300 animate-slideIn ${
+                    className={`rounded-lg border-2 transition-all duration-300 animate-slideIn ${
+                        compact ? 'p-2' : 'p-4 rounded-xl'
+                    } ${
                         player.is_current_turn
-                            ? 'border-yellow-400 bg-gradient-to-r from-yellow-50 to-yellow-100 shadow-lg animate-pulse'
+                            ? 'border-yellow-400 bg-gradient-to-r from-yellow-50 to-yellow-100 shadow-lg'
                             : 'border-gray-200 bg-white'
                     }`}
                     style={{ animationDelay: `${index * 100}ms` }}
                 >
-                    <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-3">
+                    <div className={`flex items-center justify-between ${compact ? '' : 'mb-2'}`}>
+                        <div className={`flex items-center ${compact ? 'gap-2' : 'gap-3'}`}>
                             {/* Avatar */}
                             <div
-                                className={`h-12 w-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md ${
-                                    player.is_current_turn ? 'ring-4 ring-yellow-400 ring-offset-2' : ''
+                                className={`rounded-full flex items-center justify-center text-white font-bold shadow-md ${
+                                    compact ? 'h-8 w-8 text-sm' : 'h-12 w-12 text-lg'
+                                } ${
+                                    player.is_current_turn ? (compact ? 'ring-2 ring-yellow-400' : 'ring-4 ring-yellow-400 ring-offset-2') : ''
                                 }`}
                                 style={{ backgroundColor: player.avatar_color }}
                             >
@@ -51,22 +57,26 @@ export default function PlayerStats({
 
                             {/* Player info */}
                             <div>
-                                <p className="font-bold text-gray-900 flex items-center gap-2">
-                                    {player.nickname}
+                                <p className={`font-bold text-gray-900 flex items-center gap-1 ${compact ? 'text-sm' : ''}`}>
+                                    <span className={compact ? 'truncate max-w-[80px]' : ''}>{player.nickname}</span>
                                     {player.id === currentPlayerId && (
-                                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">
+                                        <span className={`bg-blue-100 text-blue-700 rounded-full font-semibold ${
+                                            compact ? 'text-[10px] px-1' : 'text-xs px-2 py-0.5'
+                                        }`}>
                                             You
                                         </span>
                                     )}
                                     {player.is_current_turn && (
-                                        <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-semibold">
+                                        <span className={`bg-yellow-100 text-yellow-700 rounded-full font-semibold ${
+                                            compact ? 'text-[10px] px-1' : 'text-xs px-2 py-0.5'
+                                        }`}>
                                             Turn
                                         </span>
                                     )}
                                 </p>
-                                <div className="flex items-center gap-3 text-sm text-gray-600 mt-1">
+                                <div className={`flex items-center gap-2 text-gray-600 ${compact ? 'text-xs' : 'text-sm mt-1'}`}>
                                     <span className="flex items-center gap-1">
-                                        <span className="font-semibold">{player.hand_count}</span> cards
+                                        <span className="font-semibold">{player.hand_count}</span>{compact ? '' : ' cards'}
                                     </span>
                                     <span className="flex items-center gap-1">
                                         🏆 <span className="font-semibold">{player.trios_count}</span>
@@ -77,33 +87,36 @@ export default function PlayerStats({
 
                         {/* Ask buttons */}
                         {canReveal && player.hand_count > 0 && (
-                            <div className="flex gap-2">
+                            <div className={`flex ${compact ? 'gap-1' : 'gap-2'}`}>
                                 <button
                                     onClick={() => onAskHighest(player.id)}
-                                    className="rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-2 text-sm font-bold text-white shadow hover:from-blue-600 hover:to-blue-700 transition-all duration-200 hover:scale-105 active:scale-95"
+                                    className={`rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 font-bold text-white shadow hover:from-blue-600 hover:to-blue-700 transition-all duration-200 hover:scale-105 active:scale-95 ${
+                                        compact ? 'px-2 py-1 text-xs' : 'px-4 py-2 text-sm'
+                                    }`}
                                 >
-                                    High
+                                    {compact ? 'H' : 'High'}
                                 </button>
                                 <button
                                     onClick={() => onAskLowest(player.id)}
-                                    className="rounded-lg bg-gradient-to-r from-purple-500 to-purple-600 px-4 py-2 text-sm font-bold text-white shadow hover:from-purple-600 hover:to-purple-700 transition-all duration-200 hover:scale-105 active:scale-95"
+                                    className={`rounded-lg bg-gradient-to-r from-purple-500 to-purple-600 font-bold text-white shadow hover:from-purple-600 hover:to-purple-700 transition-all duration-200 hover:scale-105 active:scale-95 ${
+                                        compact ? 'px-2 py-1 text-xs' : 'px-4 py-2 text-sm'
+                                    }`}
                                 >
-                                    Low
+                                    {compact ? 'L' : 'Low'}
                                 </button>
                             </div>
                         )}
                     </div>
 
-                    {/* Collected trios */}
+                    {/* Collected trios - show inline in compact mode */}
                     {player.collected_trios.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-gray-200">
-                            <p className="text-xs font-semibold text-gray-600 mb-2">Collected Trios:</p>
-                            <div className="flex gap-4 flex-wrap">
+                        <div className={compact ? 'mt-2 pt-2 border-t border-gray-200' : 'mt-3 pt-3 border-t border-gray-200'}>
+                            <div className={`flex gap-2 flex-wrap ${compact ? '' : 'gap-4'}`}>
                                 {player.collected_trios.map((trio, idx) => (
                                     <StackedTrio
                                         key={idx}
                                         cards={trio}
-                                        size="sm"
+                                        size="xs"
                                     />
                                 ))}
                             </div>

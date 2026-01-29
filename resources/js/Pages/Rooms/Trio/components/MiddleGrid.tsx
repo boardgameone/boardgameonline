@@ -10,12 +10,13 @@ interface MiddleGridProps {
     cards: MiddleCard[];
     canReveal: boolean;
     onRevealCard: (position: number) => void;
+    compact?: boolean;
 }
 
-export default function MiddleGrid({ cards, canReveal, onRevealCard }: MiddleGridProps) {
+export default function MiddleGrid({ cards, canReveal, onRevealCard, compact = false }: MiddleGridProps) {
     return (
-        <div className="w-full max-w-md mx-auto">
-            <div className="grid grid-cols-3 gap-3 md:gap-4">
+        <div className={compact ? 'w-fit' : 'w-full max-w-md mx-auto'}>
+            <div className={`grid grid-cols-3 ${compact ? 'gap-1.5' : 'gap-3 md:gap-4'}`}>
                 {cards.map((card, index) => (
                     <div
                         key={card.position}
@@ -25,7 +26,7 @@ export default function MiddleGrid({ cards, canReveal, onRevealCard }: MiddleGri
                         <TrioCard
                             value={card.value}
                             faceUp={card.face_up}
-                            size="md"
+                            size={compact ? 'sm' : 'md'}
                             disabled={!canReveal || card.face_up}
                             onClick={() => {
                                 if (canReveal && !card.face_up) {
