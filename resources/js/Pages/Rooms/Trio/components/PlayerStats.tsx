@@ -1,4 +1,5 @@
 import StackedTrio from './StackedTrio';
+import GameIcon from '@/Components/GameIcon';
 
 interface Player {
     id: number;
@@ -79,7 +80,7 @@ export default function PlayerStats({
                                         <span className="font-semibold">{player.hand_count}</span>{compact ? '' : ' cards'}
                                     </span>
                                     <span className="flex items-center gap-1">
-                                        🏆 <span className="font-semibold">{player.trios_count}</span>
+                                        <GameIcon name="trophy" size="sm" className="text-yellow-500" /> <span className="font-semibold">{player.trios_count}</span>
                                     </span>
                                 </div>
                             </div>

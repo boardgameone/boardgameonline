@@ -1,3 +1,4 @@
+import GameIcon from '@/Components/GameIcon';
 import { Link } from '@inertiajs/react';
 import { PropsWithChildren } from 'react';
 
@@ -36,18 +37,18 @@ export default function Guest({ children }: PropsWithChildren) {
 
             {/* Main content */}
             <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-8">
-                {/* Decorative dice */}
-                <div className="absolute top-20 left-10 text-4xl opacity-20 rotate-12 hidden lg:block">
-                    {'\u{1F3B2}'}
+                {/* Decorative icons */}
+                <div className="absolute top-20 left-10 opacity-20 rotate-12 hidden lg:block text-yellow-700">
+                    <GameIcon name="dice" size="lg" />
                 </div>
-                <div className="absolute bottom-20 right-10 text-5xl opacity-20 -rotate-12 hidden lg:block">
-                    {'\u{1F3B2}'}
+                <div className="absolute bottom-20 right-10 opacity-20 -rotate-12 hidden lg:block text-yellow-700">
+                    <GameIcon name="dice" size="xl" />
                 </div>
-                <div className="absolute top-40 right-20 text-3xl opacity-15 rotate-45 hidden lg:block">
-                    {'\u{1F0CF}'}
+                <div className="absolute top-40 right-20 opacity-15 rotate-45 hidden lg:block text-yellow-700">
+                    <GameIcon name="card" size="lg" />
                 </div>
-                <div className="absolute bottom-40 left-20 text-4xl opacity-15 -rotate-45 hidden lg:block">
-                    {'\u{265F}'}
+                <div className="absolute bottom-40 left-20 opacity-15 -rotate-45 hidden lg:block text-yellow-700">
+                    <GameIcon name="chess" size="lg" />
                 </div>
 
                 {/* Card container */}

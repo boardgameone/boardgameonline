@@ -5,7 +5,9 @@ import PlayerStats from './components/PlayerStats';
 import TurnReveals from './components/TurnReveals';
 import TrioCelebration from './components/TrioCelebration';
 import TrioCard from './components/TrioCard';
+import SoundToggle from '../CheeseThief/components/SoundToggle';
 import { useSound } from '@/hooks/useSound';
+import GameIcon from '@/Components/GameIcon';
 
 interface Player {
     id: number;
@@ -167,24 +169,27 @@ export default function PlayingPhase({
     return (
         <div className="h-full flex flex-col gap-2 lg:gap-3">
             {/* Compact turn banner */}
-            <div className={`rounded-lg px-4 py-2 text-center border-2 transition-all duration-300 flex-shrink-0 ${
+            <div className={`rounded-lg px-4 py-2 border-2 transition-all duration-300 flex-shrink-0 ${
                 currentTurnPlayer?.id === currentPlayerId
                     ? 'bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-400'
                     : 'bg-blue-50 border-blue-200'
             }`}>
-                <div className="flex items-center justify-center gap-4">
-                    <span className={`font-bold ${
-                        currentTurnPlayer?.id === currentPlayerId ? 'text-yellow-900' : 'text-blue-900'
-                    }`}>
-                        {currentTurnPlayer?.id === currentPlayerId
-                            ? "🎯 Your turn!"
-                            : `${currentTurnPlayer?.nickname}'s turn`}
-                    </span>
-                    <span className="text-sm font-medium" style={{
-                        color: currentTurnPlayer?.id === currentPlayerId ? '#78350f' : '#1e40af'
-                    }}>
-                        Turn {currentTurn.turn_number} • {currentTurn.reveals.length} reveal{currentTurn.reveals.length !== 1 ? 's' : ''}
-                    </span>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <span className={`font-bold ${
+                            currentTurnPlayer?.id === currentPlayerId ? 'text-yellow-900' : 'text-blue-900'
+                        }`}>
+                            {currentTurnPlayer?.id === currentPlayerId
+                                ? <><GameIcon name="target" className="inline-block mr-1" /> Your turn!</>
+                                : `${currentTurnPlayer?.nickname}'s turn`}
+                        </span>
+                        <span className="text-sm font-medium" style={{
+                            color: currentTurnPlayer?.id === currentPlayerId ? '#78350f' : '#1e40af'
+                        }}>
+                            Turn {currentTurn.turn_number} • {currentTurn.reveals.length} reveal{currentTurn.reveals.length !== 1 ? 's' : ''}
+                        </span>
+                    </div>
+                    <SoundToggle />
                 </div>
             </div>
 
@@ -206,8 +211,8 @@ export default function PlayingPhase({
                     )}
 
                     {/* Middle grid */}
-                    <div className="rounded-xl bg-white p-4 shadow-lg">
-                        <h3 className="font-bold text-gray-900 mb-3 text-center">
+                    <div className="rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 p-4 shadow-lg border border-teal-200">
+                        <h3 className="font-bold text-emerald-900 mb-3 text-center">
                             Middle Grid
                         </h3>
                         <MiddleGrid
@@ -218,8 +223,8 @@ export default function PlayingPhase({
                     </div>
 
                     {/* Players */}
-                    <div className="rounded-xl bg-white p-4 shadow-lg">
-                        <h3 className="font-bold text-gray-900 mb-3">Players</h3>
+                    <div className="rounded-xl bg-gradient-to-br from-slate-50 to-gray-100 p-4 shadow-lg border border-slate-200">
+                        <h3 className="font-bold text-slate-800 mb-3">Players</h3>
                         <PlayerStats
                             players={players}
                             currentPlayerId={currentPlayerId}
@@ -231,8 +236,8 @@ export default function PlayingPhase({
 
                     {/* My hand */}
                     {myHand && myHand.length > 0 && (
-                        <div className="rounded-xl bg-gradient-to-br from-purple-50 to-purple-100 p-4 shadow-lg border-2 border-purple-200">
-                            <h3 className="font-bold text-purple-900 mb-3 text-center">
+                        <div className="rounded-xl bg-gradient-to-br from-sky-50 to-blue-100 p-4 shadow-lg border-2 border-sky-300">
+                            <h3 className="font-bold text-sky-900 mb-3 text-center">
                                 Your Hand
                             </h3>
                             <div className="flex flex-wrap gap-2 justify-center">
@@ -275,7 +280,7 @@ export default function PlayingPhase({
                         )}
 
                         {/* Middle grid - compact, not stretched */}
-                        <div className="rounded-xl bg-white p-3 shadow-lg flex-shrink-0">
+                        <div className="rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 p-3 shadow-lg border border-teal-200 flex-shrink-0">
                             <div className="flex justify-center">
                                 <MiddleGrid
                                     cards={middleGrid}
@@ -287,8 +292,8 @@ export default function PlayingPhase({
                         </div>
 
                         {/* Your Hand - horizontal below middle grid */}
-                        <div className="rounded-xl bg-gradient-to-br from-purple-50 to-purple-100 p-3 shadow-lg border-2 border-purple-200 flex-shrink-0">
-                            <h3 className="font-bold text-purple-900 mb-2 text-center text-sm">
+                        <div className="rounded-xl bg-gradient-to-br from-sky-50 to-blue-100 p-3 shadow-lg border-2 border-sky-300 flex-shrink-0">
+                            <h3 className="font-bold text-sky-900 mb-2 text-center text-sm">
                                 Your Hand
                             </h3>
                             {myHand && myHand.length > 0 ? (
@@ -308,7 +313,7 @@ export default function PlayingPhase({
                                     ))}
                                 </div>
                             ) : (
-                                <div className="text-center text-purple-400 text-sm py-2">
+                                <div className="text-center text-sky-400 text-sm py-2">
                                     No cards in hand
                                 </div>
                             )}
@@ -317,8 +322,8 @@ export default function PlayingPhase({
 
                     {/* Right column: Players */}
                     <div className="lg:col-span-4 flex flex-col">
-                        <div className="rounded-xl bg-white p-3 shadow-lg flex-1 flex flex-col min-h-0">
-                            <h3 className="font-bold text-gray-900 mb-2 text-sm flex-shrink-0">Players</h3>
+                        <div className="rounded-xl bg-gradient-to-br from-slate-50 to-gray-100 p-3 shadow-lg border border-slate-200 flex-1 flex flex-col min-h-0">
+                            <h3 className="font-bold text-slate-800 mb-2 text-sm flex-shrink-0">Players</h3>
                             <div className="flex-1 overflow-y-auto">
                                 <PlayerStats
                                     players={players}

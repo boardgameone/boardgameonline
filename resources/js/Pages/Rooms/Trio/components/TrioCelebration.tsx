@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import Modal from '@/Components/Modal';
 import TrioCard from './TrioCard';
+import GameIcon from '@/Components/GameIcon';
 
 interface TrioCelebrationProps {
     show: boolean;
@@ -51,7 +52,9 @@ export default function TrioCelebration({ show, playerName, trioCards, onClose }
 
                 {/* Content */}
                 <div className="relative z-10">
-                    <div className="text-6xl mb-4 animate-bounce">🎉</div>
+                    <div className="text-white mb-4 animate-bounce flex justify-center">
+                        <GameIcon name="party" className="h-16 w-16" />
+                    </div>
                     <h2 className="text-3xl font-black text-white mb-2">TRIO!</h2>
                     <p className="text-xl text-green-100 mb-6 font-bold">
                         {playerName} claimed a trio!

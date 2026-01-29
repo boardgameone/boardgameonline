@@ -1,35 +1,42 @@
-import { useState, useEffect } from 'react';
+import { useState, ReactNode } from 'react';
 import Modal from '@/Components/Modal';
+import GameIcon from '@/Components/GameIcon';
 
 interface TutorialModalProps {
     show: boolean;
     onClose: () => void;
 }
 
+interface TutorialStep {
+    title: string;
+    content: string;
+    icon: ReactNode;
+}
+
 export default function TutorialModal({ show, onClose }: TutorialModalProps) {
     const [step, setStep] = useState(0);
     const [dontShowAgain, setDontShowAgain] = useState(false);
 
-    const steps = [
+    const steps: TutorialStep[] = [
         {
             title: 'Welcome to TRIO!',
             content: 'TRIO is a card game where you collect sets of three matching cards. First player to collect 3 trios wins!',
-            emoji: '🎴',
+            icon: <GameIcon name="card" className="h-16 w-16 text-blue-500" />,
         },
         {
             title: 'Revealing Cards',
             content: 'On your turn, reveal cards from the middle grid or ask other players for their highest or lowest card.',
-            emoji: '👀',
+            icon: <GameIcon name="eye" className="h-16 w-16 text-purple-500" />,
         },
         {
             title: 'Making a Trio',
             content: 'When you reveal 3 cards with the same number, you can claim them as a trio! They will be added to your collection.',
-            emoji: '✨',
+            icon: <GameIcon name="sparkles" className="h-16 w-16 text-amber-500" />,
         },
         {
             title: 'Win the Game',
             content: 'The first player to collect 3 trios wins! If cards don\'t match, end your turn and the next player goes.',
-            emoji: '🏆',
+            icon: <GameIcon name="trophy" className="h-16 w-16 text-yellow-500" />,
         },
     ];
 
@@ -73,7 +80,7 @@ export default function TutorialModal({ show, onClose }: TutorialModalProps) {
 
                 {/* Content */}
                 <div className="text-center mb-6">
-                    <div className="text-6xl mb-4">{currentStep.emoji}</div>
+                    <div className="flex justify-center mb-4">{currentStep.icon}</div>
                     <h2 className="text-2xl font-black text-gray-900 mb-3">
                         {currentStep.title}
                     </h2>

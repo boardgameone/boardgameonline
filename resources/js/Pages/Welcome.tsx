@@ -1,3 +1,4 @@
+import GameIcon from '@/Components/GameIcon';
 import { Game, PageProps } from '@/types';
 import { Head, Link } from '@inertiajs/react';
 
@@ -133,7 +134,6 @@ function TrioGameVisualSmall() {
 }
 
 function GameCard({ game }: { game: Game }) {
-    const gameEmoji = getGameEmoji(game.slug);
     const gradients: Record<string, string> = {
         'cheese-thief': 'from-amber-600 to-amber-800',
         'trio': 'from-blue-500 via-cyan-500 to-teal-500',
@@ -148,8 +148,12 @@ function GameCard({ game }: { game: Game }) {
             <div className={`aspect-square bg-gradient-to-br ${gradient} flex items-center justify-center`}>
                 {game.slug === 'trio' ? (
                     <TrioGameVisualSmall />
+                ) : game.slug === 'cheese-thief' ? (
+                    <span className="text-4xl sm:text-5xl group-hover:scale-125 transition-transform duration-500 drop-shadow-lg -rotate-[100deg]">{'\u{1F9C0}'}</span>
                 ) : (
-                    <span className={`text-4xl sm:text-5xl group-hover:scale-125 transition-transform duration-500 drop-shadow-lg ${game.slug === 'cheese-thief' ? '-rotate-[100deg]' : ''}`}>{gameEmoji}</span>
+                    <div className="text-4xl sm:text-5xl group-hover:scale-125 transition-transform duration-500 drop-shadow-lg text-white">
+                        <GameIcon name="dice" size="xl" />
+                    </div>
                 )}
             </div>
             <div className="p-2 sm:p-3 text-center">
@@ -164,7 +168,9 @@ function ComingSoonCard() {
     return (
         <div className="bg-white/50 rounded-xl shadow-lg overflow-hidden">
             <div className="aspect-square bg-gray-200 flex items-center justify-center">
-                <span className="text-3xl sm:text-4xl opacity-40">{'\u{2753}'}</span>
+                <div className="text-3xl sm:text-4xl opacity-40 text-gray-400">
+                    <GameIcon name="question" size="xl" />
+                </div>
             </div>
             <div className="p-2 sm:p-3 text-center">
                 <h3 className="font-bold text-gray-400 text-sm sm:text-base">Coming Soon</h3>
@@ -172,12 +178,4 @@ function ComingSoonCard() {
             </div>
         </div>
     );
-}
-
-function getGameEmoji(slug: string): string {
-    const emojis: Record<string, string> = {
-        'cheese-thief': '\u{1F9C0}',
-        'trio': '\u{1F0CF}',
-    };
-    return emojis[slug] || '\u{1F3B2}';
 }

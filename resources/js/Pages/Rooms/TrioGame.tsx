@@ -1,3 +1,4 @@
+import GameIcon from '@/Components/GameIcon';
 import RoomChat from '@/Components/RoomChat';
 import VoiceChat from '@/Components/VoiceChat';
 import GameLayout from '@/Layouts/GameLayout';
@@ -104,8 +105,8 @@ export default function TrioGamePage({ auth, room, currentPlayer, isHost, gameSt
                     {needsToJoin && isGuest && (
                         <div className="rounded-xl bg-white p-8 shadow-lg">
                             <div className="text-center py-8">
-                                <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-400 to-green-500 rounded-full mb-4 shadow-lg">
-                                    <span className="text-4xl">{'\u{1F44B}'}</span>
+                                <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-400 to-green-500 rounded-full mb-4 shadow-lg text-white">
+                                    <GameIcon name="wave" size="xl" />
                                 </div>
                                 <h3 className="text-xl font-black text-gray-900 mb-2">
                                     Join this game!
@@ -177,11 +178,3 @@ export default function TrioGamePage({ auth, room, currentPlayer, isHost, gameSt
     );
 }
 
-function getGameEmoji(slug?: string): string {
-    if (!slug) return '\u{1F3B2}';
-    const emojis: Record<string, string> = {
-        'cheese-thief': '\u{1F9C0}',
-        'trio': '\u{1F3B4}',
-    };
-    return emojis[slug] || '\u{1F3B2}';
-}
