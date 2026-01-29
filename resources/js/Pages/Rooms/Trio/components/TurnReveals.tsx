@@ -50,14 +50,13 @@ export default function TurnReveals({
     };
 
     const isTrioValid = reveals.length === 3;
-    const borderColor = isTrioValid && canClaim ? 'border-green-500' : 'border-blue-200';
 
     if (compact) {
         return (
-            <div className={`rounded-lg bg-white shadow-lg border-2 ${borderColor} animate-slideIn`}>
+            <div className={`rounded-lg bg-gradient-to-br from-amber-50 to-orange-50 shadow-lg border-2 ${isTrioValid && canClaim ? 'border-green-500' : 'border-amber-300'} animate-slideIn`}>
                 <div className="p-3">
                     {/* Title */}
-                    <h3 className="font-bold text-gray-900 text-sm mb-2 flex items-center gap-2">
+                    <h3 className="font-bold text-amber-900 text-sm mb-2 flex items-center gap-2">
                         <span>Current Reveals</span>
                         {isTrioValid && canClaim && (
                             <span className="text-green-600 animate-pulse">✨</span>
@@ -78,7 +77,7 @@ export default function TurnReveals({
                                         faceUp={true}
                                         size="sm"
                                     />
-                                    <span className="text-xs text-gray-600 mt-1 font-medium text-center">
+                                    <span className="text-xs text-amber-700 mt-1 font-medium text-center">
                                         {getRevealSource(reveal, true)}
                                     </span>
                                 </div>
@@ -116,8 +115,8 @@ export default function TurnReveals({
     }
 
     return (
-        <div className={`rounded-xl bg-white p-6 shadow-lg border-2 ${borderColor} animate-slideIn`}>
-            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+        <div className={`rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-lg border-2 ${isTrioValid && canClaim ? 'border-green-500' : 'border-amber-300'} animate-slideIn`}>
+            <h3 className="font-bold text-amber-900 mb-4 flex items-center gap-2">
                 <span>Current Turn Reveals</span>
                 {isTrioValid && canClaim && (
                     <span className="text-green-600 animate-pulse">✨</span>
@@ -137,7 +136,7 @@ export default function TurnReveals({
                             faceUp={true}
                             size="sm"
                         />
-                        <span className="text-xs text-gray-600 mt-2 text-center max-w-[100px] font-medium">
+                        <span className="text-xs text-amber-700 mt-2 text-center max-w-[100px] font-medium">
                             {getRevealSource(reveal)}
                         </span>
                     </div>

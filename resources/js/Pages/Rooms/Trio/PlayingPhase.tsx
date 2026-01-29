@@ -206,8 +206,8 @@ export default function PlayingPhase({
                     )}
 
                     {/* Middle grid */}
-                    <div className="rounded-xl bg-white p-4 shadow-lg">
-                        <h3 className="font-bold text-gray-900 mb-3 text-center">
+                    <div className="rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 p-4 shadow-lg border border-teal-200">
+                        <h3 className="font-bold text-emerald-900 mb-3 text-center">
                             Middle Grid
                         </h3>
                         <MiddleGrid
@@ -218,8 +218,8 @@ export default function PlayingPhase({
                     </div>
 
                     {/* Players */}
-                    <div className="rounded-xl bg-white p-4 shadow-lg">
-                        <h3 className="font-bold text-gray-900 mb-3">Players</h3>
+                    <div className="rounded-xl bg-gradient-to-br from-slate-50 to-gray-100 p-4 shadow-lg border border-slate-200">
+                        <h3 className="font-bold text-slate-800 mb-3">Players</h3>
                         <PlayerStats
                             players={players}
                             currentPlayerId={currentPlayerId}
@@ -231,8 +231,8 @@ export default function PlayingPhase({
 
                     {/* My hand */}
                     {myHand && myHand.length > 0 && (
-                        <div className="rounded-xl bg-gradient-to-br from-purple-50 to-purple-100 p-4 shadow-lg border-2 border-purple-200">
-                            <h3 className="font-bold text-purple-900 mb-3 text-center">
+                        <div className="rounded-xl bg-gradient-to-br from-sky-50 to-blue-100 p-4 shadow-lg border-2 border-sky-300">
+                            <h3 className="font-bold text-sky-900 mb-3 text-center">
                                 Your Hand
                             </h3>
                             <div className="flex flex-wrap gap-2 justify-center">
@@ -275,7 +275,7 @@ export default function PlayingPhase({
                         )}
 
                         {/* Middle grid - compact, not stretched */}
-                        <div className="rounded-xl bg-white p-3 shadow-lg flex-shrink-0">
+                        <div className="rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 p-3 shadow-lg border border-teal-200 flex-shrink-0">
                             <div className="flex justify-center">
                                 <MiddleGrid
                                     cards={middleGrid}
@@ -287,8 +287,8 @@ export default function PlayingPhase({
                         </div>
 
                         {/* Your Hand - horizontal below middle grid */}
-                        <div className="rounded-xl bg-gradient-to-br from-purple-50 to-purple-100 p-3 shadow-lg border-2 border-purple-200 flex-shrink-0">
-                            <h3 className="font-bold text-purple-900 mb-2 text-center text-sm">
+                        <div className="rounded-xl bg-gradient-to-br from-sky-50 to-blue-100 p-3 shadow-lg border-2 border-sky-300 flex-shrink-0">
+                            <h3 className="font-bold text-sky-900 mb-2 text-center text-sm">
                                 Your Hand
                             </h3>
                             {myHand && myHand.length > 0 ? (
@@ -308,7 +308,7 @@ export default function PlayingPhase({
                                     ))}
                                 </div>
                             ) : (
-                                <div className="text-center text-purple-400 text-sm py-2">
+                                <div className="text-center text-sky-400 text-sm py-2">
                                     No cards in hand
                                 </div>
                             )}
@@ -317,8 +317,8 @@ export default function PlayingPhase({
 
                     {/* Right column: Players */}
                     <div className="lg:col-span-4 flex flex-col">
-                        <div className="rounded-xl bg-white p-3 shadow-lg flex-1 flex flex-col min-h-0">
-                            <h3 className="font-bold text-gray-900 mb-2 text-sm flex-shrink-0">Players</h3>
+                        <div className="rounded-xl bg-gradient-to-br from-slate-50 to-gray-100 p-3 shadow-lg border border-slate-200 flex-1 flex flex-col min-h-0">
+                            <h3 className="font-bold text-slate-800 mb-2 text-sm flex-shrink-0">Players</h3>
                             <div className="flex-1 overflow-y-auto">
                                 <PlayerStats
                                     players={players}
