@@ -230,6 +230,11 @@ class CheeseThiefGameTest extends TestCase
 
         // Start the game and make player 0 the thief
         $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+
+        // Reset all players' thief status and explicitly set player 0 as thief
+        foreach ($players as $player) {
+            $player->update(['is_thief' => false]);
+        }
         $players[0]->update(['is_thief' => true]);
         $room->update(['thief_player_id' => $players[0]->id, 'current_hour' => 7]);
 
