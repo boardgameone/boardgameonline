@@ -1,6 +1,6 @@
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
-import TrioCard from './components/TrioCard';
+import StackedTrio from './components/StackedTrio';
 import { useSound } from '@/hooks/useSound';
 
 interface Player {
@@ -157,19 +157,13 @@ export default function FinishedPhase({ roomCode, gameSlug, players, winner, isH
 
                                 {/* Show collected trios */}
                                 {player.collected_trios.length > 0 && (
-                                    <div className="mt-3 flex gap-3 flex-wrap">
+                                    <div className="mt-4 flex gap-4 flex-wrap">
                                         {player.collected_trios.map((trio, idx) => (
-                                            <div key={idx} className="flex gap-1">
-                                                {trio.map((card, cardIdx) => (
-                                                    <TrioCard
-                                                        key={cardIdx}
-                                                        value={card}
-                                                        faceUp={true}
-                                                        size="sm"
-                                                        variant="green"
-                                                    />
-                                                ))}
-                                            </div>
+                                            <StackedTrio
+                                                key={idx}
+                                                cards={trio}
+                                                size="sm"
+                                            />
                                         ))}
                                     </div>
                                 )}

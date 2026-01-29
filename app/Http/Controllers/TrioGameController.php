@@ -236,38 +236,66 @@ class TrioGameController extends Controller
         $trioValue = end($reveals)['value'];
         $trioCards = array_slice($reveals, -3);
 
+        // Separate middle positions and player cards
+        $middlePositionsToRemove = [];
+        $playerCardsToRemove = []; // [player_id => [card_values]]
+
         foreach ($trioCards as $card) {
             $source = $card['source'];
 
             if (str_starts_with($source, 'player_')) {
                 $playerId = (int) substr($source, 7);
-                $player = $room->connectedPlayers()->find($playerId);
-
-                if ($player) {
-                    $hand = $player->game_data['hand'] ?? [];
-                    $key = array_search($card['value'], $hand);
-                    if ($key !== false) {
-                        unset($hand[$key]);
-                        $hand = array_values($hand);
-                        $gameData = $player->game_data;
-                        $gameData['hand'] = $hand;
-                        $player->update(['game_data' => $gameData]);
-                    }
+                if (! isset($playerCardsToRemove[$playerId])) {
+                    $playerCardsToRemove[$playerId] = [];
                 }
+                $playerCardsToRemove[$playerId][] = $card['value'];
             } elseif (str_starts_with($source, 'middle_')) {
                 $position = (int) substr($source, 7);
-                $middleGrid = $settings['middle_grid'];
-                $middleGrid = array_filter($middleGrid, fn ($c) => $c['position'] !== $position);
-                $middleGrid = array_values($middleGrid);
-
-                foreach ($middleGrid as $index => $c) {
-                    $middleGrid[$index]['position'] = $index;
-                }
-
-                $settings['middle_grid'] = $middleGrid;
+                $middlePositionsToRemove[] = $position;
             }
         }
 
+        // Remove cards from player hands
+        foreach ($playerCardsToRemove as $playerId => $cardValues) {
+            $player = $room->connectedPlayers()->find($playerId);
+
+            if ($player) {
+                $hand = $player->game_data['hand'] ?? [];
+
+                // Remove each card value once
+                foreach ($cardValues as $value) {
+                    $key = array_search($value, $hand);
+                    if ($key !== false) {
+                        unset($hand[$key]);
+                    }
+                }
+
+                $hand = array_values($hand);
+                $gameData = $player->game_data;
+                $gameData['hand'] = $hand;
+                $player->update(['game_data' => $gameData]);
+            }
+        }
+
+        // Remove cards from middle grid (all at once)
+        if (! empty($middlePositionsToRemove)) {
+            $middleGrid = $settings['middle_grid'];
+
+            // Filter out the cards at the specified positions
+            $middleGrid = array_values(array_filter($middleGrid, function ($card, $index) use ($middlePositionsToRemove) {
+                return ! in_array($index, $middlePositionsToRemove);
+            }, ARRAY_FILTER_USE_BOTH));
+
+            // Re-index positions
+            foreach ($middleGrid as $index => $card) {
+                $middleGrid[$index]['position'] = $index;
+            }
+
+            $settings['middle_grid'] = $middleGrid;
+        }
+
+        // Refresh current player to get the updated hand after card removal
+        $currentPlayer->refresh();
         $gameData = $currentPlayer->game_data;
         $gameData['collected_trios'][] = [$trioValue, $trioValue, $trioValue];
         $currentPlayer->update(['game_data' => $gameData]);

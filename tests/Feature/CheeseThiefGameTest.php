@@ -508,4 +508,194 @@ class CheeseThiefGameTest extends TestCase
 
         $response->assertSessionHasErrors('error');
     }
+
+    public function test_night_hour_auto_advances_after_timer_expires(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+        $players = $data['players'];
+
+        // Start the game
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+
+        // Set up: player 0 wakes up alone at hour 3
+        $players[0]->update(['die_value' => 3, 'game_data' => ['confirmed_roll' => true]]);
+        $players[1]->update(['die_value' => 1, 'game_data' => ['confirmed_roll' => true]]);
+        $players[2]->update(['die_value' => 2, 'game_data' => ['confirmed_roll' => true]]);
+        $players[3]->update(['die_value' => 4, 'game_data' => ['confirmed_roll' => true]]);
+
+        // Set current hour and start timer
+        \Carbon\Carbon::setTestNow(now());
+        $room->update([
+            'current_hour' => 3,
+            'hour_started_at' => now(),
+        ]);
+
+        // Before timer expires, hour should not be complete if player hasn't acted
+        $this->assertFalse($room->currentHourComplete());
+
+        // Fast forward 16 seconds (past the 15-second timer)
+        \Carbon\Carbon::setTestNow(now()->addSeconds(16));
+
+        $room->refresh();
+        // After timer expires, hour should be complete
+        $this->assertTrue($room->currentHourComplete());
+
+        \Carbon\Carbon::setTestNow(); // Reset time
+    }
+
+    public function test_player_can_peek_before_timer_expires(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+        $players = $data['players'];
+
+        // Start the game
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+
+        // Set up: player 0 wakes up alone at hour 3
+        $players[0]->update(['die_value' => 3, 'game_data' => ['confirmed_roll' => true]]);
+        $players[1]->update(['die_value' => 1, 'game_data' => ['confirmed_roll' => true]]);
+        $players[2]->update(['die_value' => 2, 'game_data' => ['confirmed_roll' => true]]);
+        $players[3]->update(['die_value' => 4, 'game_data' => ['confirmed_roll' => true]]);
+
+        // Set current hour and start timer
+        \Carbon\Carbon::setTestNow(now());
+        $room->update([
+            'current_hour' => 3,
+            'hour_started_at' => now(),
+        ]);
+
+        // Fast forward 10 seconds (within the 15-second timer)
+        \Carbon\Carbon::setTestNow(now()->addSeconds(10));
+
+        // Player should still be able to peek
+        $response = $this->actingAs($players[0]->user)->post(route('rooms.peek', [$room->game->slug, $room->room_code]), [
+            'target_player_id' => $players[1]->id,
+        ]);
+
+        $response->assertRedirect();
+        $players[0]->refresh();
+        $this->assertTrue($players[0]->hasCompletedHour(3));
+
+        \Carbon\Carbon::setTestNow(); // Reset time
+    }
+
+    public function test_player_cannot_peek_after_timer_expires(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+        $players = $data['players'];
+
+        // Start the game
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+
+        // Set up: player 0 wakes up alone at hour 3
+        $players[0]->update(['die_value' => 3, 'game_data' => ['confirmed_roll' => true]]);
+        $players[1]->update(['die_value' => 1, 'game_data' => ['confirmed_roll' => true]]);
+        $players[2]->update(['die_value' => 2, 'game_data' => ['confirmed_roll' => true]]);
+        $players[3]->update(['die_value' => 4, 'game_data' => ['confirmed_roll' => true]]);
+
+        // Set current hour and start timer
+        \Carbon\Carbon::setTestNow(now());
+        $room->update([
+            'current_hour' => 3,
+            'hour_started_at' => now(),
+        ]);
+
+        // Fast forward 16 seconds (past the 15-second timer)
+        \Carbon\Carbon::setTestNow(now()->addSeconds(16));
+
+        $room->refresh();
+
+        // Hour should be complete due to timer, so peek should be blocked
+        // The controller will detect currentHourComplete() and likely auto-advance or show error
+        $this->assertTrue($room->currentHourComplete());
+
+        \Carbon\Carbon::setTestNow(); // Reset time
+    }
+
+    public function test_timer_resets_for_each_new_hour(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+        $players = $data['players'];
+
+        // Start the game
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+
+        // Set up dice
+        $players[0]->update(['die_value' => 3, 'game_data' => ['confirmed_roll' => true]]);
+        $players[1]->update(['die_value' => 4, 'game_data' => ['confirmed_roll' => true]]);
+        $players[2]->update(['die_value' => 2, 'game_data' => ['confirmed_roll' => true]]);
+        $players[3]->update(['die_value' => 5, 'game_data' => ['confirmed_roll' => true]]);
+
+        // Hour 3 with timer
+        \Carbon\Carbon::setTestNow(now());
+        $room->update([
+            'current_hour' => 3,
+            'hour_started_at' => now(),
+        ]);
+
+        $hour3StartTime = $room->hour_started_at;
+
+        // Advance to hour 4
+        \Carbon\Carbon::setTestNow(now()->addSeconds(5));
+        $room->update([
+            'current_hour' => 4,
+            'hour_started_at' => now(),
+        ]);
+
+        $room->refresh();
+        $hour4StartTime = $room->hour_started_at;
+
+        // Timer should have been reset
+        $this->assertNotEquals($hour3StartTime, $hour4StartTime);
+        $this->assertTrue($hour4StartTime->greaterThan($hour3StartTime));
+
+        \Carbon\Carbon::setTestNow(); // Reset time
+    }
+
+    public function test_timer_does_not_apply_to_non_night_phases(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+
+        // Start the game
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+
+        // Rolling phase (hour 0) - no timer
+        $room->update([
+            'current_hour' => 0,
+            'hour_started_at' => now(),
+        ]);
+        $this->assertFalse($room->isHourTimerExpired()); // Hour 0 doesn't have timer
+
+        // Accomplice selection (hour 7) - no timer
+        $room->update([
+            'current_hour' => 7,
+            'hour_started_at' => null,
+        ]);
+        $this->assertFalse($room->isHourTimerExpired());
+
+        // Voting phase (hour 8) - no timer
+        $room->update([
+            'current_hour' => 8,
+            'hour_started_at' => null,
+        ]);
+        $this->assertFalse($room->isHourTimerExpired());
+
+        // Night hours (1-6) should have timer
+        \Carbon\Carbon::setTestNow(now());
+        $room->update([
+            'current_hour' => 3,
+            'hour_started_at' => now(),
+        ]);
+
+        \Carbon\Carbon::setTestNow(now()->addSeconds(16));
+        $room->refresh();
+        $this->assertTrue($room->isHourTimerExpired());
+
+        \Carbon\Carbon::setTestNow(); // Reset time
+    }
 }

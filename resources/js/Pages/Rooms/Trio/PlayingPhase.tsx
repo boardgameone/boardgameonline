@@ -165,90 +165,174 @@ export default function PlayingPhase({
     };
 
     return (
-        <div className="space-y-6">
-            {/* Current turn banner */}
-            <div className={`rounded-xl p-4 text-center border-2 transition-all duration-300 ${
+        <div className="h-full flex flex-col gap-2 lg:gap-3">
+            {/* Compact turn banner */}
+            <div className={`rounded-lg px-4 py-2 text-center border-2 transition-all duration-300 flex-shrink-0 ${
                 currentTurnPlayer?.id === currentPlayerId
-                    ? 'bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-400 animate-pulse'
+                    ? 'bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-400'
                     : 'bg-blue-50 border-blue-200'
             }`}>
-                <p className={`font-bold text-lg ${
-                    currentTurnPlayer?.id === currentPlayerId ? 'text-yellow-900' : 'text-blue-900'
-                }`}>
-                    {currentTurnPlayer?.id === currentPlayerId
-                        ? "🎯 Your turn!"
-                        : `${currentTurnPlayer?.nickname}'s turn`}
-                </p>
-                <p className="text-sm mt-1 font-medium" style={{
-                    color: currentTurnPlayer?.id === currentPlayerId ? '#78350f' : '#1e40af'
-                }}>
-                    Turn {currentTurn.turn_number} • {currentTurn.reveals.length} reveal{currentTurn.reveals.length !== 1 ? 's' : ''}
-                </p>
-            </div>
-
-            {/* Turn reveals */}
-            {currentTurn.reveals.length > 0 && (
-                <TurnReveals
-                    reveals={currentTurn.reveals}
-                    players={players}
-                    canClaim={permissions.can_claim}
-                    canEndTurn={permissions.can_end_turn}
-                    canContinue={currentTurn.can_continue}
-                    onClaimTrio={handleClaimTrio}
-                    onEndTurn={handleEndTurn}
-                />
-            )}
-
-            <div className="grid gap-6 lg:grid-cols-2">
-                {/* Middle grid */}
-                <div className="rounded-xl bg-white p-6 shadow-lg">
-                    <h3 className="font-bold text-gray-900 mb-4 text-center text-lg">
-                        Middle Grid
-                    </h3>
-                    <MiddleGrid
-                        cards={middleGrid}
-                        canReveal={permissions.can_reveal}
-                        onRevealCard={handleRevealMiddleCard}
-                    />
-                </div>
-
-                {/* Players */}
-                <div className="rounded-xl bg-white p-6 shadow-lg">
-                    <h3 className="font-bold text-gray-900 mb-4 text-lg">Players</h3>
-                    <PlayerStats
-                        players={players}
-                        currentPlayerId={currentPlayerId}
-                        canReveal={permissions.can_reveal}
-                        onAskHighest={handleAskHighest}
-                        onAskLowest={handleAskLowest}
-                    />
+                <div className="flex items-center justify-center gap-4">
+                    <span className={`font-bold ${
+                        currentTurnPlayer?.id === currentPlayerId ? 'text-yellow-900' : 'text-blue-900'
+                    }`}>
+                        {currentTurnPlayer?.id === currentPlayerId
+                            ? "🎯 Your turn!"
+                            : `${currentTurnPlayer?.nickname}'s turn`}
+                    </span>
+                    <span className="text-sm font-medium" style={{
+                        color: currentTurnPlayer?.id === currentPlayerId ? '#78350f' : '#1e40af'
+                    }}>
+                        Turn {currentTurn.turn_number} • {currentTurn.reveals.length} reveal{currentTurn.reveals.length !== 1 ? 's' : ''}
+                    </span>
                 </div>
             </div>
 
-            {/* My hand */}
-            {myHand && myHand.length > 0 && (
-                <div className="rounded-xl bg-gradient-to-br from-purple-50 to-purple-100 p-6 shadow-lg border-2 border-purple-200">
-                    <h3 className="font-bold text-purple-900 mb-4 text-center text-lg">
-                        Your Hand
-                    </h3>
-                    <div className="flex flex-wrap gap-3 justify-center">
-                        {myHand.map((card, idx) => (
-                            <div
-                                key={idx}
-                                className="animate-slideIn"
-                                style={{ animationDelay: `${idx * 50}ms` }}
-                            >
-                                <TrioCard
-                                    value={card}
-                                    faceUp={true}
-                                    size="md"
-                                    variant="purple"
+            {/* Mobile/Tablet: Scrollable vertical layout */}
+            <div className="flex-1 overflow-auto lg:overflow-hidden">
+                {/* Mobile layout (vertical stacking) */}
+                <div className="lg:hidden space-y-4 pb-4">
+                    {/* Turn reveals */}
+                    {currentTurn.reveals.length > 0 && (
+                        <TurnReveals
+                            reveals={currentTurn.reveals}
+                            players={players}
+                            canClaim={permissions.can_claim}
+                            canEndTurn={permissions.can_end_turn}
+                            canContinue={currentTurn.can_continue}
+                            onClaimTrio={handleClaimTrio}
+                            onEndTurn={handleEndTurn}
+                        />
+                    )}
+
+                    {/* Middle grid */}
+                    <div className="rounded-xl bg-white p-4 shadow-lg">
+                        <h3 className="font-bold text-gray-900 mb-3 text-center">
+                            Middle Grid
+                        </h3>
+                        <MiddleGrid
+                            cards={middleGrid}
+                            canReveal={permissions.can_reveal}
+                            onRevealCard={handleRevealMiddleCard}
+                        />
+                    </div>
+
+                    {/* Players */}
+                    <div className="rounded-xl bg-white p-4 shadow-lg">
+                        <h3 className="font-bold text-gray-900 mb-3">Players</h3>
+                        <PlayerStats
+                            players={players}
+                            currentPlayerId={currentPlayerId}
+                            canReveal={permissions.can_reveal}
+                            onAskHighest={handleAskHighest}
+                            onAskLowest={handleAskLowest}
+                        />
+                    </div>
+
+                    {/* My hand */}
+                    {myHand && myHand.length > 0 && (
+                        <div className="rounded-xl bg-gradient-to-br from-purple-50 to-purple-100 p-4 shadow-lg border-2 border-purple-200">
+                            <h3 className="font-bold text-purple-900 mb-3 text-center">
+                                Your Hand
+                            </h3>
+                            <div className="flex flex-wrap gap-2 justify-center">
+                                {myHand.map((card, idx) => (
+                                    <div
+                                        key={idx}
+                                        className="animate-slideIn"
+                                        style={{ animationDelay: `${idx * 50}ms` }}
+                                    >
+                                        <TrioCard
+                                            value={card}
+                                            faceUp={true}
+                                            size="sm"
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Desktop layout (2-column) */}
+                <div className="hidden lg:grid lg:grid-cols-12 gap-3 h-full">
+                    {/* Left/Center column: Turn reveals + Middle grid + Your Hand */}
+                    <div className="lg:col-span-8 flex flex-col gap-2 min-h-0">
+                        {/* Turn reveals - show action buttons */}
+                        {currentTurn.reveals.length > 0 && (
+                            <div className="flex-shrink-0">
+                                <TurnReveals
+                                    reveals={currentTurn.reveals}
+                                    players={players}
+                                    canClaim={permissions.can_claim}
+                                    canEndTurn={permissions.can_end_turn}
+                                    canContinue={currentTurn.can_continue}
+                                    onClaimTrio={handleClaimTrio}
+                                    onEndTurn={handleEndTurn}
+                                    compact={true}
                                 />
                             </div>
-                        ))}
+                        )}
+
+                        {/* Middle grid - compact, not stretched */}
+                        <div className="rounded-xl bg-white p-3 shadow-lg flex-shrink-0">
+                            <div className="flex justify-center">
+                                <MiddleGrid
+                                    cards={middleGrid}
+                                    canReveal={permissions.can_reveal}
+                                    onRevealCard={handleRevealMiddleCard}
+                                    compact={true}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Your Hand - horizontal below middle grid */}
+                        <div className="rounded-xl bg-gradient-to-br from-purple-50 to-purple-100 p-3 shadow-lg border-2 border-purple-200 flex-shrink-0">
+                            <h3 className="font-bold text-purple-900 mb-2 text-center text-sm">
+                                Your Hand
+                            </h3>
+                            {myHand && myHand.length > 0 ? (
+                                <div className="flex flex-wrap gap-2 justify-center">
+                                    {myHand.map((card, idx) => (
+                                        <div
+                                            key={idx}
+                                            className="animate-slideIn"
+                                            style={{ animationDelay: `${idx * 50}ms` }}
+                                        >
+                                            <TrioCard
+                                                value={card}
+                                                faceUp={true}
+                                                size="sm"
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center text-purple-400 text-sm py-2">
+                                    No cards in hand
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Right column: Players */}
+                    <div className="lg:col-span-4 flex flex-col">
+                        <div className="rounded-xl bg-white p-3 shadow-lg flex-1 flex flex-col min-h-0">
+                            <h3 className="font-bold text-gray-900 mb-2 text-sm flex-shrink-0">Players</h3>
+                            <div className="flex-1 overflow-y-auto">
+                                <PlayerStats
+                                    players={players}
+                                    currentPlayerId={currentPlayerId}
+                                    canReveal={permissions.can_reveal}
+                                    onAskHighest={handleAskHighest}
+                                    onAskLowest={handleAskLowest}
+                                    compact={true}
+                                />
+                            </div>
+                        </div>
                     </div>
                 </div>
-            )}
+            </div>
 
             {/* Celebration modal */}
             {lastTrioClaimed && (

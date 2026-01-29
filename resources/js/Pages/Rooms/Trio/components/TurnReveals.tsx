@@ -19,6 +19,7 @@ interface TurnRevealsProps {
     canContinue: boolean;
     onClaimTrio: () => void;
     onEndTurn: () => void;
+    compact?: boolean;
 }
 
 export default function TurnReveals({
@@ -29,23 +30,90 @@ export default function TurnReveals({
     canContinue,
     onClaimTrio,
     onEndTurn,
+    compact = false,
 }: TurnRevealsProps) {
     if (reveals.length === 0) {
         return null;
     }
 
-    const getRevealSource = (reveal: Reveal) => {
+    const getRevealSource = (reveal: Reveal, showFull: boolean = false) => {
         if (reveal.source.startsWith('player_')) {
             const playerId = parseInt(reveal.source.replace('player_', ''));
             const player = players.find(p => p.id === playerId);
             const revealLabel = reveal.reveal_type === 'ask_highest' ? 'High' : 'Low';
-            return `${revealLabel}: ${player?.nickname || 'Unknown'}`;
+            if (showFull || !compact) {
+                return `${revealLabel}: ${player?.nickname || 'Unknown'}`;
+            }
+            return revealLabel.charAt(0);
         }
-        return 'Middle';
+        return showFull || !compact ? 'Middle' : 'M';
     };
 
     const isTrioValid = reveals.length === 3;
     const borderColor = isTrioValid && canClaim ? 'border-green-500' : 'border-blue-200';
+
+    if (compact) {
+        return (
+            <div className={`rounded-lg bg-white shadow-lg border-2 ${borderColor} animate-slideIn`}>
+                <div className="p-3">
+                    {/* Title */}
+                    <h3 className="font-bold text-gray-900 text-sm mb-2 flex items-center gap-2">
+                        <span>Current Reveals</span>
+                        {isTrioValid && canClaim && (
+                            <span className="text-green-600 animate-pulse">✨</span>
+                        )}
+                    </h3>
+
+                    <div className="flex items-center gap-4">
+                        {/* Cards display inline */}
+                        <div className="flex gap-3 flex-1">
+                            {reveals.map((reveal, idx) => (
+                                <div
+                                    key={idx}
+                                    className="flex flex-col items-center animate-slideIn"
+                                    style={{ animationDelay: `${idx * 100}ms` }}
+                                >
+                                    <TrioCard
+                                        value={reveal.value}
+                                        faceUp={true}
+                                        size="sm"
+                                    />
+                                    <span className="text-xs text-gray-600 mt-1 font-medium text-center">
+                                        {getRevealSource(reveal, true)}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex gap-2">
+                            {canClaim && (
+                                <button
+                                    onClick={onClaimTrio}
+                                    className="rounded-lg bg-gradient-to-r from-green-500 to-green-600 px-4 py-2 text-white text-sm font-bold shadow hover:from-green-600 hover:to-green-700 transition-all duration-200 hover:scale-105 active:scale-95"
+                                >
+                                    🎉 Claim!
+                                </button>
+                            )}
+                            {canEndTurn && !canContinue && (
+                                <button
+                                    onClick={onEndTurn}
+                                    className="rounded-lg bg-gradient-to-r from-red-500 to-red-600 px-4 py-2 text-white text-sm font-bold shadow hover:from-red-600 hover:to-red-700 transition-all duration-200 hover:scale-105 active:scale-95"
+                                >
+                                    ❌ End
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+                {!canContinue && reveals.length > 0 && !canClaim && (
+                    <p className="px-3 pb-2 text-xs text-red-600 font-medium">
+                        No match - end turn
+                    </p>
+                )}
+            </div>
+        );
+    }
 
     return (
         <div className={`rounded-xl bg-white p-6 shadow-lg border-2 ${borderColor} animate-slideIn`}>
@@ -68,7 +136,6 @@ export default function TurnReveals({
                             value={reveal.value}
                             faceUp={true}
                             size="sm"
-                            variant="indigo"
                         />
                         <span className="text-xs text-gray-600 mt-2 text-center max-w-[100px] font-medium">
                             {getRevealSource(reveal)}

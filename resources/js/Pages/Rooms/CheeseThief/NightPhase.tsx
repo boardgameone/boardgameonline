@@ -2,6 +2,7 @@ import { GameState, GameStatePlayer } from '@/types';
 import { router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import { useSound, useRandomSound } from '@/hooks/useSound';
+import { useNightPhaseTimer } from '@/hooks/useNightPhaseTimer';
 import PlayerCircle from './components/PlayerCircle';
 
 interface NightPhaseProps {
@@ -18,6 +19,15 @@ export default function NightPhase({ gameState, roomCode, gameSlug }: NightPhase
     const isAlone = gameState.awake_player_ids.length === 1 && isAwake;
     const canPeek = gameState.can_peek;
     const canSkipPeek = gameState.can_skip_peek;
+
+    // Timer hook
+    const { timeRemaining, isExpired, percentage } = useNightPhaseTimer(
+        gameState.hour_started_at,
+        gameState.hour_timer_duration
+    );
+
+    // Determine if player has acted early (completed action but timer still running)
+    const hasActedEarly = isAwake && isAlone && !canPeek && !isExpired;
 
     // Sound effects
     const { play: playPeek } = useSound('/sounds/cheese-thief/peek.mp3', { volume: 0.7 });
@@ -79,6 +89,19 @@ export default function NightPhase({ gameState, roomCode, gameSlug }: NightPhase
     // Progress bar for night hours
     const progress = ((gameState.current_hour) / 6) * 100;
 
+    // Timer color based on time remaining
+    const getTimerColor = () => {
+        if (timeRemaining > 10) return 'text-green-600';
+        if (timeRemaining > 5) return 'text-yellow-600';
+        return 'text-red-600';
+    };
+
+    const getTimerBgColor = () => {
+        if (timeRemaining > 10) return 'stroke-green-600';
+        if (timeRemaining > 5) return 'stroke-yellow-600';
+        return 'stroke-red-600';
+    };
+
     return (
         <div className="flex flex-col items-center gap-6">
             {/* Header */}
@@ -93,6 +116,48 @@ export default function NightPhase({ gameState, roomCode, gameSlug }: NightPhase
                     />
                 </div>
             </div>
+
+            {/* Timer Display */}
+            {gameState.hour_started_at && (
+                <div className="flex flex-col items-center gap-2">
+                    <div className="relative h-24 w-24">
+                        {/* Background circle */}
+                        <svg className="h-24 w-24 -rotate-90 transform">
+                            <circle
+                                cx="48"
+                                cy="48"
+                                r="40"
+                                stroke="currentColor"
+                                strokeWidth="6"
+                                fill="transparent"
+                                className="text-gray-200"
+                            />
+                            {/* Progress circle */}
+                            <circle
+                                cx="48"
+                                cy="48"
+                                r="40"
+                                stroke="currentColor"
+                                strokeWidth="6"
+                                fill="transparent"
+                                strokeDasharray={251.2}
+                                strokeDashoffset={251.2 * (1 - percentage / 100)}
+                                className={`${getTimerBgColor()} transition-all duration-100`}
+                                strokeLinecap="round"
+                            />
+                        </svg>
+                        {/* Timer text */}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <span className={`text-2xl font-bold ${getTimerColor()}`}>
+                                {Math.ceil(timeRemaining)}
+                            </span>
+                        </div>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                        {isExpired ? 'Time up!' : 'seconds remaining'}
+                    </p>
+                </div>
+            )}
 
             {/* Cheese Stolen Alert */}
             {gameState.cheese_stolen && (
@@ -112,9 +177,19 @@ export default function NightPhase({ gameState, roomCode, gameSlug }: NightPhase
                             {'\u{1F441}'} You woke up at {gameState.current_hour} AM!
                         </p>
                         {isAlone ? (
-                            <p className="mt-2 text-yellow-700">
-                                You&apos;re <strong>alone</strong>! You can peek at someone&apos;s die.
-                            </p>
+                            hasActedEarly ? (
+                                <p className="mt-2 text-yellow-700">
+                                    Waiting for hour to complete...
+                                </p>
+                            ) : canPeek ? (
+                                <p className="mt-2 text-yellow-700">
+                                    You&apos;re <strong>alone</strong>! Peek or skip before time runs out!
+                                </p>
+                            ) : (
+                                <p className="mt-2 text-yellow-700">
+                                    Waiting for hour to complete...
+                                </p>
+                            )
                         ) : (
                             <p className="mt-2 text-yellow-700">
                                 Others are awake too. You can&apos;t peek this hour.
@@ -123,7 +198,7 @@ export default function NightPhase({ gameState, roomCode, gameSlug }: NightPhase
                     </>
                 ) : (
                     <p className="text-lg text-gray-600">
-                        {'\u{1F4A4}'} You&apos;re sleeping... (Your die: {currentPlayer?.die_value})
+                        {'\u{1F4A4}'} Zzz... waiting for your hour... (Your die: {currentPlayer?.die_value})
                     </p>
                 )}
             </div>

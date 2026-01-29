@@ -69,7 +69,6 @@ export default function TrioCelebration({ show, playerName, trioCards, onClose }
                                     value={card}
                                     faceUp={true}
                                     size="lg"
-                                    variant="green"
                                 />
                             </div>
                         ))}

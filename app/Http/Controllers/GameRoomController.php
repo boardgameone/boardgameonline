@@ -621,19 +621,28 @@ class GameRoomController extends Controller
 
         if ($currentHour === 0) {
             // Rolling phase complete -> move to hour 1
-            $room->update(['current_hour' => 1]);
+            $room->update([
+                'current_hour' => 1,
+                'hour_started_at' => now(),
+            ]);
             $room->refresh();
             // Auto-advance through empty night hours
             $this->autoAdvanceNightHours($room);
         } elseif ($currentHour >= 1 && $currentHour <= 5) {
             // Night hour complete -> move to next hour
-            $room->update(['current_hour' => $currentHour + 1]);
+            $room->update([
+                'current_hour' => $currentHour + 1,
+                'hour_started_at' => now(),
+            ]);
             $room->refresh();
             // Auto-advance through empty night hours
             $this->autoAdvanceNightHours($room);
         } elseif ($currentHour === 6) {
             // Last night hour complete -> move to accomplice selection
-            $room->update(['current_hour' => 7]);
+            $room->update([
+                'current_hour' => 7,
+                'hour_started_at' => null,
+            ]);
         } elseif ($currentHour === 7) {
             // Accomplice selected -> move to voting
             $room->update(['current_hour' => 8]);
@@ -756,6 +765,8 @@ class GameRoomController extends Controller
             'is_thief' => $isThief,
             'is_accomplice' => $isAccomplice,
             'isHost' => $currentPlayer?->is_host ?? false,
+            'hour_started_at' => $room->hour_started_at?->toISOString(),
+            'hour_timer_duration' => config('games.cheese_thief.night_hour_timer_seconds', 15),
         ];
     }
 
