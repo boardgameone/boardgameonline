@@ -1,6 +1,7 @@
 import { GameState } from '@/types';
 import { useEffect } from 'react';
 import { useSound } from '@/hooks/useSound';
+import { router } from '@inertiajs/react';
 import PlayerCircle from './components/PlayerCircle';
 
 interface ResultsPhaseProps {
@@ -170,15 +171,17 @@ export default function ResultsPhase({ gameState, roomCode, gameSlug }: ResultsP
                 />
             </div>
 
-            {/* Play Again - could link back to game page */}
-            <div className="mt-4">
-                <a
-                    href={route('games.show', 'cheese-thief')}
-                    className="rounded-xl bg-indigo-600 px-8 py-4 font-semibold text-white hover:bg-indigo-700"
-                >
-                    Play Again
-                </a>
-            </div>
+            {/* Play Again - Only host can reset */}
+            {gameState.isHost && (
+                <div className="mt-4">
+                    <button
+                        onClick={() => router.post(route('rooms.resetGame', [gameSlug, roomCode]))}
+                        className="rounded-xl bg-indigo-600 px-8 py-4 font-semibold text-white hover:bg-indigo-700"
+                    >
+                        Play Again
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

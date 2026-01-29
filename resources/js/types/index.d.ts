@@ -109,4 +109,5 @@ export interface GameState {
     current_player_id: number | null;
     is_thief: boolean;
     is_accomplice: boolean;
+    isHost: boolean;
 }
