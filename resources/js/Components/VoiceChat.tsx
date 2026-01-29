@@ -35,12 +35,15 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
     const [error, setError] = useState<string | null>(null);
     const [connectionStatus, setConnectionStatus] = useState<string>('');
     const [connectionStates, setConnectionStates] = useState<Map<number, ConnectionState>>(new Map());
+    const [isConnecting, setIsConnecting] = useState(false);
+    const [permissionDenied, setPermissionDenied] = useState(false);
 
     const peerRef = useRef<Peer | null>(null);
     const localStreamRef = useRef<MediaStream | null>(null);
     const callsRef = useRef<Map<number, CallData>>(new Map());
     const statusPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const peerPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const autoConnectAttempted = useRef(false);
 
     // Generate unique peer ID for this player in this room
     const getPeerId = (playerId: number) => `${roomCode}-player-${playerId}`;
@@ -265,11 +268,11 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
             console.log('Got microphone access');
             localStreamRef.current = stream;
 
-            // Start unmuted by default so audio transmits
+            // Start muted by default
             stream.getAudioTracks().forEach(track => {
-                track.enabled = true;
+                track.enabled = false;
             });
-            console.log('[Voice] Local audio tracks enabled (unmuted by default)');
+            console.log('[Voice] Local audio tracks disabled (muted by default)');
 
             // Setup local speaking indicator
             setupAudioLevelDetection(stream, currentPlayerId);
@@ -311,8 +314,9 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
             peer.on('open', async (id) => {
                 console.log(`[Voice] Peer opened, ID: ${id}`);
                 setIsConnected(true);
-                setIsMuted(false); // Match the unmuted default
-                setConnectionStatus('Connected to peer server');
+                setIsMuted(true); // Start muted
+                setIsConnecting(false);
+                setConnectionStatus('Connected');
 
                 // Start polling for player status
                 statusPollingRef.current = setInterval(fetchVoiceStatus, 3000);
@@ -420,7 +424,15 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
 
         } catch (err) {
             console.error('[Voice] Failed to connect:', err);
-            setError('Failed to access microphone. Please allow microphone access.');
+            setIsConnecting(false);
+
+            // Check for permission denial
+            if (err instanceof Error && err.name === 'NotAllowedError') {
+                setPermissionDenied(true);
+                setError('Microphone access denied. You can still play without voice chat.');
+            } else {
+                setError('Failed to access microphone. Please allow microphone access.');
+            }
             setConnectionStatus('Failed');
         }
     };
@@ -491,6 +503,23 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
         fetchVoiceStatus();
     }, [fetchVoiceStatus]);
 
+    // Auto-connect on component mount
+    useEffect(() => {
+        let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+        if (!isConnected && !autoConnectAttempted.current) {
+            autoConnectAttempted.current = true;
+            setIsConnecting(true);
+            timeoutId = setTimeout(() => {
+                connect();
+            }, 500); // Delay to let page render first
+        }
+
+        return () => {
+            if (timeoutId) clearTimeout(timeoutId);
+        };
+    }, []);
+
     // Minimized floating button
     if (isMinimized) {
         return (
@@ -501,7 +530,7 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
                         ? 'bg-gradient-to-r from-brand-cyan to-brand-teal text-white'
                         : 'bg-gray-300 text-gray-600'
                 }`}
-                title="Open Voice Chat"
+                title="Voice Chat (Always On)"
             >
                 <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
@@ -546,61 +575,73 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
                         </div>
                     )}
 
-                    {connectionStatus && (
-                        <div className="mb-2 text-xs text-gray-500">
-                            Status: {connectionStatus}
+                    {/* Connecting status */}
+                    {isConnecting && (
+                        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-3">
+                            <svg className="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <p className="text-sm text-blue-800">Connecting to voice chat...</p>
                         </div>
                     )}
 
-                    {/* Connect/Disconnect Button */}
-                    {!isConnected ? (
-                        <button
-                            onClick={connect}
-                            className="w-full rounded-full bg-brand-cyan px-6 py-3 font-bold text-white shadow-lg transition hover:scale-105 hover:bg-cyan-600 border-b-4 border-cyan-700 flex items-center justify-center gap-2"
-                        >
-                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                            </svg>
-                            Join Voice
-                        </button>
-                    ) : (
+                    {/* Permission denied message */}
+                    {permissionDenied && !isConnected && (
+                        <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+                            <p className="text-sm text-yellow-800 mb-2">
+                                Microphone access is required for voice chat. You can still play without it.
+                            </p>
+                            <button
+                                onClick={() => {
+                                    setPermissionDenied(false);
+                                    autoConnectAttempted.current = false;
+                                    setIsConnecting(true);
+                                    connect();
+                                }}
+                                className="w-full rounded-full bg-yellow-500 px-4 py-2 font-bold text-white shadow-md transition hover:scale-105 hover:bg-yellow-600"
+                            >
+                                Retry Microphone Access
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Connected status (brief) */}
+                    {connectionStatus && isConnected && (
+                        <div className="mb-2 text-xs text-green-600 font-medium">
+                            {connectionStatus}
+                        </div>
+                    )}
+
+                    {/* Mute/Unmute Button - shown when connected */}
+                    {isConnected && (
                         <div className="space-y-4">
-                            {/* Controls */}
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={toggleMute}
-                                    className={`flex-1 rounded-full px-4 py-3 font-bold shadow-md transition hover:scale-105 flex items-center justify-center gap-2 ${
-                                        isMuted
-                                            ? 'bg-red-500 text-white border-b-4 border-red-700'
-                                            : 'bg-green-500 text-white border-b-4 border-green-700'
-                                    }`}
-                                >
-                                    {isMuted ? (
-                                        <>
-                                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-                                            </svg>
-                                            Unmute
-                                        </>
-                                    ) : (
-                                        <>
-                                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 01-3 3z" />
-                                            </svg>
-                                            Mute
-                                        </>
-                                    )}
-                                </button>
-                                <button
-                                    onClick={disconnect}
-                                    className="rounded-full bg-gray-200 px-4 py-3 font-bold text-gray-700 shadow-md transition hover:scale-105 hover:bg-gray-300 border-b-4 border-gray-400"
-                                >
-                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                    </svg>
-                                </button>
-                            </div>
+                            {/* Mute Control */}
+                            <button
+                                onClick={toggleMute}
+                                className={`w-full rounded-full px-6 py-3 font-bold shadow-lg transition hover:scale-105 flex items-center justify-center gap-2 border-b-4 ${
+                                    isMuted
+                                        ? 'bg-red-500 text-white border-red-700 hover:bg-red-600'
+                                        : 'bg-green-500 text-white border-green-700 hover:bg-green-600'
+                                }`}
+                            >
+                                {isMuted ? (
+                                    <>
+                                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                                        </svg>
+                                        Unmute Microphone
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                        </svg>
+                                        Mute Microphone
+                                    </>
+                                )}
+                            </button>
 
                             {/* Players List */}
                             <div className="space-y-2">

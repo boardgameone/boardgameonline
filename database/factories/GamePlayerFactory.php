@@ -33,6 +33,7 @@ class GamePlayerFactory extends Factory
             'die_value' => null,
             'has_stolen_cheese' => false,
             'is_connected' => true,
+            'is_muted' => true,
             'turn_order' => null,
             'game_data' => null,
         ];
