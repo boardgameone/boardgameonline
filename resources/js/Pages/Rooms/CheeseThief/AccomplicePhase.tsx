@@ -1,18 +1,23 @@
 import { GameState, GameStatePlayer } from '@/types';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
+import { useSound } from '@/hooks/useSound';
 import PlayerCircle from './components/PlayerCircle';
 
 interface AccomplicePhaseProps {
     gameState: GameState;
     roomCode: string;
+    gameSlug: string;
 }
 
-export default function AccomplicePhase({ gameState, roomCode }: AccomplicePhaseProps) {
+export default function AccomplicePhase({ gameState, roomCode, gameSlug }: AccomplicePhaseProps) {
     const [selectedPlayer, setSelectedPlayer] = useState<GameStatePlayer | null>(null);
 
     const canSelectAccomplice = gameState.can_select_accomplice;
     const isThief = gameState.is_thief;
+
+    // Sound effects
+    const { play: playWhisper } = useSound('/sounds/cheese-thief/whisper.mp3', { volume: 0.7 });
 
     // Players thief can select as accomplice (everyone except themselves)
     const selectablePlayerIds = gameState.players
@@ -21,7 +26,8 @@ export default function AccomplicePhase({ gameState, roomCode }: AccomplicePhase
 
     const handleSelectAccomplice = () => {
         if (selectedPlayer) {
-            router.post(route('rooms.selectAccomplice', roomCode), {
+            playWhisper();
+            router.post(route('rooms.selectAccomplice', [gameSlug, roomCode]), {
                 accomplice_player_id: selectedPlayer.id,
             });
         }

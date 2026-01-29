@@ -15,9 +15,10 @@ interface FinishedPhaseProps {
     gameSlug: string;
     players: Player[];
     winner: string | null;
+    isHost: boolean;
 }
 
-export default function FinishedPhase({ roomCode, gameSlug, players, winner }: FinishedPhaseProps) {
+export default function FinishedPhase({ roomCode, gameSlug, players, winner, isHost }: FinishedPhaseProps) {
     const [confettiPieces, setConfettiPieces] = useState<Array<{ id: number; left: number; delay: number; color: string }>>([]);
 
     useEffect(() => {
@@ -166,9 +167,14 @@ export default function FinishedPhase({ roomCode, gameSlug, players, winner }: F
                 <div className="grid gap-4 sm:grid-cols-2">
                     <button
                         onClick={handlePlayAgain}
-                        className="rounded-xl bg-gradient-to-r from-green-500 to-green-600 px-6 py-4 text-lg font-black text-white shadow-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 hover:scale-105 active:scale-95 border-b-4 border-green-700"
+                        disabled={!isHost}
+                        className={`rounded-xl bg-gradient-to-r px-6 py-4 text-lg font-black text-white shadow-lg transition-all duration-200 border-b-4 ${
+                            isHost
+                                ? 'from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 hover:scale-105 active:scale-95 border-green-700 cursor-pointer'
+                                : 'from-gray-400 to-gray-500 border-gray-600 cursor-not-allowed opacity-50'
+                        }`}
                     >
-                        🔄 Play Again
+                        🔄 Play Again {!isHost && '(Host Only)'}
                     </button>
                     <button
                         onClick={handleNewRoom}

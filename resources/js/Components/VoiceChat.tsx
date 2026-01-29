@@ -27,7 +27,7 @@ interface CallData {
 }
 
 export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Readonly<Props>) {
-    const [isMinimized, setIsMinimized] = useState(false);
+    const [isMinimized, setIsMinimized] = useState(true);
     const [isConnected, setIsConnected] = useState(false);
     const [isMuted, setIsMuted] = useState(true);
     const [players, setPlayers] = useState<VoicePlayer[]>([]);

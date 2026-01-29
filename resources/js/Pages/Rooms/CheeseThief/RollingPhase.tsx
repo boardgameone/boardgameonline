@@ -1,20 +1,26 @@
 import { GameState } from '@/types';
 import { router } from '@inertiajs/react';
+import { useSound } from '@/hooks/useSound';
 import DieDisplay from './components/DieDisplay';
 import PlayerCircle from './components/PlayerCircle';
 
 interface RollingPhaseProps {
     gameState: GameState;
     roomCode: string;
+    gameSlug: string;
 }
 
-export default function RollingPhase({ gameState, roomCode }: RollingPhaseProps) {
+export default function RollingPhase({ gameState, roomCode, gameSlug }: RollingPhaseProps) {
     const currentPlayer = gameState.players.find((p) => p.id === gameState.current_player_id);
     const confirmedCount = gameState.players.filter((p) => p.has_confirmed_roll).length;
     const hasConfirmed = currentPlayer?.has_confirmed_roll ?? false;
 
+    // Sound effects
+    const { play: playDieRoll } = useSound('/sounds/cheese-thief/die-roll.mp3', { volume: 0.7 });
+
     const handleConfirm = () => {
-        router.post(route('rooms.confirmRoll', roomCode));
+        playDieRoll();
+        router.post(route('rooms.confirmRoll', [gameSlug, roomCode]));
     };
 
     return (
