@@ -64,7 +64,7 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
 
     const getStatusBadge = () => {
         if (room.status === 'waiting') {
-            return { bg: 'bg-yellow-400', text: 'text-yellow-900', label: 'Waiting' };
+            return { bg: 'bg-blue-500', text: 'text-white', label: 'Waiting' };
         }
         if (room.status === 'playing') {
             return { bg: 'bg-green-500', text: 'text-white', label: 'Playing' };
@@ -104,9 +104,9 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                 </span>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-3">
+            <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
                 {/* Main content */}
-                <div className="lg:col-span-2">
+                <div>
                     <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
                         {/* Room Header */}
                         <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5">
@@ -214,7 +214,7 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                     {/* Room Code & Link */}
                     <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
                         <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 px-6 py-4">
-                            <h3 className="text-lg font-bold text-yellow-900 flex items-center gap-2">
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
                                 {'\u{1F511}'} Invite Friends
                             </h3>
                         </div>
@@ -347,18 +347,16 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                             </div>
                         </div>
                     )}
-
-                    {/* Voice Chat */}
-                    {currentPlayer && (
-                        <VoiceChat gameSlug={gameSlug} roomCode={room.room_code} currentPlayerId={currentPlayer.id} />
-                    )}
-
-                    {/* Chat */}
-                    {currentPlayer && (
-                        <RoomChat gameSlug={gameSlug} roomCode={room.room_code} currentPlayerId={currentPlayer.id} />
-                    )}
                 </div>
             </div>
+
+            {/* Overlay Chat and Voice Components */}
+            {currentPlayer && (
+                <>
+                    <RoomChat gameSlug={gameSlug} roomCode={room.room_code} currentPlayerId={currentPlayer.id} />
+                    <VoiceChat gameSlug={gameSlug} roomCode={room.room_code} currentPlayerId={currentPlayer.id} />
+                </>
+            )}
         </GameLayout>
     );
 }

@@ -13,7 +13,7 @@ export default function Index({ games }: Props) {
 
             {/* Hero Header */}
             <div className="mb-10">
-                <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+                <div className="bg-gradient-to-r from-brand-blue to-brand-teal rounded-3xl p-8 shadow-2xl relative overflow-hidden">
                     {/* Decorative circles */}
                     <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
                     <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2" />
@@ -32,7 +32,7 @@ export default function Index({ games }: Props) {
                         </div>
                         <Link
                             href={route('rooms.join')}
-                            className="rounded-full bg-white px-8 py-4 font-bold text-purple-600 shadow-lg transition hover:scale-105 border-b-4 border-purple-300 flex items-center gap-2"
+                            className="rounded-full bg-white px-8 py-4 font-bold text-brand-teal shadow-lg transition hover:scale-105 border-b-4 border-teal-200 flex items-center gap-2"
                         >
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
@@ -83,20 +83,20 @@ function TrioGameVisual() {
             <div className="relative flex items-center justify-center">
                 {/* Card 1 - Left */}
                 <div className="absolute -left-12 w-24 h-32 bg-white rounded-xl shadow-2xl border-4 border-white/80 flex flex-col items-center justify-center transform -rotate-12 group-hover:-rotate-[16deg] transition-transform duration-300">
-                    <div className="text-5xl font-black text-purple-600">7</div>
-                    <div className="mt-1 text-purple-400 text-xs font-bold">★★★</div>
+                    <div className="text-5xl font-black text-brand-teal">7</div>
+                    <div className="mt-1 text-teal-400 text-xs font-bold">★★★</div>
                 </div>
 
                 {/* Card 2 - Center */}
                 <div className="relative w-24 h-32 bg-white rounded-xl shadow-2xl border-4 border-white/80 flex flex-col items-center justify-center z-10 group-hover:scale-110 transition-transform duration-300">
-                    <div className="text-5xl font-black text-indigo-600">7</div>
-                    <div className="mt-1 text-indigo-400 text-xs font-bold">★★★</div>
+                    <div className="text-5xl font-black text-brand-blue">7</div>
+                    <div className="mt-1 text-blue-400 text-xs font-bold">★★★</div>
                 </div>
 
                 {/* Card 3 - Right */}
                 <div className="absolute -right-12 w-24 h-32 bg-white rounded-xl shadow-2xl border-4 border-white/80 flex flex-col items-center justify-center transform rotate-12 group-hover:rotate-[16deg] transition-transform duration-300">
-                    <div className="text-5xl font-black text-pink-600">7</div>
-                    <div className="mt-1 text-pink-400 text-xs font-bold">★★★</div>
+                    <div className="text-5xl font-black text-brand-cyan">7</div>
+                    <div className="mt-1 text-cyan-400 text-xs font-bold">★★★</div>
                 </div>
             </div>
         </div>

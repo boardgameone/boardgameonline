@@ -22,7 +22,7 @@ export default function GameLayout({
             {/* Nav */}
             <nav className="relative">
                 {/* Gradient Background */}
-                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500" />
+                <div className="absolute inset-0 bg-gradient-to-r from-brand-blue to-brand-teal" />
 
                 {/* Decorative elements */}
                 <div className="absolute inset-0 overflow-hidden">
@@ -38,8 +38,8 @@ export default function GameLayout({
                             {/* Logo */}
                             <Link href="/" className="flex items-center gap-2 sm:gap-3 group">
                                 <div className="relative">
-                                    <div className="absolute inset-0 bg-yellow-400 rounded-xl blur-sm opacity-50 group-hover:opacity-75 transition" />
-                                    <div className="relative bg-white rounded-xl p-1.5 sm:p-2 shadow-lg group-hover:scale-105 transition">
+                                    <div className="absolute inset-0 bg-yellow-400 rounded-2xl blur-sm opacity-50 group-hover:opacity-75 transition" />
+                                    <div className="relative bg-white rounded-2xl p-1.5 sm:p-2 shadow-lg group-hover:scale-105 transition">
                                         <img
                                             src="/images/logo.png"
                                             alt="Board Game Online"
@@ -280,7 +280,7 @@ export default function GameLayout({
                 </div>
 
                 {/* Bottom Gradient Border */}
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-500" />
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-yellow-400 via-brand-teal to-brand-cyan" />
             </nav>
 
             {header && (
