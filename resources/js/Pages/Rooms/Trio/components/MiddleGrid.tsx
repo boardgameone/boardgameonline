@@ -26,7 +26,6 @@ export default function MiddleGrid({ cards, canReveal, onRevealCard }: MiddleGri
                             value={card.value}
                             faceUp={card.face_up}
                             size="md"
-                            variant={card.face_up ? 'blue' : 'gray'}
                             disabled={!canReveal || card.face_up}
                             onClick={() => {
                                 if (canReveal && !card.face_up) {

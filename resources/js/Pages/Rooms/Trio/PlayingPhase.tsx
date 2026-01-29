@@ -242,7 +242,6 @@ export default function PlayingPhase({
                                     value={card}
                                     faceUp={true}
                                     size="md"
-                                    variant="purple"
                                 />
                             </div>
                         ))}

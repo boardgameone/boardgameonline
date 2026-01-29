@@ -68,7 +68,6 @@ export default function TurnReveals({
                             value={reveal.value}
                             faceUp={true}
                             size="sm"
-                            variant="indigo"
                         />
                         <span className="text-xs text-gray-600 mt-2 text-center max-w-[100px] font-medium">
                             {getRevealSource(reveal)}

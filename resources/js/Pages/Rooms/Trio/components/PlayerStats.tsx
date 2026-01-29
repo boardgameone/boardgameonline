@@ -1,4 +1,4 @@
-import TrioCard from './TrioCard';
+import StackedTrio from './StackedTrio';
 
 interface Player {
     id: number;
@@ -98,18 +98,13 @@ export default function PlayerStats({
                     {player.collected_trios.length > 0 && (
                         <div className="mt-3 pt-3 border-t border-gray-200">
                             <p className="text-xs font-semibold text-gray-600 mb-2">Collected Trios:</p>
-                            <div className="flex gap-3 flex-wrap">
+                            <div className="flex gap-4 flex-wrap">
                                 {player.collected_trios.map((trio, idx) => (
-                                    <div key={idx} className="flex gap-1">
-                                        {trio.map((card, cardIdx) => (
-                                            <div
-                                                key={cardIdx}
-                                                className="w-10 h-12 rounded-md bg-gradient-to-br from-green-500 to-green-600 text-white text-sm font-bold flex items-center justify-center shadow"
-                                            >
-                                                {card}
-                                            </div>
-                                        ))}
-                                    </div>
+                                    <StackedTrio
+                                        key={idx}
+                                        cards={trio}
+                                        size="sm"
+                                    />
                                 ))}
                             </div>
                         </div>
