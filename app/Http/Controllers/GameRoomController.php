@@ -871,7 +871,7 @@ class GameRoomController extends Controller
     }
 
     /**
-     * Get voice status of all players (mute state).
+     * Get voice status of all players (mute state and video state).
      */
     public function getVoiceStatus(Game $game, GameRoom $room): JsonResponse
     {
@@ -887,17 +887,42 @@ class GameRoomController extends Controller
         }
 
         $players = $room->connectedPlayers()
-            ->get(['id', 'nickname', 'avatar_color', 'is_muted'])
+            ->get(['id', 'nickname', 'avatar_color', 'is_muted', 'is_video_enabled'])
             ->map(fn (GamePlayer $player) => [
                 'id' => $player->id,
                 'nickname' => $player->nickname,
                 'avatar_color' => $player->avatar_color,
                 'is_muted' => $player->is_muted,
+                'is_video_enabled' => $player->is_video_enabled,
             ]);
 
         return response()->json([
             'players' => $players,
             'current_player_id' => $currentPlayer->id,
+        ]);
+    }
+
+    /**
+     * Toggle video status for the current player.
+     */
+    public function toggleVideo(Game $game, GameRoom $room): JsonResponse
+    {
+        // Validate room belongs to this game
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
+        $currentPlayer = $this->findCurrentPlayer($room);
+
+        if (! $currentPlayer) {
+            return response()->json(['error' => 'You are not a player in this room.'], 403);
+        }
+
+        $currentPlayer->update(['is_video_enabled' => ! $currentPlayer->is_video_enabled]);
+
+        return response()->json([
+            'success' => true,
+            'is_video_enabled' => $currentPlayer->is_video_enabled,
         ]);
     }
 }

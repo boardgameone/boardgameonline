@@ -4,6 +4,7 @@ import TutorialModal from './components/TutorialModal';
 import SoundToggle from '../CheeseThief/components/SoundToggle';
 import { useSound } from '@/hooks/useSound';
 import GameIcon from '@/Components/GameIcon';
+import PlayerCard from '@/Components/PlayerCard';
 
 interface Player {
     id: number;
@@ -18,6 +19,7 @@ interface WaitingPhaseProps {
     gameSlug: string;
     players: Player[];
     isHost: boolean;
+    currentPlayerId?: number;
     minPlayers: number;
     maxPlayers: number;
 }
@@ -27,6 +29,7 @@ export default function WaitingPhase({
     gameSlug,
     players,
     isHost,
+    currentPlayerId,
     minPlayers,
     maxPlayers,
 }: WaitingPhaseProps) {
@@ -95,32 +98,13 @@ export default function WaitingPhase({
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-                    {connectedPlayers.map((player, index) => (
-                        <div
+                    {connectedPlayers.map((player) => (
+                        <PlayerCard
                             key={player.id}
-                            className="flex items-center gap-3 rounded-lg border-2 border-gray-200 bg-white p-4 animate-slideIn"
-                            style={{ animationDelay: `${index * 100}ms` }}
-                        >
-                            <div
-                                className="h-12 w-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md animate-pulse"
-                                style={{
-                                    backgroundColor: player.avatar_color,
-                                    animationDelay: `${index * 200}ms`,
-                                }}
-                            >
-                                {player.nickname.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-gray-900 truncate">
-                                    {player.nickname}
-                                </p>
-                                {player.is_host && (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-semibold text-yellow-800">
-                                        <GameIcon name="crown" size="xs" /> Host
-                                    </span>
-                                )}
-                            </div>
-                        </div>
+                            player={player}
+                            currentPlayerId={currentPlayerId ?? 0}
+                            showVoiceControls={!!currentPlayerId}
+                        />
                     ))}
                 </div>
             </div>

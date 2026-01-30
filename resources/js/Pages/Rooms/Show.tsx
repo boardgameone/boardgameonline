@@ -1,6 +1,7 @@
 import GameIcon from '@/Components/GameIcon';
+import PlayerCard from '@/Components/PlayerCard';
 import RoomChat from '@/Components/RoomChat';
-import VoiceChat from '@/Components/VoiceChat';
+import { VoiceChatProvider } from '@/Contexts/VoiceChatContext';
 import GameLayout from '@/Layouts/GameLayout';
 import { GamePlayer, GameRoom, GameState, PageProps } from '@/types';
 import { Head, Link, router, useForm, usePoll } from '@inertiajs/react';
@@ -75,10 +76,9 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
 
     const status = getStatusBadge();
 
-    return (
-        <GameLayout>
-            <Head title={`Room ${room.room_code}`} />
-
+    // Wrap content with VoiceChatProvider when user is a player
+    const content = (
+        <>
             {/* Back button */}
             <div className="mb-6 flex items-center justify-between">
                 <Link
@@ -204,7 +204,8 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                                                 <PlayerCard
                                                     key={player.id}
                                                     player={player}
-                                                    isCurrentUser={player.id === currentPlayer?.id}
+                                                    currentPlayerId={currentPlayer?.id ?? 0}
+                                                    showVoiceControls={!!currentPlayer}
                                                 />
                                             ))}
                                             {Array.from({
@@ -363,56 +364,29 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                 </div>
             )}
 
-            {/* Overlay Chat and Voice Components */}
+            {/* Overlay Chat Component */}
             {currentPlayer && (
-                <>
-                    <RoomChat gameSlug={gameSlug} roomCode={room.room_code} currentPlayerId={currentPlayer.id} />
-                    <VoiceChat gameSlug={gameSlug} roomCode={room.room_code} currentPlayerId={currentPlayer.id} />
-                </>
+                <RoomChat gameSlug={gameSlug} roomCode={room.room_code} currentPlayerId={currentPlayer.id} />
+            )}
+        </>
+    );
+
+    return (
+        <GameLayout>
+            <Head title={`Room ${room.room_code}`} />
+
+            {currentPlayer ? (
+                <VoiceChatProvider
+                    gameSlug={gameSlug}
+                    roomCode={room.room_code}
+                    currentPlayerId={currentPlayer.id}
+                >
+                    {content}
+                </VoiceChatProvider>
+            ) : (
+                content
             )}
         </GameLayout>
-    );
-}
-
-function PlayerCard({
-    player,
-    isCurrentUser,
-}: Readonly<{
-    player: GamePlayer;
-    isCurrentUser: boolean;
-}>) {
-    return (
-        <div
-            className={`flex items-center gap-3 rounded-xl p-4 transition ${
-                isCurrentUser
-                    ? 'bg-blue-100 border-2 border-blue-400'
-                    : 'bg-gray-50 border-2 border-transparent'
-            }`}
-        >
-            <div
-                className="flex h-12 w-12 items-center justify-center rounded-full text-white font-bold text-lg shadow-md"
-                style={{ backgroundColor: player.avatar_color }}
-            >
-                {player.nickname.charAt(0).toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-                <p className="font-bold text-gray-900 truncate">
-                    {player.nickname}
-                    {isCurrentUser && <span className="text-blue-600"> (You)</span>}
-                </p>
-                {player.is_host && (
-                    <span className="inline-flex items-center text-xs text-yellow-600 font-bold">
-                        <GameIcon name="crown" size="xs" className="inline-block mr-1" /> Host
-                    </span>
-                )}
-            </div>
-            <span
-                className={`h-3 w-3 rounded-full ${
-                    player.is_connected ? 'bg-green-500 animate-pulse' : 'bg-gray-300'
-                }`}
-                title={player.is_connected ? 'Online' : 'Offline'}
-            />
-        </div>
     );
 }
 

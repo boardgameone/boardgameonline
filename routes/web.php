@@ -51,6 +51,7 @@ Route::get('/rooms/{game:slug}/{room:room_code}/messages', [GameRoomController::
 Route::post('/rooms/{game:slug}/{room:room_code}/voice/signal', [GameRoomController::class, 'sendSignal'])->name('rooms.voice.signal');
 Route::get('/rooms/{game:slug}/{room:room_code}/voice/signals', [GameRoomController::class, 'getSignals'])->name('rooms.voice.signals');
 Route::post('/rooms/{game:slug}/{room:room_code}/voice/toggle-mute', [GameRoomController::class, 'toggleMute'])->name('rooms.voice.toggleMute');
+Route::post('/rooms/{game:slug}/{room:room_code}/voice/toggle-video', [GameRoomController::class, 'toggleVideo'])->name('rooms.voice.toggleVideo');
 Route::get('/rooms/{game:slug}/{room:room_code}/voice/status', [GameRoomController::class, 'getVoiceStatus'])->name('rooms.voice.status');
 
 // Trio game routes

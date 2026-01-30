@@ -85,6 +85,7 @@ export default function TrioGame({
                     gameSlug={gameSlug}
                     players={players}
                     isHost={isHost}
+                    currentPlayerId={currentPlayerId}
                     minPlayers={minPlayers}
                     maxPlayers={maxPlayers}
                 />
