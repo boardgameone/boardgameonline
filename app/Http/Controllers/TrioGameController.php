@@ -277,18 +277,14 @@ class TrioGameController extends Controller
             }
         }
 
-        // Remove cards from middle grid (all at once)
+        // Mark cards as removed at their positions (don't rearrange)
         if (! empty($middlePositionsToRemove)) {
             $middleGrid = $settings['middle_grid'];
 
-            // Filter out the cards at the specified positions
-            $middleGrid = array_values(array_filter($middleGrid, function ($card, $index) use ($middlePositionsToRemove) {
-                return ! in_array($index, $middlePositionsToRemove);
-            }, ARRAY_FILTER_USE_BOTH));
-
-            // Re-index positions
-            foreach ($middleGrid as $index => $card) {
-                $middleGrid[$index]['position'] = $index;
+            foreach ($middlePositionsToRemove as $position) {
+                $middleGrid[$position]['removed'] = true;
+                $middleGrid[$position]['face_up'] = false;
+                $middleGrid[$position]['value'] = null;
             }
 
             $settings['middle_grid'] = $middleGrid;
@@ -300,18 +296,48 @@ class TrioGameController extends Controller
         $gameData['collected_trios'][] = [$trioValue, $trioValue, $trioValue];
         $currentPlayer->update(['game_data' => $gameData]);
 
-        $currentTurn['reveals'] = array_slice($reveals, 0, -3);
-        $settings['current_turn'] = $currentTurn;
-        $room->update(['settings' => $settings]);
-
+        // Check for win condition first
         if (count($gameData['collected_trios']) >= 3) {
+            $currentTurn['reveals'] = array_slice($reveals, 0, -3);
+            $settings['current_turn'] = $currentTurn;
+
             $room->update([
+                'settings' => $settings,
                 'status' => 'finished',
                 'winner' => 'trio',
                 'current_hour' => 2,
                 'ended_at' => now(),
             ]);
+
+            return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
         }
+
+        // Game continues - advance to next player
+        // Flip all middle cards face-down
+        $middleGrid = $settings['middle_grid'];
+        foreach ($middleGrid as $index => $card) {
+            $middleGrid[$index]['face_up'] = false;
+        }
+        $settings['middle_grid'] = $middleGrid;
+
+        // Calculate next player
+        $turnOrder = $settings['turn_order'];
+        $currentIndex = array_search($currentPlayer->id, $turnOrder);
+        $nextIndex = ($currentIndex + 1) % count($turnOrder);
+        $nextPlayerId = $turnOrder[$nextIndex];
+
+        // Reset turn state for next player
+        $settings['current_turn'] = [
+            'player_id' => $nextPlayerId,
+            'turn_number' => $currentTurn['turn_number'] + 1,
+            'reveals' => [],
+            'can_continue' => true,
+        ];
+
+        $room->update([
+            'settings' => $settings,
+            'thief_player_id' => $nextPlayerId,
+        ]);
 
         return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
     }
@@ -462,6 +488,7 @@ class TrioGameController extends Controller
                 'position' => $card['position'],
                 'value' => $card['face_up'] ? $card['value'] : null,
                 'face_up' => $card['face_up'],
+                'removed' => $card['removed'] ?? false,
             ];
         })->all();
 

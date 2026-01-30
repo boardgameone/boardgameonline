@@ -38,6 +38,7 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
     const [connectionStates, setConnectionStates] = useState<Map<number, ConnectionState>>(new Map());
     const [isConnecting, setIsConnecting] = useState(false);
     const [permissionDenied, setPermissionDenied] = useState(false);
+    const [hasMicrophoneAccess, setHasMicrophoneAccess] = useState(false);
 
     const peerRef = useRef<Peer | null>(null);
     const localStreamRef = useRef<MediaStream | null>(null);
@@ -45,9 +46,29 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
     const statusPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const peerPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const autoConnectAttempted = useRef(false);
+    const silentAudioContextRef = useRef<AudioContext | null>(null);
 
     // Generate unique peer ID for this player in this room
     const getPeerId = (playerId: number) => `${roomCode}-player-${playerId}`;
+
+    // Create a silent audio stream (no microphone permission required)
+    const createSilentStream = (): MediaStream => {
+        const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        const audioContext = new AudioContextClass();
+        silentAudioContextRef.current = audioContext;
+
+        const oscillator = audioContext.createOscillator();
+        const dst = audioContext.createMediaStreamDestination();
+        oscillator.connect(dst);
+        oscillator.start();
+
+        // Return the stream with muted tracks
+        const stream = dst.stream;
+        stream.getAudioTracks().forEach(track => {
+            track.enabled = false;
+        });
+        return stream;
+    };
 
     // Fetch voice status of all players
     const fetchVoiceStatus = useCallback(async () => {
@@ -255,30 +276,16 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
     const connect = async () => {
         try {
             setError(null);
-            setConnectionStatus('Getting microphone...');
+            setConnectionStatus('Connecting to voice server...');
 
-            // Get microphone access
-            const stream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    autoGainControl: true,
-                },
-            });
-
-            console.log('Got microphone access');
+            // Create a silent stream (no microphone permission required)
+            // This allows users to hear others without granting mic access
+            const stream = createSilentStream();
+            console.log('[Voice] Created silent stream (no mic permission needed)');
             localStreamRef.current = stream;
+            setHasMicrophoneAccess(false);
 
-            // Start muted by default
-            stream.getAudioTracks().forEach(track => {
-                track.enabled = false;
-            });
-            console.log('[Voice] Local audio tracks disabled (muted by default)');
-
-            // Setup local speaking indicator
-            setupAudioLevelDetection(stream, currentPlayerId);
-
-            setConnectionStatus('Connecting to peer server...');
+            // No need to setup speaking indicator for silent stream
 
             // Create peer with unique ID
             const myPeerId = getPeerId(currentPlayerId);
@@ -426,14 +433,7 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
         } catch (err) {
             console.error('[Voice] Failed to connect:', err);
             setIsConnecting(false);
-
-            // Check for permission denial
-            if (err instanceof Error && err.name === 'NotAllowedError') {
-                setPermissionDenied(true);
-                setError('Microphone access denied. You can still play without voice chat.');
-            } else {
-                setError('Failed to access microphone. Please allow microphone access.');
-            }
+            setError('Failed to connect to voice server. Please try again.');
             setConnectionStatus('Failed');
         }
     };
@@ -465,8 +465,15 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
             localStreamRef.current = null;
         }
 
+        // Clean up silent AudioContext if it exists
+        if (silentAudioContextRef.current) {
+            silentAudioContextRef.current.close();
+            silentAudioContextRef.current = null;
+        }
+
         setIsConnected(false);
         setIsMuted(true);
+        setHasMicrophoneAccess(false);
         setSpeakingPlayers(new Set());
         setConnectionStatus('');
         setConnectionStates(new Map());
@@ -476,6 +483,76 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
     const toggleMute = async () => {
         if (!localStreamRef.current) return;
 
+        // If we don't have mic access yet and trying to unmute, request it
+        if (!hasMicrophoneAccess && isMuted) {
+            try {
+                setConnectionStatus('Requesting microphone access...');
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true,
+                    },
+                });
+
+                console.log('[Voice] Got microphone access');
+
+                // Replace tracks in all existing peer connections
+                const newTrack = stream.getAudioTracks()[0];
+                callsRef.current.forEach(({ call }) => {
+                    const sender = call.peerConnection?.getSenders().find(s => s.track?.kind === 'audio');
+                    if (sender) {
+                        sender.replaceTrack(newTrack);
+                        console.log('[Voice] Replaced audio track in peer connection');
+                    }
+                });
+
+                // Stop the old silent stream tracks
+                localStreamRef.current.getTracks().forEach(track => track.stop());
+
+                // Clean up silent AudioContext
+                if (silentAudioContextRef.current) {
+                    silentAudioContextRef.current.close();
+                    silentAudioContextRef.current = null;
+                }
+
+                // Update local stream reference
+                localStreamRef.current = stream;
+                setHasMicrophoneAccess(true);
+                setPermissionDenied(false);
+                setConnectionStatus('Connected');
+
+                // Setup speaking indicator for real stream
+                setupAudioLevelDetection(stream, currentPlayerId);
+
+                // Enable the track (unmute)
+                stream.getAudioTracks().forEach(track => {
+                    track.enabled = true;
+                });
+
+                setIsMuted(false);
+                console.log('[Voice] Microphone enabled and unmuted');
+
+                try {
+                    await axios.post(route('rooms.voice.toggleMute', [gameSlug, roomCode]));
+                } catch {
+                    // Silently fail
+                }
+                return;
+            } catch (err) {
+                console.error('[Voice] Failed to get microphone access:', err);
+                if (err instanceof Error && err.name === 'NotAllowedError') {
+                    setPermissionDenied(true);
+                    setError('Microphone access denied. Click to try again.');
+                } else {
+                    setError('Failed to access microphone. Please try again.');
+                }
+                setConnectionStatus('Connected');
+                return; // Don't toggle mute if permission denied
+            }
+        }
+
+        // Normal mute/unmute toggle (already have mic access)
         const newMutedState = !isMuted;
         localStreamRef.current.getAudioTracks().forEach(track => {
             track.enabled = !newMutedState;
@@ -587,23 +664,12 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
                         </div>
                     )}
 
-                    {/* Permission denied message */}
-                    {permissionDenied && !isConnected && (
+                    {/* Permission denied message - shown when connected but mic access denied */}
+                    {permissionDenied && isConnected && !hasMicrophoneAccess && (
                         <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-                            <p className="text-sm text-yellow-800 mb-2">
-                                Microphone access is required for voice chat. You can still play without it.
+                            <p className="text-sm text-yellow-800">
+                                Microphone access denied. You can still listen to others. Click "Enable Microphone" to try again.
                             </p>
-                            <button
-                                onClick={() => {
-                                    setPermissionDenied(false);
-                                    autoConnectAttempted.current = false;
-                                    setIsConnecting(true);
-                                    connect();
-                                }}
-                                className="w-full rounded-full bg-yellow-500 px-4 py-2 font-bold text-white shadow-md transition hover:scale-105 hover:bg-yellow-600"
-                            >
-                                Retry Microphone Access
-                            </button>
                         </div>
                     )}
 
@@ -614,13 +680,22 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
                         </div>
                     )}
 
+                    {/* Listen-only mode indicator */}
+                    {isConnected && !hasMicrophoneAccess && !permissionDenied && (
+                        <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                            <p className="text-sm text-blue-800">
+                                You can hear other players. Enable your microphone to speak.
+                            </p>
+                        </div>
+                    )}
+
                     {/* Mute/Unmute Button - shown when connected */}
                     {isConnected && (
                         <div className="space-y-4">
                             {/* Mute Control */}
                             <button
                                 onClick={toggleMute}
-                                className={`w-full rounded-full px-6 py-3 font-bold shadow-lg transition hover:scale-105 flex items-center justify-center gap-2 border-b-4 ${
+                                className={`w-full rounded-full px-6 py-3 font-bold shadow-lg transition hover:scale-105 flex flex-col items-center justify-center gap-1 border-b-4 ${
                                     isMuted
                                         ? 'bg-red-500 text-white border-red-700 hover:bg-red-600'
                                         : 'bg-green-500 text-white border-green-700 hover:bg-green-600'
@@ -628,19 +703,24 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
                             >
                                 {isMuted ? (
                                     <>
-                                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-                                        </svg>
-                                        Unmute Microphone
+                                        <span className="flex items-center gap-2">
+                                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                                            </svg>
+                                            {hasMicrophoneAccess ? 'Unmute Microphone' : 'Enable Microphone'}
+                                        </span>
+                                        {!hasMicrophoneAccess && (
+                                            <span className="text-xs opacity-75">Permission required</span>
+                                        )}
                                     </>
                                 ) : (
-                                    <>
+                                    <span className="flex items-center gap-2">
                                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                                         </svg>
                                         Mute Microphone
-                                    </>
+                                    </span>
                                 )}
                             </button>
 

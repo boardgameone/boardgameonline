@@ -19,8 +19,8 @@ export default function TutorialModal({ show, onClose }: TutorialModalProps) {
 
     const steps: TutorialStep[] = [
         {
-            title: 'Welcome to TRIO!',
-            content: 'TRIO is a card game where you collect sets of three matching cards. First player to collect 3 trios wins!',
+            title: 'Welcome to Trio!',
+            content: 'Trio is a card game where you collect sets of three matching cards. First player to collect 3 trios wins!',
             icon: <GameIcon name="card" className="h-16 w-16 text-blue-500" />,
         },
         {

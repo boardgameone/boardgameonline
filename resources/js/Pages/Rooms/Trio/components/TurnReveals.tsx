@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import TrioCard from './TrioCard';
 import GameIcon from '@/Components/GameIcon';
 
@@ -33,6 +34,42 @@ export default function TurnReveals({
     onEndTurn,
     compact = false,
 }: TurnRevealsProps) {
+    const [autoActionCountdown, setAutoActionCountdown] = useState<number | null>(null);
+    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const actionTriggeredRef = useRef(false);
+
+    // Auto-trigger Claim Trio or End Turn after 1 second when they're the only option
+    useEffect(() => {
+        const shouldAutoClaimTrio = canClaim;
+        const shouldAutoEndTurn = canEndTurn && !canContinue;
+
+        if ((shouldAutoClaimTrio || shouldAutoEndTurn) && !actionTriggeredRef.current) {
+            setAutoActionCountdown(1);
+
+            timerRef.current = setTimeout(() => {
+                actionTriggeredRef.current = true;
+                if (shouldAutoClaimTrio) {
+                    onClaimTrio();
+                } else if (shouldAutoEndTurn) {
+                    onEndTurn();
+                }
+            }, 1000);
+        }
+
+        return () => {
+            if (timerRef.current) {
+                clearTimeout(timerRef.current);
+                timerRef.current = null;
+            }
+            setAutoActionCountdown(null);
+        };
+    }, [canClaim, canEndTurn, canContinue, onClaimTrio, onEndTurn]);
+
+    // Reset the action triggered flag when reveals change (new turn started)
+    useEffect(() => {
+        actionTriggeredRef.current = false;
+    }, [reveals.length]);
+
     if (reveals.length === 0) {
         return null;
     }
@@ -85,25 +122,22 @@ export default function TurnReveals({
                             ))}
                         </div>
 
-                        {/* Action buttons */}
-                        <div className="flex gap-2">
-                            {canClaim && (
-                                <button
-                                    onClick={onClaimTrio}
-                                    className="rounded-lg bg-gradient-to-r from-green-500 to-green-600 px-4 py-2 text-white text-sm font-bold shadow hover:from-green-600 hover:to-green-700 transition-all duration-200 hover:scale-105 active:scale-95"
-                                >
-                                    <GameIcon name="party" size="sm" className="inline-block mr-1" /> Claim!
-                                </button>
-                            )}
-                            {canEndTurn && !canContinue && (
-                                <button
-                                    onClick={onEndTurn}
-                                    className="rounded-lg bg-gradient-to-r from-red-500 to-red-600 px-4 py-2 text-white text-sm font-bold shadow hover:from-red-600 hover:to-red-700 transition-all duration-200 hover:scale-105 active:scale-95"
-                                >
-                                    <GameIcon name="x" size="sm" className="inline-block mr-1" /> End
-                                </button>
-                            )}
-                        </div>
+                        {/* Auto-action status indicator */}
+                        {(canClaim || (canEndTurn && !canContinue)) && (
+                            <div className="flex items-center gap-2 text-sm font-medium animate-pulse">
+                                {canClaim ? (
+                                    <span className="text-green-600">
+                                        <GameIcon name="party" size="sm" className="inline-block mr-1" />
+                                        Claiming trio...
+                                    </span>
+                                ) : (
+                                    <span className="text-red-500">
+                                        <GameIcon name="x" size="sm" className="inline-block mr-1" />
+                                        Ending turn...
+                                    </span>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
                 {!canContinue && reveals.length > 0 && !canClaim && (
@@ -144,25 +178,22 @@ export default function TurnReveals({
                 ))}
             </div>
 
-            {/* Action buttons */}
-            <div className="flex gap-3">
-                {canClaim && (
-                    <button
-                        onClick={onClaimTrio}
-                        className="flex-1 rounded-lg bg-gradient-to-r from-green-500 to-green-600 px-6 py-3 text-white font-bold shadow-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 hover:scale-105 active:scale-95 border-b-4 border-green-700"
-                    >
-                        <GameIcon name="party" className="inline-block mr-1" /> Claim Trio!
-                    </button>
-                )}
-                {canEndTurn && !canContinue && (
-                    <button
-                        onClick={onEndTurn}
-                        className="flex-1 rounded-lg bg-gradient-to-r from-red-500 to-red-600 px-6 py-3 text-white font-bold shadow-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 hover:scale-105 active:scale-95 border-b-4 border-red-700 animate-shake"
-                    >
-                        <GameIcon name="x" className="inline-block mr-1" /> End Turn
-                    </button>
-                )}
-            </div>
+            {/* Auto-action status indicator */}
+            {(canClaim || (canEndTurn && !canContinue)) && (
+                <div className="flex items-center justify-center gap-2 text-base font-medium animate-pulse py-2">
+                    {canClaim ? (
+                        <span className="text-green-600">
+                            <GameIcon name="party" className="inline-block mr-1" />
+                            Claiming trio...
+                        </span>
+                    ) : (
+                        <span className="text-red-500">
+                            <GameIcon name="x" className="inline-block mr-1" />
+                            Ending turn...
+                        </span>
+                    )}
+                </div>
+            )}
 
             {!canContinue && reveals.length > 0 && !canClaim && (
                 <p className="mt-3 text-sm text-red-600 font-medium text-center">

@@ -55,7 +55,7 @@ export default function TrioCelebration({ show, playerName, trioCards, onClose }
                     <div className="text-white mb-4 animate-bounce flex justify-center">
                         <GameIcon name="party" className="h-16 w-16" />
                     </div>
-                    <h2 className="text-3xl font-black text-white mb-2">TRIO!</h2>
+                    <h2 className="text-3xl font-black text-white mb-2">Trio!</h2>
                     <p className="text-xl text-green-100 mb-6 font-bold">
                         {playerName} claimed a trio!
                     </p>

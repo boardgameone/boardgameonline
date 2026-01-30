@@ -90,16 +90,16 @@ export default function TrioGamePage({ auth, room, currentPlayer, isHost, gameSt
     const minPlayers = room.game?.min_players || 3;
     const maxPlayers = room.game?.max_players || 8;
 
-    // Use fullHeight mode only during playing phase
-    const isPlaying = room.status === 'playing';
+    // Use fullHeight mode during playing and finished phases
+    const useFullHeight = room.status === 'playing' || room.status === 'finished';
 
     return (
-        <GameLayout fullHeight={isPlaying}>
-            <Head title={`TRIO - Room ${room.room_code}`} />
+        <GameLayout fullHeight={useFullHeight}>
+            <Head title={`Trio - Room ${room.room_code}`} />
 
-            <div className={isPlaying ? 'h-full py-2' : 'py-8'}>
+            <div className={useFullHeight ? 'h-full py-2' : 'py-8'}>
                 <div className={`mx-auto px-4 sm:px-6 lg:px-8 ${
-                    isPlaying ? 'max-w-full h-full' : 'max-w-5xl'
+                    useFullHeight ? 'max-w-full h-full' : 'max-w-5xl'
                 }`}>
                     {/* Show join form for guests who need to enter nickname */}
                     {needsToJoin && isGuest && (

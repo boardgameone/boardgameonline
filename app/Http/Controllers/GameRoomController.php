@@ -101,7 +101,7 @@ class GameRoomController extends Controller
             }
         }
 
-        // Route to TRIO game controller if this is a TRIO game
+        // Route to Trio game controller if this is a Trio game
         if ($room->game?->slug === 'trio') {
             return app(TrioGameController::class)->show($game, $room);
         }

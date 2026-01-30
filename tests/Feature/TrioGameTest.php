@@ -446,18 +446,28 @@ class TrioGameTest extends TestCase
 
         $data['room']->refresh();
 
-        // Assert middle grid reduced by 3
-        $this->assertCount($initialMiddleCount - 3, $data['room']->settings['middle_grid']);
+        // Assert grid count stays the same (cards are marked as removed, not filtered out)
+        $this->assertCount($initialMiddleCount, $data['room']->settings['middle_grid']);
 
-        // Assert the specific cards (value 7) were removed from positions 0, 1, 2
-        $remainingValues = array_column($data['room']->settings['middle_grid'], 'value');
-        $removedCount = count(array_filter($remainingValues, fn ($v) => $v === 7));
+        // Assert positions 0, 1, 2 are marked as removed
+        $this->assertTrue($data['room']->settings['middle_grid'][0]['removed']);
+        $this->assertTrue($data['room']->settings['middle_grid'][1]['removed']);
+        $this->assertTrue($data['room']->settings['middle_grid'][2]['removed']);
 
-        // There should be no more 7s at the first 3 positions (they were removed)
-        // Original middle grid had 9 cards, we removed 3, so 6 remain
-        $this->assertCount(6, $data['room']->settings['middle_grid']);
+        // Assert removed cards have null value and face_up false
+        $this->assertNull($data['room']->settings['middle_grid'][0]['value']);
+        $this->assertNull($data['room']->settings['middle_grid'][1]['value']);
+        $this->assertNull($data['room']->settings['middle_grid'][2]['value']);
+        $this->assertFalse($data['room']->settings['middle_grid'][0]['face_up']);
+        $this->assertFalse($data['room']->settings['middle_grid'][1]['face_up']);
+        $this->assertFalse($data['room']->settings['middle_grid'][2]['face_up']);
 
-        // Verify positions are properly re-indexed (0, 1, 2, 3, 4, 5)
+        // Assert other cards are not marked as removed
+        for ($i = 3; $i < $initialMiddleCount; $i++) {
+            $this->assertFalse($data['room']->settings['middle_grid'][$i]['removed'] ?? false);
+        }
+
+        // Verify positions are preserved (not re-indexed)
         foreach ($data['room']->settings['middle_grid'] as $index => $card) {
             $this->assertEquals($index, $card['position']);
         }
@@ -513,15 +523,21 @@ class TrioGameTest extends TestCase
         $this->assertContains(9, $currentPlayerAfter->game_data['hand']);
     }
 
-    public function test_claiming_multiple_trios_in_succession(): void
+    public function test_claiming_trio_ends_turn_and_passes_to_next_player(): void
     {
         $data = $this->createGameWithPlayers(3);
         $this->actingAs($data['host'])->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
 
         $data['room']->refresh();
-        $currentPlayer = $data['room']->connectedPlayers->find($data['room']->thief_player_id);
+        $firstPlayer = $data['room']->connectedPlayers->find($data['room']->thief_player_id);
+        $turnOrder = $data['room']->settings['turn_order'];
+        $firstPlayerIndex = array_search($firstPlayer->id, $turnOrder);
+        $nextPlayerIndex = ($firstPlayerIndex + 1) % count($turnOrder);
+        $nextPlayerId = $turnOrder[$nextPlayerIndex];
+        $initialTurnNumber = $data['room']->settings['current_turn']['turn_number'];
+        $initialMiddleCount = count($data['room']->settings['middle_grid']);
 
-        // First trio: middle positions 0, 1, 2 (value 3)
+        // Set up a trio: middle positions 0, 1, 2 (value 3)
         $settings = $data['room']->settings;
         $settings['middle_grid'][0] = ['value' => 3, 'face_up' => true, 'position' => 0];
         $settings['middle_grid'][1] = ['value' => 3, 'face_up' => true, 'position' => 1];
@@ -533,45 +549,39 @@ class TrioGameTest extends TestCase
         ];
         $data['room']->update(['settings' => $settings]);
 
-        $this->actingAs($currentPlayer->user)
+        $this->actingAs($firstPlayer->user)
             ->post(route('rooms.trio.claimTrio', [$data['room']->game->slug, $data['room']->room_code]));
 
         $data['room']->refresh();
-        $currentPlayer->refresh();
+        $firstPlayer->refresh();
 
-        $this->assertCount(6, $data['room']->settings['middle_grid']);
-        $this->assertCount(1, $currentPlayer->game_data['collected_trios']);
+        // Assert trio was collected
+        $this->assertCount(1, $firstPlayer->game_data['collected_trios']);
 
-        // Second trio: middle positions 0, 1, 2 (now different cards, value 6)
-        $settings = $data['room']->settings;
-        $settings['middle_grid'][0]['value'] = 6;
-        $settings['middle_grid'][0]['face_up'] = true;
-        $settings['middle_grid'][1]['value'] = 6;
-        $settings['middle_grid'][1]['face_up'] = true;
-        $settings['middle_grid'][2]['value'] = 6;
-        $settings['middle_grid'][2]['face_up'] = true;
-        $settings['current_turn']['reveals'] = [
-            ['value' => 6, 'source' => 'middle_0'],
-            ['value' => 6, 'source' => 'middle_1'],
-            ['value' => 6, 'source' => 'middle_2'],
-        ];
-        $data['room']->update(['settings' => $settings]);
+        // Assert grid count stays the same (cards are marked as removed, not filtered out)
+        $this->assertCount($initialMiddleCount, $data['room']->settings['middle_grid']);
 
-        $this->actingAs($currentPlayer->user)
-            ->post(route('rooms.trio.claimTrio', [$data['room']->game->slug, $data['room']->room_code]));
+        // Assert claimed positions are marked as removed
+        $this->assertTrue($data['room']->settings['middle_grid'][0]['removed']);
+        $this->assertTrue($data['room']->settings['middle_grid'][1]['removed']);
+        $this->assertTrue($data['room']->settings['middle_grid'][2]['removed']);
 
-        $data['room']->refresh();
-        $currentPlayer->refresh();
+        // Assert turn passed to next player
+        $this->assertEquals($nextPlayerId, $data['room']->thief_player_id);
+        $this->assertEquals($nextPlayerId, $data['room']->settings['current_turn']['player_id']);
 
-        // Assert both trios collected
-        $this->assertCount(2, $currentPlayer->game_data['collected_trios']);
+        // Assert turn number incremented
+        $this->assertEquals($initialTurnNumber + 1, $data['room']->settings['current_turn']['turn_number']);
 
-        // Assert all 6 cards removed from middle
-        $this->assertCount(3, $data['room']->settings['middle_grid']);
+        // Assert reveals cleared for new turn
+        $this->assertEmpty($data['room']->settings['current_turn']['reveals']);
 
-        // Verify positions still properly indexed
-        foreach ($data['room']->settings['middle_grid'] as $index => $card) {
-            $this->assertEquals($index, $card['position']);
+        // Assert can_continue reset for new turn
+        $this->assertTrue($data['room']->settings['current_turn']['can_continue']);
+
+        // Assert middle cards flipped face-down
+        foreach ($data['room']->settings['middle_grid'] as $card) {
+            $this->assertFalse($card['face_up']);
         }
     }
 
@@ -586,6 +596,7 @@ class TrioGameTest extends TestCase
         // Set up a trio from non-consecutive middle positions (0, 2, 4)
         $settings = $data['room']->settings;
         $originalGrid = $settings['middle_grid'];
+        $initialMiddleCount = count($originalGrid);
 
         // Store the values we're NOT removing
         $keepValue1 = $originalGrid[1]['value'];
@@ -606,17 +617,26 @@ class TrioGameTest extends TestCase
 
         $data['room']->refresh();
 
-        // Assert exactly 3 cards removed
-        $this->assertCount(6, $data['room']->settings['middle_grid']);
+        // Assert grid count stays the same (cards are marked as removed, not filtered out)
+        $this->assertCount($initialMiddleCount, $data['room']->settings['middle_grid']);
 
-        // Assert positions properly re-indexed (should be 0, 1, 2, 3, 4, 5)
+        // Assert non-consecutive positions 0, 2, 4 are marked as removed
+        $this->assertTrue($data['room']->settings['middle_grid'][0]['removed']);
+        $this->assertTrue($data['room']->settings['middle_grid'][2]['removed']);
+        $this->assertTrue($data['room']->settings['middle_grid'][4]['removed']);
+
+        // Assert positions 1, 3, 5+ are NOT marked as removed
+        $this->assertFalse($data['room']->settings['middle_grid'][1]['removed'] ?? false);
+        $this->assertFalse($data['room']->settings['middle_grid'][3]['removed'] ?? false);
+        $this->assertFalse($data['room']->settings['middle_grid'][5]['removed'] ?? false);
+
+        // Assert positions are preserved (not re-indexed)
         foreach ($data['room']->settings['middle_grid'] as $index => $card) {
             $this->assertEquals($index, $card['position']);
         }
 
-        // Assert correct cards removed (original positions 1, 3, 5, 6, 7, 8 remain)
-        $remainingValues = array_column($data['room']->settings['middle_grid'], 'value');
-        $this->assertContains($keepValue1, $remainingValues);
-        $this->assertContains($keepValue3, $remainingValues);
+        // Assert correct cards NOT removed still have their values
+        $this->assertEquals($keepValue1, $data['room']->settings['middle_grid'][1]['value']);
+        $this->assertEquals($keepValue3, $data['room']->settings['middle_grid'][3]['value']);
     }
 }
