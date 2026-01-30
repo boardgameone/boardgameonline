@@ -130,7 +130,7 @@ export default function RoomChat({ gameSlug, roomCode, currentPlayerId }: Readon
     }
 
     return (
-        <div className="fixed bottom-4 right-4 z-40 w-80 bg-white rounded-2xl shadow-2xl overflow-hidden">
+        <div className="fixed inset-x-4 bottom-4 sm:right-4 sm:left-auto sm:w-80 z-40 bg-white rounded-2xl shadow-2xl overflow-hidden">
             {/* Header */}
             <div className="bg-gradient-to-r from-brand-teal to-brand-cyan px-4 py-3 flex items-center justify-between">
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
@@ -147,7 +147,7 @@ export default function RoomChat({ gameSlug, roomCode, currentPlayerId }: Readon
                 </button>
             </div>
 
-            <div className="flex flex-col max-h-[50vh]">
+            <div className="flex flex-col max-h-[60vh] sm:max-h-[50vh]">
                     {/* Messages */}
                     <div className="flex-1 overflow-y-auto p-4 space-y-3">
                         {messages.length === 0 ? (

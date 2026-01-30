@@ -40,6 +40,7 @@ export default function TrioCard({
         sm: 'w-[4.5rem] h-[5.5rem] text-xl',
         md: 'w-[5.5rem] h-[7.5rem] text-2xl',
         lg: 'w-[6.5rem] h-[8.5rem] text-3xl',
+        responsive: 'w-[4.5rem] h-[5.5rem] sm:w-[5.5rem] sm:h-[7.5rem] text-xl sm:text-2xl',
     };
 
     const cornerNumberClasses = {
@@ -47,6 +48,7 @@ export default function TrioCard({
         sm: 'text-[0.55rem]',
         md: 'text-[0.65rem]',
         lg: 'text-xs',
+        responsive: 'text-[0.55rem] sm:text-[0.65rem]',
     };
 
     const interactiveClasses = !disabled && onClick
@@ -57,8 +59,10 @@ export default function TrioCard({
 
     const cardColor = value && value >= 1 && value <= 12 ? CARD_COLORS[value] : null;
 
+    const effectiveSize = size ?? 'responsive';
+
     return (
-        <div className={`relative ${sizeClasses[size]} ${className}`}>
+        <div className={`relative ${sizeClasses[effectiveSize]} ${className}`}>
             <div
                 className={`card-flip ${faceUp ? 'flipped' : ''} w-full h-full`}
                 onClick={!disabled && onClick ? onClick : undefined}
@@ -97,16 +101,16 @@ export default function TrioCard({
                         <CardPattern cardValue={value} patternColor={cardColor.pattern} />
 
                         {/* Corner Numbers (all 4 corners showing card value) */}
-                        <span className={`absolute top-1 left-1.5 text-white font-bold drop-shadow-md ${cornerNumberClasses[size]}`}>
+                        <span className={`absolute top-1 left-1.5 text-white font-bold drop-shadow-md ${cornerNumberClasses[effectiveSize]}`}>
                             {value}
                         </span>
-                        <span className={`absolute top-1 right-1.5 text-white font-bold drop-shadow-md ${cornerNumberClasses[size]}`}>
+                        <span className={`absolute top-1 right-1.5 text-white font-bold drop-shadow-md ${cornerNumberClasses[effectiveSize]}`}>
                             {value}
                         </span>
-                        <span className={`absolute bottom-1 left-1.5 text-white font-bold drop-shadow-md ${cornerNumberClasses[size]}`}>
+                        <span className={`absolute bottom-1 left-1.5 text-white font-bold drop-shadow-md ${cornerNumberClasses[effectiveSize]}`}>
                             {value}
                         </span>
-                        <span className={`absolute bottom-1 right-1.5 text-white font-bold drop-shadow-md ${cornerNumberClasses[size]}`}>
+                        <span className={`absolute bottom-1 right-1.5 text-white font-bold drop-shadow-md ${cornerNumberClasses[effectiveSize]}`}>
                             {value}
                         </span>
 
