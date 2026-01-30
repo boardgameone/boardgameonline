@@ -47,8 +47,8 @@ export default function PlayerCard({
     const currentUserIsMuted = isCurrentUser ? (voiceChat?.isMuted ?? true) : playerIsMuted;
     const currentUserHasVideo = isCurrentUser ? (voiceChat?.isVideoEnabled ?? false) : playerHasVideo;
 
-    // Show video when player has video enabled
-    const showRemoteVideo = !isCurrentUser && remoteVideoStream && playerHasVideo;
+    // Show video when we have a video stream (don't wait for backend flag - WebRTC is real-time)
+    const showRemoteVideo = !isCurrentUser && remoteVideoStream;
     const showLocalVideo = isCurrentUser && localVideoStream && currentUserHasVideo;
     const hasVideo = showRemoteVideo || showLocalVideo;
 
