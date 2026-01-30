@@ -95,7 +95,7 @@ export default function TrioGamePage({ auth, room, currentPlayer, isHost, gameSt
 
     return (
         <GameLayout fullHeight={useFullHeight}>
-            <Head title={`TRIO - Room ${room.room_code}`} />
+            <Head title={`Trio - Room ${room.room_code}`} />
 
             <div className={useFullHeight ? 'h-full py-2' : 'py-8'}>
                 <div className={`mx-auto px-4 sm:px-6 lg:px-8 ${
