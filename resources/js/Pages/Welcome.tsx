@@ -10,7 +10,7 @@ export default function Welcome({ auth, featuredGames }: Props) {
     return (
         <>
             <Head title="Board Game Online" />
-            <div className="h-screen bg-yellow-400 flex flex-col overflow-hidden">
+            <div className="min-h-screen w-full bg-yellow-400 flex flex-col overflow-x-hidden">
                 {/* Nav */}
                 <nav className="flex items-center justify-between p-4 sm:p-6 shrink-0">
                     <Link href="/" className="group">
