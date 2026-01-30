@@ -12,12 +12,13 @@ fi
 echo "Pushing to origin/Gyan..."
 git push -u origin Gyan
 
-# Create PR and merge
+# Create PR and capture the URL
 echo "Creating PR from Gyan to main..."
-gh pr create --base main --head Gyan --fill
+PR_URL=$(gh pr create --base main --head Gyan --fill)
+echo "PR created: $PR_URL"
 
 echo "Merging PR..."
-gh pr merge --merge --delete-branch=false
+gh pr merge "$PR_URL" --merge --delete-branch=false
 
 # Sync local main
 echo "Syncing local main branch..."
