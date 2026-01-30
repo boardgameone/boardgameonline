@@ -1,9 +1,9 @@
 import GameIcon from '@/Components/GameIcon';
 import RoomChat from '@/Components/RoomChat';
-import VoiceChat from '@/Components/VoiceChat';
+import { VoiceChatProvider } from '@/Contexts/VoiceChatContext';
 import GameLayout from '@/Layouts/GameLayout';
 import { GamePlayer, GameRoom, PageProps } from '@/types';
-import { Head, Link, useForm, usePoll } from '@inertiajs/react';
+import { Head, useForm, usePoll } from '@inertiajs/react';
 import { FormEventHandler, useState } from 'react';
 import TrioGame from './Trio/TrioGame';
 
@@ -93,88 +93,98 @@ export default function TrioGamePage({ auth, room, currentPlayer, isHost, gameSt
     // Use fullHeight mode during playing and finished phases
     const useFullHeight = room.status === 'playing' || room.status === 'finished';
 
+    const content = (
+        <div className={useFullHeight ? 'h-full py-2' : 'py-8'}>
+            <div className={`mx-auto px-4 sm:px-6 lg:px-8 ${
+                useFullHeight ? 'max-w-full h-full' : 'max-w-5xl'
+            }`}>
+                {/* Show join form for guests who need to enter nickname */}
+                {needsToJoin && isGuest && (
+                    <div className="rounded-xl bg-white p-8 shadow-lg">
+                        <div className="text-center py-8">
+                            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-400 to-green-500 rounded-full mb-4 shadow-lg text-white">
+                                <GameIcon name="wave" size="xl" />
+                            </div>
+                            <h3 className="text-xl font-black text-gray-900 mb-2">
+                                Join this game!
+                            </h3>
+                            <p className="text-gray-500 mb-6">
+                                Enter your nickname to join the room
+                            </p>
+                            <form onSubmit={handleJoin} className="max-w-xs mx-auto space-y-4">
+                                <div>
+                                    <input
+                                        type="text"
+                                        value={data.nickname}
+                                        onChange={(e) => setData('nickname', e.target.value)}
+                                        placeholder="Your nickname"
+                                        maxLength={20}
+                                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-400 focus:ring-green-400 transition-colors font-medium text-center"
+                                        autoFocus
+                                        required
+                                    />
+                                    {errors.nickname && (
+                                        <p className="mt-2 text-sm text-red-600 font-medium">
+                                            {errors.nickname}
+                                        </p>
+                                    )}
+                                </div>
+                                <button
+                                    type="submit"
+                                    disabled={processing || data.nickname.length < 2}
+                                    className="w-full rounded-full bg-green-500 px-6 py-3 font-bold text-white shadow-lg transition hover:scale-105 hover:bg-green-600 border-b-4 border-green-700 disabled:opacity-50 disabled:hover:scale-100"
+                                >
+                                    {processing ? 'Joining...' : 'Join Room'}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                {/* Game content */}
+                {(!needsToJoin || !isGuest) && (
+                    <TrioGame
+                        gameState={gameState}
+                        roomCode={room.room_code}
+                        gameSlug={gameSlug}
+                        players={gameState?.players || connectedPlayers.map(p => ({
+                            ...p,
+                            hand: null,
+                            hand_count: 0,
+                            collected_trios: [],
+                            trios_count: 0,
+                            is_current_turn: false,
+                        }))}
+                        isHost={isHost}
+                        currentPlayerId={currentPlayer?.id}
+                        minPlayers={minPlayers}
+                        maxPlayers={maxPlayers}
+                    />
+                )}
+
+                {/* Room Chat - render as floating overlay */}
+                {currentPlayer && (
+                    <RoomChat gameSlug={gameSlug} roomCode={room.room_code} currentPlayerId={currentPlayer.id} />
+                )}
+            </div>
+        </div>
+    );
+
     return (
         <GameLayout fullHeight={useFullHeight}>
             <Head title={`Trio - Room ${room.room_code}`} />
 
-            <div className={useFullHeight ? 'h-full py-2' : 'py-8'}>
-                <div className={`mx-auto px-4 sm:px-6 lg:px-8 ${
-                    useFullHeight ? 'max-w-full h-full' : 'max-w-5xl'
-                }`}>
-                    {/* Show join form for guests who need to enter nickname */}
-                    {needsToJoin && isGuest && (
-                        <div className="rounded-xl bg-white p-8 shadow-lg">
-                            <div className="text-center py-8">
-                                <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-400 to-green-500 rounded-full mb-4 shadow-lg text-white">
-                                    <GameIcon name="wave" size="xl" />
-                                </div>
-                                <h3 className="text-xl font-black text-gray-900 mb-2">
-                                    Join this game!
-                                </h3>
-                                <p className="text-gray-500 mb-6">
-                                    Enter your nickname to join the room
-                                </p>
-                                <form onSubmit={handleJoin} className="max-w-xs mx-auto space-y-4">
-                                    <div>
-                                        <input
-                                            type="text"
-                                            value={data.nickname}
-                                            onChange={(e) => setData('nickname', e.target.value)}
-                                            placeholder="Your nickname"
-                                            maxLength={20}
-                                            className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-400 focus:ring-green-400 transition-colors font-medium text-center"
-                                            autoFocus
-                                            required
-                                        />
-                                        {errors.nickname && (
-                                            <p className="mt-2 text-sm text-red-600 font-medium">
-                                                {errors.nickname}
-                                            </p>
-                                        )}
-                                    </div>
-                                    <button
-                                        type="submit"
-                                        disabled={processing || data.nickname.length < 2}
-                                        className="w-full rounded-full bg-green-500 px-6 py-3 font-bold text-white shadow-lg transition hover:scale-105 hover:bg-green-600 border-b-4 border-green-700 disabled:opacity-50 disabled:hover:scale-100"
-                                    >
-                                        {processing ? 'Joining...' : 'Join Room'}
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Game content */}
-                    {(!needsToJoin || !isGuest) && (
-                        <TrioGame
-                            gameState={gameState}
-                            roomCode={room.room_code}
-                            gameSlug={gameSlug}
-                            players={gameState?.players || connectedPlayers.map(p => ({
-                                ...p,
-                                hand: null,
-                                hand_count: 0,
-                                collected_trios: [],
-                                trios_count: 0,
-                                is_current_turn: false,
-                            }))}
-                            isHost={isHost}
-                            currentPlayerId={currentPlayer?.id}
-                            minPlayers={minPlayers}
-                            maxPlayers={maxPlayers}
-                        />
-                    )}
-
-                    {/* Voice Chat and Room Chat - render as floating overlays */}
-                    {currentPlayer && (
-                        <VoiceChat gameSlug={gameSlug} roomCode={room.room_code} currentPlayerId={currentPlayer.id} />
-                    )}
-                    {currentPlayer && (
-                        <RoomChat gameSlug={gameSlug} roomCode={room.room_code} currentPlayerId={currentPlayer.id} />
-                    )}
-                </div>
-            </div>
+            {currentPlayer ? (
+                <VoiceChatProvider
+                    gameSlug={gameSlug}
+                    roomCode={room.room_code}
+                    currentPlayerId={currentPlayer.id}
+                >
+                    {content}
+                </VoiceChatProvider>
+            ) : (
+                content
+            )}
         </GameLayout>
     );
 }
-
