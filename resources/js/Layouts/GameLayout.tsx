@@ -150,9 +150,9 @@ export default function GameLayout({
                                     </Link>
                                     <Link
                                         href={route('register')}
-                                        className="bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-300 hover:to-orange-400 text-gray-900 font-bold text-sm px-4 sm:px-6 py-2 sm:py-2.5 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+                                        className="bg-white hover:bg-gray-100 text-gray-900 font-bold text-sm px-4 sm:px-6 py-2 sm:py-2.5 rounded-full transition"
                                     >
-                                        Play Now
+                                        Sign up
                                     </Link>
                                 </div>
                             )}
@@ -275,9 +275,9 @@ export default function GameLayout({
                                 </Link>
                                 <Link
                                     href={route('register')}
-                                    className="block w-full text-center py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 font-bold rounded-xl shadow-lg"
+                                    className="block w-full text-center py-3 bg-white hover:bg-gray-100 text-gray-900 font-bold rounded-xl transition"
                                 >
-                                    Create Account
+                                    Sign up
                                 </Link>
                             </div>
                         )}
