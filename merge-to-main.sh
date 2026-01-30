@@ -12,9 +12,9 @@ fi
 echo "Pushing to origin/Gyan..."
 git push -u origin Gyan
 
-# Check if PR already exists, otherwise create one
-echo "Checking for existing PR..."
-PR_URL=$(gh pr view --json url -q '.url' 2>/dev/null || true)
+# Check if an OPEN PR already exists, otherwise create one
+echo "Checking for existing open PR..."
+PR_URL=$(gh pr list --state open --head Gyan --base main --json url -q '.[0].url' 2>/dev/null || true)
 
 if [ -z "$PR_URL" ]; then
     echo "Creating PR from Gyan to main..."
