@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import TrioCard from './TrioCard';
 import GameIcon from '@/Components/GameIcon';
 
@@ -33,6 +34,42 @@ export default function TurnReveals({
     onEndTurn,
     compact = false,
 }: TurnRevealsProps) {
+    const [autoActionCountdown, setAutoActionCountdown] = useState<number | null>(null);
+    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const actionTriggeredRef = useRef(false);
+
+    // Auto-trigger Claim Trio or End Turn after 1 second when they're the only option
+    useEffect(() => {
+        const shouldAutoClaimTrio = canClaim;
+        const shouldAutoEndTurn = canEndTurn && !canContinue;
+
+        if ((shouldAutoClaimTrio || shouldAutoEndTurn) && !actionTriggeredRef.current) {
+            setAutoActionCountdown(1);
+
+            timerRef.current = setTimeout(() => {
+                actionTriggeredRef.current = true;
+                if (shouldAutoClaimTrio) {
+                    onClaimTrio();
+                } else if (shouldAutoEndTurn) {
+                    onEndTurn();
+                }
+            }, 1000);
+        }
+
+        return () => {
+            if (timerRef.current) {
+                clearTimeout(timerRef.current);
+                timerRef.current = null;
+            }
+            setAutoActionCountdown(null);
+        };
+    }, [canClaim, canEndTurn, canContinue, onClaimTrio, onEndTurn]);
+
+    // Reset the action triggered flag when reveals change (new turn started)
+    useEffect(() => {
+        actionTriggeredRef.current = false;
+    }, [reveals.length]);
+
     if (reveals.length === 0) {
         return null;
     }
@@ -90,17 +127,29 @@ export default function TurnReveals({
                             {canClaim && (
                                 <button
                                     onClick={onClaimTrio}
-                                    className="rounded-lg bg-gradient-to-r from-green-500 to-green-600 px-4 py-2 text-white text-sm font-bold shadow hover:from-green-600 hover:to-green-700 transition-all duration-200 hover:scale-105 active:scale-95"
+                                    className="rounded-lg bg-gradient-to-r from-green-500 to-green-600 px-4 py-2 text-white text-sm font-bold shadow hover:from-green-600 hover:to-green-700 transition-all duration-200 hover:scale-105 active:scale-95 relative overflow-hidden"
                                 >
-                                    <GameIcon name="party" size="sm" className="inline-block mr-1" /> Claim!
+                                    {autoActionCountdown !== null && (
+                                        <span className="absolute inset-0 bg-green-400 opacity-30 animate-pulse" />
+                                    )}
+                                    <span className="relative">
+                                        <GameIcon name="party" size="sm" className="inline-block mr-1" />
+                                        Claim!{autoActionCountdown !== null && ' (auto)'}
+                                    </span>
                                 </button>
                             )}
                             {canEndTurn && !canContinue && (
                                 <button
                                     onClick={onEndTurn}
-                                    className="rounded-lg bg-gradient-to-r from-red-500 to-red-600 px-4 py-2 text-white text-sm font-bold shadow hover:from-red-600 hover:to-red-700 transition-all duration-200 hover:scale-105 active:scale-95"
+                                    className="rounded-lg bg-gradient-to-r from-red-500 to-red-600 px-4 py-2 text-white text-sm font-bold shadow hover:from-red-600 hover:to-red-700 transition-all duration-200 hover:scale-105 active:scale-95 relative overflow-hidden"
                                 >
-                                    <GameIcon name="x" size="sm" className="inline-block mr-1" /> End
+                                    {autoActionCountdown !== null && (
+                                        <span className="absolute inset-0 bg-red-400 opacity-30 animate-pulse" />
+                                    )}
+                                    <span className="relative">
+                                        <GameIcon name="x" size="sm" className="inline-block mr-1" />
+                                        End{autoActionCountdown !== null && ' (auto)'}
+                                    </span>
                                 </button>
                             )}
                         </div>
@@ -149,17 +198,29 @@ export default function TurnReveals({
                 {canClaim && (
                     <button
                         onClick={onClaimTrio}
-                        className="flex-1 rounded-lg bg-gradient-to-r from-green-500 to-green-600 px-6 py-3 text-white font-bold shadow-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 hover:scale-105 active:scale-95 border-b-4 border-green-700"
+                        className="flex-1 rounded-lg bg-gradient-to-r from-green-500 to-green-600 px-6 py-3 text-white font-bold shadow-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 hover:scale-105 active:scale-95 border-b-4 border-green-700 relative overflow-hidden"
                     >
-                        <GameIcon name="party" className="inline-block mr-1" /> Claim Trio!
+                        {autoActionCountdown !== null && (
+                            <span className="absolute inset-0 bg-green-400 opacity-30 animate-pulse" />
+                        )}
+                        <span className="relative">
+                            <GameIcon name="party" className="inline-block mr-1" />
+                            Claim Trio!{autoActionCountdown !== null && ' (auto)'}
+                        </span>
                     </button>
                 )}
                 {canEndTurn && !canContinue && (
                     <button
                         onClick={onEndTurn}
-                        className="flex-1 rounded-lg bg-gradient-to-r from-red-500 to-red-600 px-6 py-3 text-white font-bold shadow-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 hover:scale-105 active:scale-95 border-b-4 border-red-700 animate-shake"
+                        className="flex-1 rounded-lg bg-gradient-to-r from-red-500 to-red-600 px-6 py-3 text-white font-bold shadow-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 hover:scale-105 active:scale-95 border-b-4 border-red-700 animate-shake relative overflow-hidden"
                     >
-                        <GameIcon name="x" className="inline-block mr-1" /> End Turn
+                        {autoActionCountdown !== null && (
+                            <span className="absolute inset-0 bg-red-400 opacity-30 animate-pulse" />
+                        )}
+                        <span className="relative">
+                            <GameIcon name="x" className="inline-block mr-1" />
+                            End Turn{autoActionCountdown !== null && ' (auto)'}
+                        </span>
                     </button>
                 )}
             </div>

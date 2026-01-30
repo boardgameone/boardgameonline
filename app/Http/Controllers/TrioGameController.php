@@ -300,18 +300,48 @@ class TrioGameController extends Controller
         $gameData['collected_trios'][] = [$trioValue, $trioValue, $trioValue];
         $currentPlayer->update(['game_data' => $gameData]);
 
-        $currentTurn['reveals'] = array_slice($reveals, 0, -3);
-        $settings['current_turn'] = $currentTurn;
-        $room->update(['settings' => $settings]);
-
+        // Check for win condition first
         if (count($gameData['collected_trios']) >= 3) {
+            $currentTurn['reveals'] = array_slice($reveals, 0, -3);
+            $settings['current_turn'] = $currentTurn;
+
             $room->update([
+                'settings' => $settings,
                 'status' => 'finished',
                 'winner' => 'trio',
                 'current_hour' => 2,
                 'ended_at' => now(),
             ]);
+
+            return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
         }
+
+        // Game continues - advance to next player
+        // Flip all middle cards face-down
+        $middleGrid = $settings['middle_grid'];
+        foreach ($middleGrid as $index => $card) {
+            $middleGrid[$index]['face_up'] = false;
+        }
+        $settings['middle_grid'] = $middleGrid;
+
+        // Calculate next player
+        $turnOrder = $settings['turn_order'];
+        $currentIndex = array_search($currentPlayer->id, $turnOrder);
+        $nextIndex = ($currentIndex + 1) % count($turnOrder);
+        $nextPlayerId = $turnOrder[$nextIndex];
+
+        // Reset turn state for next player
+        $settings['current_turn'] = [
+            'player_id' => $nextPlayerId,
+            'turn_number' => $currentTurn['turn_number'] + 1,
+            'reveals' => [],
+            'can_continue' => true,
+        ];
+
+        $room->update([
+            'settings' => $settings,
+            'thief_player_id' => $nextPlayerId,
+        ]);
 
         return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
     }

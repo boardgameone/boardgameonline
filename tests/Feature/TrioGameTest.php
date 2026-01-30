@@ -513,15 +513,20 @@ class TrioGameTest extends TestCase
         $this->assertContains(9, $currentPlayerAfter->game_data['hand']);
     }
 
-    public function test_claiming_multiple_trios_in_succession(): void
+    public function test_claiming_trio_ends_turn_and_passes_to_next_player(): void
     {
         $data = $this->createGameWithPlayers(3);
         $this->actingAs($data['host'])->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
 
         $data['room']->refresh();
-        $currentPlayer = $data['room']->connectedPlayers->find($data['room']->thief_player_id);
+        $firstPlayer = $data['room']->connectedPlayers->find($data['room']->thief_player_id);
+        $turnOrder = $data['room']->settings['turn_order'];
+        $firstPlayerIndex = array_search($firstPlayer->id, $turnOrder);
+        $nextPlayerIndex = ($firstPlayerIndex + 1) % count($turnOrder);
+        $nextPlayerId = $turnOrder[$nextPlayerIndex];
+        $initialTurnNumber = $data['room']->settings['current_turn']['turn_number'];
 
-        // First trio: middle positions 0, 1, 2 (value 3)
+        // Set up a trio: middle positions 0, 1, 2 (value 3)
         $settings = $data['room']->settings;
         $settings['middle_grid'][0] = ['value' => 3, 'face_up' => true, 'position' => 0];
         $settings['middle_grid'][1] = ['value' => 3, 'face_up' => true, 'position' => 1];
@@ -533,45 +538,34 @@ class TrioGameTest extends TestCase
         ];
         $data['room']->update(['settings' => $settings]);
 
-        $this->actingAs($currentPlayer->user)
+        $this->actingAs($firstPlayer->user)
             ->post(route('rooms.trio.claimTrio', [$data['room']->game->slug, $data['room']->room_code]));
 
         $data['room']->refresh();
-        $currentPlayer->refresh();
+        $firstPlayer->refresh();
 
+        // Assert trio was collected
+        $this->assertCount(1, $firstPlayer->game_data['collected_trios']);
+
+        // Assert cards removed from middle
         $this->assertCount(6, $data['room']->settings['middle_grid']);
-        $this->assertCount(1, $currentPlayer->game_data['collected_trios']);
 
-        // Second trio: middle positions 0, 1, 2 (now different cards, value 6)
-        $settings = $data['room']->settings;
-        $settings['middle_grid'][0]['value'] = 6;
-        $settings['middle_grid'][0]['face_up'] = true;
-        $settings['middle_grid'][1]['value'] = 6;
-        $settings['middle_grid'][1]['face_up'] = true;
-        $settings['middle_grid'][2]['value'] = 6;
-        $settings['middle_grid'][2]['face_up'] = true;
-        $settings['current_turn']['reveals'] = [
-            ['value' => 6, 'source' => 'middle_0'],
-            ['value' => 6, 'source' => 'middle_1'],
-            ['value' => 6, 'source' => 'middle_2'],
-        ];
-        $data['room']->update(['settings' => $settings]);
+        // Assert turn passed to next player
+        $this->assertEquals($nextPlayerId, $data['room']->thief_player_id);
+        $this->assertEquals($nextPlayerId, $data['room']->settings['current_turn']['player_id']);
 
-        $this->actingAs($currentPlayer->user)
-            ->post(route('rooms.trio.claimTrio', [$data['room']->game->slug, $data['room']->room_code]));
+        // Assert turn number incremented
+        $this->assertEquals($initialTurnNumber + 1, $data['room']->settings['current_turn']['turn_number']);
 
-        $data['room']->refresh();
-        $currentPlayer->refresh();
+        // Assert reveals cleared for new turn
+        $this->assertEmpty($data['room']->settings['current_turn']['reveals']);
 
-        // Assert both trios collected
-        $this->assertCount(2, $currentPlayer->game_data['collected_trios']);
+        // Assert can_continue reset for new turn
+        $this->assertTrue($data['room']->settings['current_turn']['can_continue']);
 
-        // Assert all 6 cards removed from middle
-        $this->assertCount(3, $data['room']->settings['middle_grid']);
-
-        // Verify positions still properly indexed
-        foreach ($data['room']->settings['middle_grid'] as $index => $card) {
-            $this->assertEquals($index, $card['position']);
+        // Assert middle cards flipped face-down
+        foreach ($data['room']->settings['middle_grid'] as $card) {
+            $this->assertFalse($card['face_up']);
         }
     }
 
