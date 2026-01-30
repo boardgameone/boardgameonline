@@ -25,7 +25,7 @@ export default function MiddleGrid({ cards, canReveal, onRevealCard, compact = f
                         style={{ animationDelay: `${index * 50}ms` }}
                     >
                         {card.removed ? (
-                            <div className={`${compact ? 'w-12 h-16' : 'w-16 h-24 md:w-20 md:h-28'} rounded-lg bg-slate-200/50 border-2 border-dashed border-slate-300`} />
+                            <div className={`${compact ? 'w-[4.5rem] h-[5.5rem]' : 'w-[5.5rem] h-[7.5rem]'} rounded-lg bg-slate-200/50 border-2 border-dashed border-slate-300`} />
                         ) : (
                             <TrioCard
                                 value={card.value}
