@@ -27,7 +27,9 @@
       "Bash(./check-sounds.sh:*)",
       "mcp__laravel-boost__search-docs",
       "mcp__laravel-boost__get-config",
-      "Bash(sips:*)"
+      "Bash(sips:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr view:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
