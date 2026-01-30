@@ -603,7 +603,7 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
         return (
             <button
                 onClick={() => setIsMinimized(false)}
-                className={`fixed bottom-24 right-4 z-40 rounded-full p-4 shadow-2xl hover:scale-110 transition-transform ${
+                className={`fixed bottom-20 right-4 sm:bottom-24 z-40 rounded-full p-4 shadow-2xl hover:scale-110 transition-transform ${
                     isConnected
                         ? 'bg-gradient-to-r from-brand-cyan to-brand-teal text-white'
                         : 'bg-gray-300 text-gray-600'
@@ -623,7 +623,7 @@ export default function VoiceChat({ gameSlug, roomCode, currentPlayerId }: Reado
     }
 
     return (
-        <div className="fixed bottom-24 right-4 z-40 w-80 bg-white rounded-2xl shadow-2xl overflow-hidden">
+        <div className="fixed inset-x-4 bottom-20 sm:bottom-24 sm:right-4 sm:left-auto sm:w-80 z-40 bg-white rounded-2xl shadow-2xl overflow-hidden">
             {/* Header */}
             <div className="bg-gradient-to-r from-brand-cyan to-brand-teal px-4 py-3 flex items-center justify-between">
                 <h3 className="text-base font-bold text-white flex items-center gap-2">

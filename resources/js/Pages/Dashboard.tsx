@@ -39,23 +39,23 @@ export default function Dashboard({ auth, recentGames = [], activeRooms = [], st
 
                     {/* Quick Stats */}
                     <div className="grid grid-cols-3 divide-x divide-gray-100">
-                        <div className="px-4 py-5 text-center">
-                            <div className="text-3xl font-black text-yellow-500">
+                        <div className="px-2 sm:px-4 py-5 text-center">
+                            <div className="text-2xl sm:text-3xl font-black text-yellow-500">
                                 {stats?.gamesPlayed ?? 0}
                             </div>
-                            <div className="text-sm text-gray-500 font-medium">Games Played</div>
+                            <div className="text-xs sm:text-sm text-gray-500 font-medium truncate">Games Played</div>
                         </div>
-                        <div className="px-4 py-5 text-center">
-                            <div className="text-3xl font-black text-green-500">
+                        <div className="px-2 sm:px-4 py-5 text-center">
+                            <div className="text-2xl sm:text-3xl font-black text-green-500">
                                 {stats?.wins ?? 0}
                             </div>
-                            <div className="text-sm text-gray-500 font-medium">Victories</div>
+                            <div className="text-xs sm:text-sm text-gray-500 font-medium truncate">Victories</div>
                         </div>
-                        <div className="px-4 py-5 text-center">
-                            <div className="text-3xl font-black text-blue-500">
+                        <div className="px-2 sm:px-4 py-5 text-center">
+                            <div className="text-2xl sm:text-3xl font-black text-blue-500">
                                 {stats?.totalPlayTime ?? 0}h
                             </div>
-                            <div className="text-sm text-gray-500 font-medium">Play Time</div>
+                            <div className="text-xs sm:text-sm text-gray-500 font-medium truncate">Play Time</div>
                         </div>
                     </div>
                 </div>

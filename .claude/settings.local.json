@@ -24,7 +24,10 @@
       "mcp__laravel-boost__last-error",
       "Bash(php artisan:*)",
       "Bash(chmod:*)",
-      "Bash(./check-sounds.sh:*)"
+      "Bash(./check-sounds.sh:*)",
+      "mcp__laravel-boost__search-docs",
+      "mcp__laravel-boost__get-config",
+      "Bash(sips:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
