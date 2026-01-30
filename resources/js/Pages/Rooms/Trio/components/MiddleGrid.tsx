@@ -4,6 +4,7 @@ interface MiddleCard {
     position: number;
     value: number | null;
     face_up: boolean;
+    removed?: boolean;
 }
 
 interface MiddleGridProps {
@@ -23,18 +24,22 @@ export default function MiddleGrid({ cards, canReveal, onRevealCard, compact = f
                         className="animate-slideIn"
                         style={{ animationDelay: `${index * 50}ms` }}
                     >
-                        <TrioCard
-                            value={card.value}
-                            faceUp={card.face_up}
-                            size={compact ? 'sm' : 'md'}
-                            disabled={!canReveal || card.face_up}
-                            onClick={() => {
-                                if (canReveal && !card.face_up) {
-                                    onRevealCard(card.position);
-                                }
-                            }}
-                            className={canReveal && !card.face_up ? 'hover:animate-pulse' : ''}
-                        />
+                        {card.removed ? (
+                            <div className={`${compact ? 'w-12 h-16' : 'w-16 h-24 md:w-20 md:h-28'} rounded-lg bg-slate-200/50 border-2 border-dashed border-slate-300`} />
+                        ) : (
+                            <TrioCard
+                                value={card.value}
+                                faceUp={card.face_up}
+                                size={compact ? 'sm' : 'md'}
+                                disabled={!canReveal || card.face_up}
+                                onClick={() => {
+                                    if (canReveal && !card.face_up) {
+                                        onRevealCard(card.position);
+                                    }
+                                }}
+                                className={canReveal && !card.face_up ? 'hover:animate-pulse' : ''}
+                            />
+                        )}
                     </div>
                 ))}
             </div>

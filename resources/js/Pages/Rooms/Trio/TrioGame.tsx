@@ -19,6 +19,7 @@ interface MiddleCard {
     position: number;
     value: number | null;
     face_up: boolean;
+    removed?: boolean;
 }
 
 interface Reveal {

@@ -277,18 +277,14 @@ class TrioGameController extends Controller
             }
         }
 
-        // Remove cards from middle grid (all at once)
+        // Mark cards as removed at their positions (don't rearrange)
         if (! empty($middlePositionsToRemove)) {
             $middleGrid = $settings['middle_grid'];
 
-            // Filter out the cards at the specified positions
-            $middleGrid = array_values(array_filter($middleGrid, function ($card, $index) use ($middlePositionsToRemove) {
-                return ! in_array($index, $middlePositionsToRemove);
-            }, ARRAY_FILTER_USE_BOTH));
-
-            // Re-index positions
-            foreach ($middleGrid as $index => $card) {
-                $middleGrid[$index]['position'] = $index;
+            foreach ($middlePositionsToRemove as $position) {
+                $middleGrid[$position]['removed'] = true;
+                $middleGrid[$position]['face_up'] = false;
+                $middleGrid[$position]['value'] = null;
             }
 
             $settings['middle_grid'] = $middleGrid;
@@ -492,6 +488,7 @@ class TrioGameController extends Controller
                 'position' => $card['position'],
                 'value' => $card['face_up'] ? $card['value'] : null,
                 'face_up' => $card['face_up'],
+                'removed' => $card['removed'] ?? false,
             ];
         })->all();
 
