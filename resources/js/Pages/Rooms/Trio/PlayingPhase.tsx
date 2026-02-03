@@ -95,6 +95,7 @@ export default function PlayingPhase({
     })();
 
     const { play: playCardFlip } = useSound('/sounds/trio/card-flip.mp3', { volume: 0.6 });
+    const { play: playDeal } = useSound('/sounds/trio/card-flip.mp3', { volume: 0.5 });
     const { play: playMatch } = useSound('/sounds/trio/match.mp3', { volume: 0.7 });
     const { play: playMismatch } = useSound('/sounds/trio/mismatch.mp3', { volume: 0.5 });
     const { play: playTrioClaim } = useSound('/sounds/trio/trio-claim.mp3', { volume: 0.85 });
@@ -102,6 +103,7 @@ export default function PlayingPhase({
 
     const prevTurnNumber = useRef(currentTurn.turn_number);
     const prevRevealCount = useRef(currentTurn.reveals.length);
+    const hasPlayedDealSound = useRef(false);
 
     // Detect card reveals and play appropriate sounds
     useEffect(() => {
@@ -134,6 +136,18 @@ export default function PlayingPhase({
         }
         prevTurnNumber.current = currentTurn.turn_number;
     }, [currentTurn.turn_number]);
+
+    // Play deal sound when hand first appears (simulates cards being dealt)
+    useEffect(() => {
+        if (myHand && myHand.length > 0 && !hasPlayedDealSound.current) {
+            hasPlayedDealSound.current = true;
+
+            // Play multiple card flip sounds with slight delays to simulate dealing
+            myHand.forEach((_, idx) => {
+                setTimeout(() => playDeal(), idx * 80);
+            });
+        }
+    }, [myHand, playDeal]);
 
     // Detect when a trio is claimed
     useEffect(() => {
