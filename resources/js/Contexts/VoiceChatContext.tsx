@@ -412,13 +412,33 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
                 debug: 2,
                 config: {
                     iceServers: [
-                        // Multiple STUN servers for reliability - these work for most connections
+                        // STUN servers for NAT discovery
                         { urls: 'stun:stun.l.google.com:19302' },
                         { urls: 'stun:stun1.l.google.com:19302' },
                         { urls: 'stun:stun2.l.google.com:19302' },
                         { urls: 'stun:stun3.l.google.com:19302' },
-                        // Note: TURN servers removed - OpenRelay credentials may be rate-limited
-                        // For production, consider setting up your own TURN server (coturn)
+                        // TURN servers for relay when direct P2P fails (required for production)
+                        // Using Metered.ca free TURN servers
+                        {
+                            urls: 'turn:a.relay.metered.ca:80',
+                            username: 'e8dd65b92f6008822ee6e807',
+                            credential: 'XxOHjKo1ug6WCtlq',
+                        },
+                        {
+                            urls: 'turn:a.relay.metered.ca:80?transport=tcp',
+                            username: 'e8dd65b92f6008822ee6e807',
+                            credential: 'XxOHjKo1ug6WCtlq',
+                        },
+                        {
+                            urls: 'turn:a.relay.metered.ca:443',
+                            username: 'e8dd65b92f6008822ee6e807',
+                            credential: 'XxOHjKo1ug6WCtlq',
+                        },
+                        {
+                            urls: 'turn:a.relay.metered.ca:443?transport=tcp',
+                            username: 'e8dd65b92f6008822ee6e807',
+                            credential: 'XxOHjKo1ug6WCtlq',
+                        },
                     ],
                 },
             });
