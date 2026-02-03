@@ -40,14 +40,14 @@ export default function TurnReveals({
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const actionTriggeredRef = useRef(false);
 
-    // Auto-trigger Claim Trio or End Turn after 1 second when they're the only option
+    // Auto-trigger Claim Trio or End Turn after 2 seconds when they're the only option
     useEffect(() => {
         const shouldAutoClaimTrio = canClaim;
         const shouldAutoEndTurn = canEndTurn && !canContinue;
 
         // Don't auto-trigger if already processing or already triggered
         if ((shouldAutoClaimTrio || shouldAutoEndTurn) && !actionTriggeredRef.current && !isProcessing) {
-            setAutoActionCountdown(1);
+            setAutoActionCountdown(2);
 
             timerRef.current = setTimeout(() => {
                 // Double-check we're not already processing before triggering
@@ -59,7 +59,7 @@ export default function TurnReveals({
                         onEndTurn();
                     }
                 }
-            }, 1000);
+            }, 2000);
         }
 
         return () => {
