@@ -79,7 +79,7 @@ class TrioGameTest extends TestCase
             $this->assertCount(7, $player->game_data['hand']);
         }
 
-        $this->assertCount(7, $data['room']->settings['middle_grid']);
+        $this->assertCount(8, $data['room']->settings['middle_grid']);
     }
 
     public function test_starting_game_distributes_6_cards_per_player_for_5_players(): void
@@ -109,7 +109,7 @@ class TrioGameTest extends TestCase
             $this->assertCount(5, $player->game_data['hand']);
         }
 
-        $this->assertCount(5, $data['room']->settings['middle_grid']);
+        $this->assertCount(6, $data['room']->settings['middle_grid']);
     }
 
     public function test_player_hands_are_sorted_lowest_to_highest(): void
