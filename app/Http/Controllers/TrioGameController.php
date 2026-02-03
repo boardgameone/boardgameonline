@@ -459,9 +459,9 @@ class TrioGameController extends Controller
     {
         $config = [
             3 => ['hand' => 9, 'middle' => 9],
-            4 => ['hand' => 7, 'middle' => 7],
+            4 => ['hand' => 7, 'middle' => 8],
             5 => ['hand' => 6, 'middle' => 6],
-            6 => ['hand' => 5, 'middle' => 5],
+            6 => ['hand' => 5, 'middle' => 6],
         ];
 
         return $config[$playerCount] ?? ['hand' => 6, 'middle' => 6];
