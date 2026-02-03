@@ -421,23 +421,23 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
                         // Using Metered.ca free TURN servers
                         {
                             urls: 'turn:a.relay.metered.ca:80',
-                            username: 'e8dd65b92f6008822ee6e807',
-                            credential: 'XxOHjKo1ug6WCtlq',
+                            username: '1cd7232ede5bd394292ecabe',
+                            credential: 'R8iCubl+s9JngWxa',
                         },
                         {
                             urls: 'turn:a.relay.metered.ca:80?transport=tcp',
-                            username: 'e8dd65b92f6008822ee6e807',
-                            credential: 'XxOHjKo1ug6WCtlq',
+                            username: '1cd7232ede5bd394292ecabe',
+                            credential: 'R8iCubl+s9JngWxa',
                         },
                         {
                             urls: 'turn:a.relay.metered.ca:443',
-                            username: 'e8dd65b92f6008822ee6e807',
-                            credential: 'XxOHjKo1ug6WCtlq',
+                            username: '1cd7232ede5bd394292ecabe',
+                            credential: 'R8iCubl+s9JngWxa',
                         },
                         {
                             urls: 'turn:a.relay.metered.ca:443?transport=tcp',
-                            username: 'e8dd65b92f6008822ee6e807',
-                            credential: 'XxOHjKo1ug6WCtlq',
+                            username: '1cd7232ede5bd394292ecabe',
+                            credential: 'R8iCubl+s9JngWxa',
                         },
                     ],
                 },
