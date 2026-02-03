@@ -309,13 +309,21 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
 
                 // Listen for dynamically added tracks (e.g., when remote user enables video after connection)
                 call.peerConnection.addEventListener('track', (event) => {
-                    console.log(`[Voice] Track event from player ${playerId}:`, event.track.kind, event.track.muted);
+                    console.log(`[Voice] Track event from player ${playerId}:`, {
+                        kind: event.track.kind,
+                        muted: event.track.muted,
+                        enabled: event.track.enabled,
+                        readyState: event.track.readyState,
+                    });
+
                     if (event.track.kind === 'video') {
                         const track = event.track;
                         const stream = event.streams[0];
 
-                        if (stream && !track.muted) {
-                            console.log(`[Voice] Received video track from player ${playerId}`);
+                        // Always try to add video immediately (removed !track.muted check)
+                        // The muted state can be temporary and doesn't mean no video data
+                        if (stream) {
+                            console.log(`[Voice] Adding video from player ${playerId}`);
                             setRemoteVideos(prev => {
                                 const next = new Map(prev);
                                 next.set(playerId, stream);
@@ -326,11 +334,7 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
                         // Listen for track mute/unmute events
                         track.addEventListener('mute', () => {
                             console.log(`[Voice] Video track muted from player ${playerId}`);
-                            setRemoteVideos(prev => {
-                                const next = new Map(prev);
-                                next.delete(playerId);
-                                return next;
-                            });
+                            // Don't remove - mute just means no data temporarily
                         });
 
                         track.addEventListener('unmute', () => {
@@ -384,7 +388,7 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
 
             callsRef.current.set(playerId, { playerId, call });
         } catch (err) {
-            console.error(`Failed to call player ${playerId}:`, err);
+            console.error(`[Voice] Failed to call player ${playerId}:`, err);
         }
     }, [getPeerId, handleStream, cleanupCall]);
 
@@ -408,24 +412,13 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
                 debug: 2,
                 config: {
                     iceServers: [
+                        // Multiple STUN servers for reliability - these work for most connections
                         { urls: 'stun:stun.l.google.com:19302' },
                         { urls: 'stun:stun1.l.google.com:19302' },
-                        // TURN servers for NAT/firewall traversal
-                        {
-                            urls: 'turn:openrelay.metered.ca:80',
-                            username: 'openrelayproject',
-                            credential: 'openrelayproject',
-                        },
-                        {
-                            urls: 'turn:openrelay.metered.ca:443',
-                            username: 'openrelayproject',
-                            credential: 'openrelayproject',
-                        },
-                        {
-                            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-                            username: 'openrelayproject',
-                            credential: 'openrelayproject',
-                        },
+                        { urls: 'stun:stun2.l.google.com:19302' },
+                        { urls: 'stun:stun3.l.google.com:19302' },
+                        // Note: TURN servers removed - OpenRelay credentials may be rate-limited
+                        // For production, consider setting up your own TURN server (coturn)
                     ],
                 },
             });
@@ -516,13 +509,21 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
 
                         // Listen for dynamically added tracks (e.g., when remote user enables video after connection)
                         call.peerConnection.addEventListener('track', (event) => {
-                            console.log(`[Voice] Track event from player ${playerId}:`, event.track.kind, event.track.muted);
+                            console.log(`[Voice] Track event from player ${playerId} (incoming):`, {
+                                kind: event.track.kind,
+                                muted: event.track.muted,
+                                enabled: event.track.enabled,
+                                readyState: event.track.readyState,
+                            });
+
                             if (event.track.kind === 'video') {
                                 const track = event.track;
                                 const stream = event.streams[0];
 
-                                if (stream && !track.muted) {
-                                    console.log(`[Voice] Received video track from player ${playerId}`);
+                                // Always try to add video immediately (removed !track.muted check)
+                                // The muted state can be temporary and doesn't mean no video data
+                                if (stream) {
+                                    console.log(`[Voice] Adding video from player ${playerId} (incoming)`);
                                     setRemoteVideos(prev => {
                                         const next = new Map(prev);
                                         next.set(playerId, stream);
@@ -533,11 +534,7 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
                                 // Listen for track mute/unmute events
                                 track.addEventListener('mute', () => {
                                     console.log(`[Voice] Video track muted from player ${playerId}`);
-                                    setRemoteVideos(prev => {
-                                        const next = new Map(prev);
-                                        next.delete(playerId);
-                                        return next;
-                                    });
+                                    // Don't remove - mute just means no data temporarily
                                 });
 
                                 track.addEventListener('unmute', () => {
@@ -659,32 +656,47 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
     const reestablishCalls = useCallback(() => {
         if (!peerRef.current || !localStreamRef.current) return;
 
-        // Get list of current player IDs
-        const playerIds = Array.from(callsRef.current.keys());
-        console.log('[Voice] Re-establishing calls with players:', playerIds);
+        const videoTrack = localVideoStreamRef.current?.getVideoTracks()[0] || null;
+        console.log('[Voice] Updating video track on existing calls:', videoTrack ? 'adding' : 'removing');
 
-        // Close all existing calls
-        playerIds.forEach(playerId => {
-            const callData = callsRef.current.get(playerId);
-            if (callData) {
-                callData.call.close();
-                if (callData.audioElement) {
-                    callData.audioElement.srcObject = null;
-                    callData.audioElement.remove();
-                }
+        callsRef.current.forEach(({ call, playerId }) => {
+            if (!call.peerConnection) {
+                console.log(`[Voice] No peerConnection for player ${playerId}, skipping`);
+                return;
             }
-            callsRef.current.delete(playerId);
+
+            const senders = call.peerConnection.getSenders();
+            const videoSender = senders.find(s => s.track?.kind === 'video' || (s.track === null && !senders.some(other => other !== s && other.track?.kind === 'video')));
+
+            console.log(`[Voice] Player ${playerId} senders:`, senders.map(s => ({ kind: s.track?.kind, id: s.track?.id })));
+
+            if (videoTrack) {
+                if (videoSender && videoSender.track?.kind === 'video') {
+                    // Replace existing video track
+                    videoSender.replaceTrack(videoTrack)
+                        .then(() => console.log(`[Voice] Replaced video track for player ${playerId}`))
+                        .catch(err => console.error(`[Voice] Failed to replace track for player ${playerId}:`, err));
+                } else {
+                    // Need to add a new track - this requires renegotiation
+                    // Fall back to re-establishing this specific call
+                    console.log(`[Voice] No video sender for player ${playerId}, re-calling`);
+                    call.close();
+                    callsRef.current.delete(playerId);
+                    // Also remove remote video for this player
+                    setRemoteVideos(prev => {
+                        const next = new Map(prev);
+                        next.delete(playerId);
+                        return next;
+                    });
+                    setTimeout(() => callPlayer(playerId), 500);
+                }
+            } else if (videoSender?.track) {
+                // Remove video by replacing with null
+                videoSender.replaceTrack(null)
+                    .then(() => console.log(`[Voice] Removed video track for player ${playerId}`))
+                    .catch(err => console.error(`[Voice] Failed to remove track for player ${playerId}:`, err));
+            }
         });
-
-        // Clear remote videos
-        setRemoteVideos(new Map());
-
-        // Re-call all players after a short delay
-        setTimeout(() => {
-            playerIds.forEach(playerId => {
-                callPlayer(playerId);
-            });
-        }, 500);
     }, [callPlayer]);
 
     // Toggle mute
