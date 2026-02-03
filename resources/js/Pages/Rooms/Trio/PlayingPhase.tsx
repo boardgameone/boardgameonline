@@ -72,7 +72,27 @@ export default function PlayingPhase({
 
     const currentTurnPlayer = players.find(p => p.is_current_turn);
     const myPlayer = players.find(p => p.id === currentPlayerId);
-    const myHand = myPlayer?.hand;
+
+    // Filter out cards that have been revealed from my hand this turn
+    const myHand = (() => {
+        if (!myPlayer?.hand) return null;
+
+        // Get revealed card values from my hand this turn
+        const revealedFromMe = currentTurn.reveals
+            .filter(r => r.source === `player_${myPlayer.id}`)
+            .map(r => r.value);
+
+        // Create a copy of the hand and remove one instance of each revealed card
+        const filteredHand = [...myPlayer.hand];
+        for (const revealedValue of revealedFromMe) {
+            const idx = filteredHand.indexOf(revealedValue);
+            if (idx !== -1) {
+                filteredHand.splice(idx, 1);
+            }
+        }
+
+        return filteredHand;
+    })();
 
     const { play: playCardFlip } = useSound('/sounds/trio/card-flip.mp3', { volume: 0.6 });
     const { play: playMatch } = useSound('/sounds/trio/match.mp3', { volume: 0.7 });
@@ -243,6 +263,7 @@ export default function PlayingPhase({
                             canReveal={permissions.can_reveal}
                             onAskHighest={handleAskHighest}
                             onAskLowest={handleAskLowest}
+                            reveals={currentTurn.reveals}
                         />
                     </div>
 
@@ -345,6 +366,7 @@ export default function PlayingPhase({
                                     onAskHighest={handleAskHighest}
                                     onAskLowest={handleAskLowest}
                                     compact={true}
+                                    reveals={currentTurn.reveals}
                                 />
                             </div>
                         </div>

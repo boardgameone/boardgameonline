@@ -14,6 +14,12 @@ interface Player {
     is_current_turn: boolean;
 }
 
+interface Reveal {
+    value: number;
+    source: string;
+    reveal_type: string;
+}
+
 interface PlayerStatsProps {
     players: Player[];
     currentPlayerId?: number;
@@ -21,6 +27,7 @@ interface PlayerStatsProps {
     onAskHighest: (playerId: number) => void;
     onAskLowest: (playerId: number) => void;
     compact?: boolean;
+    reveals?: Reveal[];
 }
 
 export default function PlayerStats({
@@ -30,8 +37,19 @@ export default function PlayerStats({
     onAskHighest,
     onAskLowest,
     compact = false,
+    reveals = [],
 }: PlayerStatsProps) {
     const voiceChat = useVoiceChatOptional();
+
+    // Calculate revealed card counts per player
+    const revealedCountByPlayer = reveals.reduce((acc, reveal) => {
+        const match = reveal.source.match(/^player_(\d+)$/);
+        if (match) {
+            const playerId = parseInt(match[1], 10);
+            acc[playerId] = (acc[playerId] || 0) + 1;
+        }
+        return acc;
+    }, {} as Record<number, number>);
 
     return (
         <div className={compact ? 'space-y-2' : 'space-y-3'}>
@@ -46,6 +64,7 @@ export default function PlayerStats({
                     onAskLowest={onAskLowest}
                     compact={compact}
                     voiceChat={voiceChat}
+                    revealedCount={revealedCountByPlayer[player.id] || 0}
                 />
             ))}
         </div>
@@ -61,6 +80,7 @@ interface PlayerStatsCardProps {
     onAskLowest: (playerId: number) => void;
     compact: boolean;
     voiceChat: ReturnType<typeof useVoiceChatOptional>;
+    revealedCount: number;
 }
 
 function PlayerStatsCard({
@@ -72,6 +92,7 @@ function PlayerStatsCard({
     onAskLowest,
     compact,
     voiceChat,
+    revealedCount,
 }: PlayerStatsCardProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -245,7 +266,7 @@ function PlayerStatsCard({
                             </p>
                             <div className={`flex items-center gap-2 text-gray-600 ${compact ? 'text-xs' : 'text-sm mt-1'}`}>
                                 <span className="flex items-center gap-1">
-                                    <span className="font-semibold">{player.hand_count}</span>{compact ? '' : ' cards'}
+                                    <span className="font-semibold">{player.hand_count - revealedCount}</span>{compact ? '' : ' cards'}
                                 </span>
                                 <span className="flex items-center gap-1">
                                     <GameIcon name="trophy" size="sm" className="text-yellow-500" /> <span className="font-semibold">{player.trios_count}</span>
@@ -319,7 +340,7 @@ function PlayerStatsCard({
                         )}
 
                         {/* Ask buttons */}
-                        {canReveal && player.hand_count > 0 && (
+                        {canReveal && (player.hand_count - revealedCount) > 0 && (
                             <div className={`flex ${compact ? 'gap-1' : 'gap-2'}`}>
                                 <button
                                     onClick={() => onAskHighest(player.id)}
