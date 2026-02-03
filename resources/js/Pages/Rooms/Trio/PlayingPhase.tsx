@@ -67,6 +67,8 @@ export default function PlayingPhase({
 }: PlayingPhaseProps) {
     const [showCelebration, setShowCelebration] = useState(false);
     const [lastTrioClaimed, setLastTrioClaimed] = useState<{ player: string; cards: number[] } | null>(null);
+    const [isClaimingTrio, setIsClaimingTrio] = useState(false);
+    const [isEndingTurn, setIsEndingTurn] = useState(false);
 
     const currentTurnPlayer = players.find(p => p.is_current_turn);
     const myPlayer = players.find(p => p.id === currentPlayerId);
@@ -160,11 +162,19 @@ export default function PlayingPhase({
     };
 
     const handleClaimTrio = () => {
-        router.post(route('rooms.trio.claimTrio', [gameSlug, roomCode]));
+        if (isClaimingTrio) return;
+        setIsClaimingTrio(true);
+        router.post(route('rooms.trio.claimTrio', [gameSlug, roomCode]), {}, {
+            onFinish: () => setIsClaimingTrio(false),
+        });
     };
 
     const handleEndTurn = () => {
-        router.post(route('rooms.trio.endTurn', [gameSlug, roomCode]));
+        if (isEndingTurn) return;
+        setIsEndingTurn(true);
+        router.post(route('rooms.trio.endTurn', [gameSlug, roomCode]), {}, {
+            onFinish: () => setIsEndingTurn(false),
+        });
     };
 
     return (
@@ -208,6 +218,7 @@ export default function PlayingPhase({
                             canContinue={currentTurn.can_continue}
                             onClaimTrio={handleClaimTrio}
                             onEndTurn={handleEndTurn}
+                            isProcessing={isClaimingTrio || isEndingTurn}
                         />
                     )}
 
@@ -276,6 +287,7 @@ export default function PlayingPhase({
                                     onClaimTrio={handleClaimTrio}
                                     onEndTurn={handleEndTurn}
                                     compact={true}
+                                    isProcessing={isClaimingTrio || isEndingTurn}
                                 />
                             </div>
                         )}

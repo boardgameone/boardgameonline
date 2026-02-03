@@ -10,6 +10,7 @@ use App\Models\GameRoom;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -142,6 +143,16 @@ class TrioGameController extends Controller
                 return back()->withErrors(['error' => 'Target player has no cards.']);
             }
 
+            // Check if this player+reveal_type combination was already used this turn
+            $existingReveal = collect($currentTurn['reveals'])
+                ->first(fn ($r) => $r['source'] === 'player_'.$targetPlayerId && $r['reveal_type'] === $revealType);
+
+            if ($existingReveal) {
+                $cardType = $revealType === 'ask_highest' ? 'highest' : 'lowest';
+
+                return back()->withErrors(['error' => 'You have already asked this player for their '.$cardType.' card.']);
+            }
+
             // Determine the card value based on reveal type
             sort($targetHand);
             $cardValue = $revealType === 'ask_highest'
@@ -236,110 +247,125 @@ class TrioGameController extends Controller
         $trioValue = end($reveals)['value'];
         $trioCards = array_slice($reveals, -3);
 
-        // Separate middle positions and player cards
-        $middlePositionsToRemove = [];
-        $playerCardsToRemove = []; // [player_id => [card_values]]
+        // Use database transaction with pessimistic locking to prevent race conditions
+        return DB::transaction(function () use ($game, $room, $currentPlayer, $settings, $currentTurn, $reveals, $trioValue, $trioCards) {
+            // Lock and refresh the current player to prevent duplicate claims
+            $currentPlayer = GamePlayer::query()->lockForUpdate()->find($currentPlayer->id);
+            $gameData = $currentPlayer->game_data;
 
-        foreach ($trioCards as $card) {
-            $source = $card['source'];
-
-            if (str_starts_with($source, 'player_')) {
-                $playerId = (int) substr($source, 7);
-                if (! isset($playerCardsToRemove[$playerId])) {
-                    $playerCardsToRemove[$playerId] = [];
-                }
-                $playerCardsToRemove[$playerId][] = $card['value'];
-            } elseif (str_starts_with($source, 'middle_')) {
-                $position = (int) substr($source, 7);
-                $middlePositionsToRemove[] = $position;
+            // Check if this trio value was already claimed by this player
+            $existingValues = array_map(fn ($trio) => $trio[0], $gameData['collected_trios'] ?? []);
+            if (in_array($trioValue, $existingValues)) {
+                return back()->withErrors(['error' => 'This trio has already been claimed.']);
             }
-        }
 
-        // Remove cards from player hands
-        foreach ($playerCardsToRemove as $playerId => $cardValues) {
-            $player = $room->connectedPlayers()->find($playerId);
+            // Separate middle positions and player cards
+            $middlePositionsToRemove = [];
+            $playerCardsToRemove = []; // [player_id => [card_values]]
 
-            if ($player) {
-                $hand = $player->game_data['hand'] ?? [];
+            foreach ($trioCards as $card) {
+                $source = $card['source'];
 
-                // Remove each card value once
-                foreach ($cardValues as $value) {
-                    $key = array_search($value, $hand);
-                    if ($key !== false) {
-                        unset($hand[$key]);
+                if (str_starts_with($source, 'player_')) {
+                    $playerId = (int) substr($source, 7);
+                    if (! isset($playerCardsToRemove[$playerId])) {
+                        $playerCardsToRemove[$playerId] = [];
                     }
+                    $playerCardsToRemove[$playerId][] = $card['value'];
+                } elseif (str_starts_with($source, 'middle_')) {
+                    $position = (int) substr($source, 7);
+                    $middlePositionsToRemove[] = $position;
+                }
+            }
+
+            // Remove cards from player hands
+            foreach ($playerCardsToRemove as $playerId => $cardValues) {
+                $player = $room->connectedPlayers()->find($playerId);
+
+                if ($player) {
+                    $hand = $player->game_data['hand'] ?? [];
+
+                    // Remove each card value once
+                    foreach ($cardValues as $value) {
+                        $key = array_search($value, $hand);
+                        if ($key !== false) {
+                            unset($hand[$key]);
+                        }
+                    }
+
+                    $hand = array_values($hand);
+                    $playerGameData = $player->game_data;
+                    $playerGameData['hand'] = $hand;
+                    $player->update(['game_data' => $playerGameData]);
+                }
+            }
+
+            // Mark cards as removed at their positions (don't rearrange)
+            if (! empty($middlePositionsToRemove)) {
+                $middleGrid = $settings['middle_grid'];
+
+                foreach ($middlePositionsToRemove as $position) {
+                    $middleGrid[$position]['removed'] = true;
+                    $middleGrid[$position]['face_up'] = false;
+                    $middleGrid[$position]['value'] = null;
                 }
 
-                $hand = array_values($hand);
-                $gameData = $player->game_data;
-                $gameData['hand'] = $hand;
-                $player->update(['game_data' => $gameData]);
+                $settings['middle_grid'] = $middleGrid;
             }
-        }
 
-        // Mark cards as removed at their positions (don't rearrange)
-        if (! empty($middlePositionsToRemove)) {
+            // Refresh current player to get the updated hand after card removal (if their cards were part of the trio)
+            $currentPlayer->refresh();
+            $gameData = $currentPlayer->game_data;
+
+            // Add the trio to collected_trios
+            $gameData['collected_trios'][] = [$trioValue, $trioValue, $trioValue];
+            $currentPlayer->update(['game_data' => $gameData]);
+
+            // Check for win condition first
+            if (count($gameData['collected_trios']) >= 3) {
+                $currentTurn['reveals'] = array_slice($reveals, 0, -3);
+                $settings['current_turn'] = $currentTurn;
+
+                $room->update([
+                    'settings' => $settings,
+                    'status' => 'finished',
+                    'winner' => 'trio',
+                    'current_hour' => 2,
+                    'ended_at' => now(),
+                ]);
+
+                return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
+            }
+
+            // Game continues - advance to next player
+            // Flip all middle cards face-down
             $middleGrid = $settings['middle_grid'];
-
-            foreach ($middlePositionsToRemove as $position) {
-                $middleGrid[$position]['removed'] = true;
-                $middleGrid[$position]['face_up'] = false;
-                $middleGrid[$position]['value'] = null;
+            foreach ($middleGrid as $index => $card) {
+                $middleGrid[$index]['face_up'] = false;
             }
-
             $settings['middle_grid'] = $middleGrid;
-        }
 
-        // Refresh current player to get the updated hand after card removal
-        $currentPlayer->refresh();
-        $gameData = $currentPlayer->game_data;
-        $gameData['collected_trios'][] = [$trioValue, $trioValue, $trioValue];
-        $currentPlayer->update(['game_data' => $gameData]);
+            // Calculate next player
+            $turnOrder = $settings['turn_order'];
+            $currentIndex = array_search($currentPlayer->id, $turnOrder);
+            $nextIndex = ($currentIndex + 1) % count($turnOrder);
+            $nextPlayerId = $turnOrder[$nextIndex];
 
-        // Check for win condition first
-        if (count($gameData['collected_trios']) >= 3) {
-            $currentTurn['reveals'] = array_slice($reveals, 0, -3);
-            $settings['current_turn'] = $currentTurn;
+            // Reset turn state for next player
+            $settings['current_turn'] = [
+                'player_id' => $nextPlayerId,
+                'turn_number' => $currentTurn['turn_number'] + 1,
+                'reveals' => [],
+                'can_continue' => true,
+            ];
 
             $room->update([
                 'settings' => $settings,
-                'status' => 'finished',
-                'winner' => 'trio',
-                'current_hour' => 2,
-                'ended_at' => now(),
+                'thief_player_id' => $nextPlayerId,
             ]);
 
             return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
-        }
-
-        // Game continues - advance to next player
-        // Flip all middle cards face-down
-        $middleGrid = $settings['middle_grid'];
-        foreach ($middleGrid as $index => $card) {
-            $middleGrid[$index]['face_up'] = false;
-        }
-        $settings['middle_grid'] = $middleGrid;
-
-        // Calculate next player
-        $turnOrder = $settings['turn_order'];
-        $currentIndex = array_search($currentPlayer->id, $turnOrder);
-        $nextIndex = ($currentIndex + 1) % count($turnOrder);
-        $nextPlayerId = $turnOrder[$nextIndex];
-
-        // Reset turn state for next player
-        $settings['current_turn'] = [
-            'player_id' => $nextPlayerId,
-            'turn_number' => $currentTurn['turn_number'] + 1,
-            'reveals' => [],
-            'can_continue' => true,
-        ];
-
-        $room->update([
-            'settings' => $settings,
-            'thief_player_id' => $nextPlayerId,
-        ]);
-
-        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
+        });
     }
 
     public function endTurn(Game $game, GameRoom $room): RedirectResponse

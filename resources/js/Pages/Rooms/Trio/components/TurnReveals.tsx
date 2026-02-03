@@ -22,6 +22,7 @@ interface TurnRevealsProps {
     onClaimTrio: () => void;
     onEndTurn: () => void;
     compact?: boolean;
+    isProcessing?: boolean;
 }
 
 export default function TurnReveals({
@@ -33,6 +34,7 @@ export default function TurnReveals({
     onClaimTrio,
     onEndTurn,
     compact = false,
+    isProcessing = false,
 }: TurnRevealsProps) {
     const [autoActionCountdown, setAutoActionCountdown] = useState<number | null>(null);
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -43,15 +45,19 @@ export default function TurnReveals({
         const shouldAutoClaimTrio = canClaim;
         const shouldAutoEndTurn = canEndTurn && !canContinue;
 
-        if ((shouldAutoClaimTrio || shouldAutoEndTurn) && !actionTriggeredRef.current) {
+        // Don't auto-trigger if already processing or already triggered
+        if ((shouldAutoClaimTrio || shouldAutoEndTurn) && !actionTriggeredRef.current && !isProcessing) {
             setAutoActionCountdown(1);
 
             timerRef.current = setTimeout(() => {
-                actionTriggeredRef.current = true;
-                if (shouldAutoClaimTrio) {
-                    onClaimTrio();
-                } else if (shouldAutoEndTurn) {
-                    onEndTurn();
+                // Double-check we're not already processing before triggering
+                if (!actionTriggeredRef.current) {
+                    actionTriggeredRef.current = true;
+                    if (shouldAutoClaimTrio) {
+                        onClaimTrio();
+                    } else if (shouldAutoEndTurn) {
+                        onEndTurn();
+                    }
                 }
             }, 1000);
         }
@@ -63,7 +69,7 @@ export default function TurnReveals({
             }
             setAutoActionCountdown(null);
         };
-    }, [canClaim, canEndTurn, canContinue, onClaimTrio, onEndTurn]);
+    }, [canClaim, canEndTurn, canContinue, onClaimTrio, onEndTurn, isProcessing]);
 
     // Reset the action triggered flag when reveals change (new turn started)
     useEffect(() => {
