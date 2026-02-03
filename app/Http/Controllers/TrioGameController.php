@@ -143,21 +143,32 @@ class TrioGameController extends Controller
                 return back()->withErrors(['error' => 'Target player has no cards.']);
             }
 
-            // Check if this player+reveal_type combination was already used this turn
-            $existingReveal = collect($currentTurn['reveals'])
-                ->first(fn ($r) => $r['source'] === 'player_'.$targetPlayerId && $r['reveal_type'] === $revealType);
+            // Get card values already revealed from this player this turn
+            $alreadyRevealedFromPlayer = collect($currentTurn['reveals'])
+                ->filter(fn ($r) => $r['source'] === 'player_'.$targetPlayerId)
+                ->pluck('value')
+                ->all();
 
-            if ($existingReveal) {
-                $cardType = $revealType === 'ask_highest' ? 'highest' : 'lowest';
+            // Determine the card value based on reveal type, excluding already-revealed cards
+            sort($targetHand);
+            $availableCards = $targetHand;
 
-                return back()->withErrors(['error' => 'You have already asked this player for their '.$cardType.' card.']);
+            // Remove one instance of each revealed value from available cards
+            foreach ($alreadyRevealedFromPlayer as $revealedValue) {
+                $key = array_search($revealedValue, $availableCards);
+                if ($key !== false) {
+                    unset($availableCards[$key]);
+                    $availableCards = array_values($availableCards);
+                }
             }
 
-            // Determine the card value based on reveal type
-            sort($targetHand);
+            if (empty($availableCards)) {
+                return back()->withErrors(['error' => 'This player has no more unrevealed cards.']);
+            }
+
             $cardValue = $revealType === 'ask_highest'
-                ? end($targetHand)
-                : reset($targetHand);
+                ? end($availableCards)
+                : reset($availableCards);
 
             GameCardReveal::create([
                 'game_room_id' => $room->id,
