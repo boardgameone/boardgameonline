@@ -214,7 +214,24 @@ class GameRoom extends Model
     }
 
     /**
-     * Check if the hour timer has expired (15 seconds elapsed).
+     * Get the timer duration for the current hour based on player count.
+     * Empty hours (0 players) or multi-player hours (2+) use a shorter timer.
+     * Solo-player hours use the full timer.
+     */
+    public function getHourTimerDuration(): int
+    {
+        $count = $this->playersAtHour($this->current_hour)->count();
+
+        if ($count === 1) {
+            return (int) config('games.cheese_thief.night_hour_timer_seconds', 15);
+        }
+
+        return (int) config('games.cheese_thief.empty_hour_timer_seconds', 3);
+    }
+
+    /**
+     * Check if the hour timer has expired.
+     * Uses shorter timer for empty/multi-player hours, full timer for solo-player hours.
      */
     public function isHourTimerExpired(): bool
     {
@@ -226,7 +243,7 @@ class GameRoom extends Model
             return false;
         }
 
-        $timerDuration = config('games.cheese_thief.night_hour_timer_seconds', 15);
+        $timerDuration = $this->getHourTimerDuration();
 
         return $this->hour_started_at->diffInSeconds(now()) >= $timerDuration;
     }
@@ -234,9 +251,7 @@ class GameRoom extends Model
     /**
      * Check if the current night hour phase is complete.
      * A night hour is complete when:
-     * - The 15-second timer has expired, or
-     * - No one woke up (0 players), or
-     * - Multiple players woke up (2+), or
+     * - The timer has expired (shorter for empty/multi-player hours, longer for solo), or
      * - Exactly 1 player woke up and has completed their action.
      */
     public function currentHourComplete(): bool
@@ -254,9 +269,9 @@ class GameRoom extends Model
         $awakePlayers = $this->playersAtHour($hour);
         $count = $awakePlayers->count();
 
-        // No one or multiple players woke up - auto-complete
+        // No one or multiple players woke up - wait for timer
         if ($count === 0 || $count > 1) {
-            return true;
+            return false;
         }
 
         // Exactly one player - check if they've completed their action

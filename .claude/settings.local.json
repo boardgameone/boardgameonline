@@ -29,7 +29,8 @@
       "mcp__laravel-boost__get-config",
       "Bash(sips:*)",
       "Bash(gh pr list:*)",
-      "Bash(gh pr view:*)"
+      "Bash(gh pr view:*)",
+      "Bash(gh repo:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

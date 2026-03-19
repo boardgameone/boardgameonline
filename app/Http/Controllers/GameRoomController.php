@@ -106,6 +106,12 @@ class GameRoomController extends Controller
             return app(TrioGameController::class)->show($game, $room);
         }
 
+        // Auto-advance expired night hours (driven by frontend polling)
+        if ($room->isPlaying() && $room->current_hour >= 1 && $room->current_hour <= 6) {
+            $this->autoAdvanceNightHours($room);
+            $room->refresh();
+        }
+
         // Build game state with visibility rules
         $gameState = $this->buildGameState($room, $currentPlayer);
 
@@ -659,14 +665,20 @@ class GameRoomController extends Controller
             if ($room->currentHourComplete()) {
                 if ($room->current_hour === 6) {
                     // Move to accomplice selection
-                    $room->update(['current_hour' => 7]);
+                    $room->update([
+                        'current_hour' => 7,
+                        'hour_started_at' => null,
+                    ]);
 
                     return;
                 }
-                $room->update(['current_hour' => $room->current_hour + 1]);
+                $room->update([
+                    'current_hour' => $room->current_hour + 1,
+                    'hour_started_at' => now(),
+                ]);
                 $room->refresh();
             } else {
-                // Someone needs to take action
+                // Hour not yet complete (timer still running or player needs to act)
                 return;
             }
         }
@@ -766,7 +778,9 @@ class GameRoomController extends Controller
             'is_accomplice' => $isAccomplice,
             'isHost' => $currentPlayer?->is_host ?? false,
             'hour_started_at' => $room->hour_started_at?->toISOString(),
-            'hour_timer_duration' => config('games.cheese_thief.night_hour_timer_seconds', 15),
+            'hour_timer_duration' => ($room->current_hour >= 1 && $room->current_hour <= 6)
+                ? $room->getHourTimerDuration()
+                : (int) config('games.cheese_thief.night_hour_timer_seconds', 15),
         ];
     }
 
