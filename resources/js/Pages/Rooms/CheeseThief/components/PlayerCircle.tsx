@@ -1,5 +1,6 @@
 import { GameStatePlayer } from '@/types';
 import DieDisplay from './DieDisplay';
+import PlayerAvatarWithVoice from '@/Components/PlayerAvatarWithVoice';
 
 interface PlayerCircleProps {
     players: GameStatePlayer[];
@@ -32,6 +33,11 @@ export default function PlayerCircle({
                 const awake = isAwake(player.id);
                 const clickable = isClickable(player.id);
 
+                // Build avatar className for game-specific styling
+                const avatarClassName = `
+                    ${isNightPhase && awake && (isSelf || currentPlayerIsAwake) ? 'ring-4 ring-yellow-400 animate-pulse' : ''}
+                `.trim();
+
                 return (
                     <button
                         key={player.id}
@@ -45,16 +51,17 @@ export default function PlayerCircle({
                             ${player.has_stolen_cheese && (isSelf || currentPlayerIsAwake) ? 'ring-2 ring-yellow-500' : ''}
                         `}
                     >
-                        {/* Avatar */}
-                        <div
-                            className={`
-                                flex h-14 w-14 items-center justify-center rounded-full text-white font-bold text-xl
-                                ${isNightPhase && awake && (isSelf || currentPlayerIsAwake) ? 'ring-4 ring-yellow-400 animate-pulse' : ''}
-                            `}
-                            style={{ backgroundColor: player.avatar_color }}
-                        >
-                            {player.nickname.charAt(0).toUpperCase()}
-                        </div>
+                        {/* Avatar with Voice/Video */}
+                        <PlayerAvatarWithVoice
+                            playerId={player.id}
+                            nickname={player.nickname}
+                            avatarColor={player.avatar_color}
+                            currentPlayerId={currentPlayerId ?? 0}
+                            size="lg"
+                            showVoiceControls={true}
+                            showVoiceIndicators={true}
+                            avatarClassName={avatarClassName}
+                        />
 
                         {/* Name */}
                         <span className="text-sm font-medium text-gray-900 max-w-[80px] truncate">

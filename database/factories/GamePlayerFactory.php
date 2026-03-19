@@ -34,6 +34,7 @@ class GamePlayerFactory extends Factory
             'has_stolen_cheese' => false,
             'is_connected' => true,
             'is_muted' => true,
+            'is_video_enabled' => false,
             'turn_order' => null,
             'game_data' => null,
         ];

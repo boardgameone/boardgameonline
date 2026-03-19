@@ -1,4 +1,5 @@
 import Checkbox from '@/Components/Checkbox';
+import GameIcon from '@/Components/GameIcon';
 import InputError from '@/Components/InputError';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
@@ -31,8 +32,8 @@ export default function Login({
 
             {/* Header */}
             <div className="text-center mb-6">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full mb-4 shadow-lg">
-                    <span className="text-3xl">{'\u{1F3AE}'}</span>
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full mb-4 shadow-lg text-white">
+                    <GameIcon name="gamepad" size="lg" />
                 </div>
                 <h1 className="text-2xl font-black text-gray-900">
                     Welcome Back!

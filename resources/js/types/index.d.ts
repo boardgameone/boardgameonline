@@ -110,4 +110,6 @@ export interface GameState {
     is_thief: boolean;
     is_accomplice: boolean;
     isHost: boolean;
+    hour_started_at: string | null;
+    hour_timer_duration: number;
 }

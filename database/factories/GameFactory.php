@@ -50,7 +50,7 @@ class GameFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'slug' => 'trio',
-            'name' => 'TRIO',
+            'name' => 'Trio',
             'description' => 'A 3-6 player memory and strategy game where players collect matching trios',
             'min_players' => 3,
             'max_players' => 6,

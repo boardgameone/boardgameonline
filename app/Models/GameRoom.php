@@ -22,6 +22,7 @@ class GameRoom extends Model
         'name',
         'status',
         'current_hour',
+        'hour_started_at',
         'thief_player_id',
         'accomplice_player_id',
         'winner',
@@ -38,6 +39,7 @@ class GameRoom extends Model
         return [
             'settings' => 'array',
             'current_hour' => 'integer',
+            'hour_started_at' => 'datetime',
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
         ];
@@ -212,10 +214,44 @@ class GameRoom extends Model
     }
 
     /**
+     * Get the timer duration for the current hour based on player count.
+     * Empty hours (0 players) or multi-player hours (2+) use a shorter timer.
+     * Solo-player hours use the full timer.
+     */
+    public function getHourTimerDuration(): int
+    {
+        $count = $this->playersAtHour($this->current_hour)->count();
+
+        if ($count === 1) {
+            return (int) config('games.cheese_thief.night_hour_timer_seconds', 15);
+        }
+
+        return (int) config('games.cheese_thief.empty_hour_timer_seconds', 3);
+    }
+
+    /**
+     * Check if the hour timer has expired.
+     * Uses shorter timer for empty/multi-player hours, full timer for solo-player hours.
+     */
+    public function isHourTimerExpired(): bool
+    {
+        if ($this->current_hour < 1 || $this->current_hour > 6) {
+            return false; // Only night hours have timers
+        }
+
+        if (! $this->hour_started_at) {
+            return false;
+        }
+
+        $timerDuration = $this->getHourTimerDuration();
+
+        return $this->hour_started_at->diffInSeconds(now()) >= $timerDuration;
+    }
+
+    /**
      * Check if the current night hour phase is complete.
      * A night hour is complete when:
-     * - No one woke up (0 players), or
-     * - Multiple players woke up (2+), or
+     * - The timer has expired (shorter for empty/multi-player hours, longer for solo), or
      * - Exactly 1 player woke up and has completed their action.
      */
     public function currentHourComplete(): bool
@@ -225,12 +261,17 @@ class GameRoom extends Model
             return true;
         }
 
+        // Check if timer has expired
+        if ($this->isHourTimerExpired()) {
+            return true;
+        }
+
         $awakePlayers = $this->playersAtHour($hour);
         $count = $awakePlayers->count();
 
-        // No one or multiple players woke up - auto-complete
+        // No one or multiple players woke up - wait for timer
         if ($count === 0 || $count > 1) {
-            return true;
+            return false;
         }
 
         // Exactly one player - check if they've completed their action

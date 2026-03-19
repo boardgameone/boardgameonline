@@ -41,7 +41,7 @@ class GamesSeeder extends Seeder
         Game::updateOrCreate(
             ['slug' => 'trio'],
             [
-                'name' => 'TRIO',
+                'name' => 'Trio',
                 'description' => 'A 3-6 player memory and strategy game where players collect matching trios by revealing cards from hands and a middle grid. First to collect 3 trios wins!',
                 'thumbnail' => null,
                 'min_players' => 3,

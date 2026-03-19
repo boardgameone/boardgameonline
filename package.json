@@ -28,6 +28,7 @@
         "vite": "^7.0.7"
     },
     "dependencies": {
-        "peerjs": "^1.5.5"
+        "peerjs": "^1.5.5",
+        "vite-plugin-pwa": "^1.2.0"
     }
 }

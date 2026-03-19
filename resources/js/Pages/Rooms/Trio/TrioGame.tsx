@@ -1,7 +1,6 @@
 import WaitingPhase from './WaitingPhase';
 import PlayingPhase from './PlayingPhase';
 import FinishedPhase from './FinishedPhase';
-import SoundToggle from '../CheeseThief/components/SoundToggle';
 
 interface Player {
     id: number;
@@ -20,6 +19,7 @@ interface MiddleCard {
     position: number;
     value: number | null;
     face_up: boolean;
+    removed?: boolean;
 }
 
 interface Reveal {
@@ -79,14 +79,13 @@ export default function TrioGame({
 
     return (
         <div className="relative">
-            <SoundToggle />
-
             {status === 'waiting' && (
                 <WaitingPhase
                     roomCode={roomCode}
                     gameSlug={gameSlug}
                     players={players}
                     isHost={isHost}
+                    currentPlayerId={currentPlayerId}
                     minPlayers={minPlayers}
                     maxPlayers={maxPlayers}
                 />

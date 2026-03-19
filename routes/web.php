@@ -51,9 +51,10 @@ Route::get('/rooms/{game:slug}/{room:room_code}/messages', [GameRoomController::
 Route::post('/rooms/{game:slug}/{room:room_code}/voice/signal', [GameRoomController::class, 'sendSignal'])->name('rooms.voice.signal');
 Route::get('/rooms/{game:slug}/{room:room_code}/voice/signals', [GameRoomController::class, 'getSignals'])->name('rooms.voice.signals');
 Route::post('/rooms/{game:slug}/{room:room_code}/voice/toggle-mute', [GameRoomController::class, 'toggleMute'])->name('rooms.voice.toggleMute');
+Route::post('/rooms/{game:slug}/{room:room_code}/voice/toggle-video', [GameRoomController::class, 'toggleVideo'])->name('rooms.voice.toggleVideo');
 Route::get('/rooms/{game:slug}/{room:room_code}/voice/status', [GameRoomController::class, 'getVoiceStatus'])->name('rooms.voice.status');
 
-// TRIO game routes
+// Trio game routes
 Route::post('/rooms/{game:slug}/{room:room_code}/trio/start', [TrioGameController::class, 'start'])->name('rooms.trio.start');
 Route::post('/rooms/{game:slug}/{room:room_code}/trio/reveal-card', [TrioGameController::class, 'revealCard'])->name('rooms.trio.revealCard');
 Route::post('/rooms/{game:slug}/{room:room_code}/trio/claim-trio', [TrioGameController::class, 'claimTrio'])->name('rooms.trio.claimTrio');

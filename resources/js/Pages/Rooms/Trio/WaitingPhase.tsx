@@ -1,7 +1,10 @@
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import TutorialModal from './components/TutorialModal';
+import SoundToggle from '../CheeseThief/components/SoundToggle';
 import { useSound } from '@/hooks/useSound';
+import GameIcon from '@/Components/GameIcon';
+import PlayerCard from '@/Components/PlayerCard';
 
 interface Player {
     id: number;
@@ -16,6 +19,7 @@ interface WaitingPhaseProps {
     gameSlug: string;
     players: Player[];
     isHost: boolean;
+    currentPlayerId?: number;
     minPlayers: number;
     maxPlayers: number;
 }
@@ -25,6 +29,7 @@ export default function WaitingPhase({
     gameSlug,
     players,
     isHost,
+    currentPlayerId,
     minPlayers,
     maxPlayers,
 }: WaitingPhaseProps) {
@@ -41,23 +46,26 @@ export default function WaitingPhase({
 
     return (
         <div className="rounded-xl bg-white p-8 shadow-lg">
-            {/* Header with help button */}
+            {/* Header with help button and sound toggle */}
             <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-bold text-gray-900">
                     Waiting Room
                 </h3>
-                <button
-                    onClick={() => setShowTutorial(true)}
-                    className="rounded-lg bg-blue-100 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-200 transition"
-                >
-                    📖 How to Play
-                </button>
+                <div className="flex items-center gap-2">
+                    <SoundToggle />
+                    <button
+                        onClick={() => setShowTutorial(true)}
+                        className="rounded-lg bg-blue-100 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-200 transition"
+                    >
+                        <GameIcon name="book" className="inline-block mr-1" /> How to Play
+                    </button>
+                </div>
             </div>
 
             {/* Game rules summary */}
             <div className="mb-6 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 p-6 border border-blue-200">
                 <h4 className="font-bold text-blue-900 mb-3 flex items-center gap-2">
-                    <span className="text-2xl">🎴</span>
+                    <GameIcon name="card" size="lg" className="text-blue-600" />
                     Game Rules
                 </h4>
                 <ul className="space-y-2 text-sm text-blue-800">
@@ -90,32 +98,13 @@ export default function WaitingPhase({
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-                    {connectedPlayers.map((player, index) => (
-                        <div
+                    {connectedPlayers.map((player) => (
+                        <PlayerCard
                             key={player.id}
-                            className="flex items-center gap-3 rounded-lg border-2 border-gray-200 bg-white p-4 animate-slideIn"
-                            style={{ animationDelay: `${index * 100}ms` }}
-                        >
-                            <div
-                                className="h-12 w-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md animate-pulse"
-                                style={{
-                                    backgroundColor: player.avatar_color,
-                                    animationDelay: `${index * 200}ms`,
-                                }}
-                            >
-                                {player.nickname.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-gray-900 truncate">
-                                    {player.nickname}
-                                </p>
-                                {player.is_host && (
-                                    <span className="inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-semibold text-yellow-800">
-                                        👑 Host
-                                    </span>
-                                )}
-                            </div>
-                        </div>
+                            player={player}
+                            currentPlayerId={currentPlayerId ?? 0}
+                            showVoiceControls={!!currentPlayerId}
+                        />
                     ))}
                 </div>
             </div>
@@ -127,7 +116,7 @@ export default function WaitingPhase({
                     disabled={!canStart}
                     className="w-full rounded-xl bg-gradient-to-r from-green-500 to-green-600 px-6 py-4 text-lg font-black text-white shadow-lg hover:from-green-600 hover:to-green-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105 active:scale-95 disabled:hover:scale-100 border-b-4 border-green-700 disabled:border-gray-600"
                 >
-                    {canStart ? '🎮 Start Game!' : `Need ${minPlayers} players to start`}
+                    {canStart ? <><GameIcon name="gamepad" className="inline-block mr-1" /> Start Game!</> : `Need ${minPlayers} players to start`}
                 </button>
             )}
 

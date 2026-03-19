@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { soundUtils } from '@/hooks/useSound';
+import GameIcon from '@/Components/GameIcon';
 
 export default function SoundToggle() {
     const [isMuted, setIsMuted] = useState(soundUtils.isMuted());
@@ -12,13 +13,11 @@ export default function SoundToggle() {
     return (
         <button
             onClick={handleToggle}
-            className="fixed top-4 right-4 flex items-center gap-2 rounded-lg bg-white px-4 py-2 shadow-lg transition-all hover:scale-105 hover:shadow-xl border border-gray-200"
+            className="flex items-center gap-2 rounded-lg bg-white/90 backdrop-blur-sm px-3 py-1.5 shadow-md transition-all hover:scale-105 hover:shadow-lg border border-white/50 text-gray-700"
             title={isMuted ? 'Unmute sounds' : 'Mute sounds'}
         >
-            <span className="text-xl">
-                {isMuted ? '\u{1F507}' : '\u{1F50A}'}
-            </span>
-            <span className="text-sm font-medium text-gray-700">
+            <GameIcon name={isMuted ? 'muted' : 'speaker'} size="sm" />
+            <span className="text-sm font-medium">
                 {isMuted ? 'Muted' : 'Sound On'}
             </span>
         </button>

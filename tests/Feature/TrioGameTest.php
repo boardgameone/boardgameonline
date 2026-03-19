@@ -79,7 +79,7 @@ class TrioGameTest extends TestCase
             $this->assertCount(7, $player->game_data['hand']);
         }
 
-        $this->assertCount(7, $data['room']->settings['middle_grid']);
+        $this->assertCount(8, $data['room']->settings['middle_grid']);
     }
 
     public function test_starting_game_distributes_6_cards_per_player_for_5_players(): void
@@ -109,7 +109,7 @@ class TrioGameTest extends TestCase
             $this->assertCount(5, $player->game_data['hand']);
         }
 
-        $this->assertCount(5, $data['room']->settings['middle_grid']);
+        $this->assertCount(6, $data['room']->settings['middle_grid']);
     }
 
     public function test_player_hands_are_sorted_lowest_to_highest(): void
@@ -417,5 +417,513 @@ class TrioGameTest extends TestCase
 
         $data['room']->refresh();
         $this->assertEquals('finished', $data['room']->status);
+    }
+
+    public function test_claiming_trio_removes_cards_from_middle_grid(): void
+    {
+        $data = $this->createGameWithPlayers(3);
+        $this->actingAs($data['host'])->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
+
+        $data['room']->refresh();
+        $currentPlayer = $data['room']->connectedPlayers->find($data['room']->thief_player_id);
+
+        // Set up a trio from middle grid positions 0, 1, 2
+        $settings = $data['room']->settings;
+        $settings['middle_grid'][0] = ['value' => 7, 'face_up' => true, 'position' => 0];
+        $settings['middle_grid'][1] = ['value' => 7, 'face_up' => true, 'position' => 1];
+        $settings['middle_grid'][2] = ['value' => 7, 'face_up' => true, 'position' => 2];
+        $settings['current_turn']['reveals'] = [
+            ['value' => 7, 'source' => 'middle_0'],
+            ['value' => 7, 'source' => 'middle_1'],
+            ['value' => 7, 'source' => 'middle_2'],
+        ];
+        $data['room']->update(['settings' => $settings]);
+
+        $initialMiddleCount = count($settings['middle_grid']);
+
+        $this->actingAs($currentPlayer->user)
+            ->post(route('rooms.trio.claimTrio', [$data['room']->game->slug, $data['room']->room_code]));
+
+        $data['room']->refresh();
+
+        // Assert grid count stays the same (cards are marked as removed, not filtered out)
+        $this->assertCount($initialMiddleCount, $data['room']->settings['middle_grid']);
+
+        // Assert positions 0, 1, 2 are marked as removed
+        $this->assertTrue($data['room']->settings['middle_grid'][0]['removed']);
+        $this->assertTrue($data['room']->settings['middle_grid'][1]['removed']);
+        $this->assertTrue($data['room']->settings['middle_grid'][2]['removed']);
+
+        // Assert removed cards have null value and face_up false
+        $this->assertNull($data['room']->settings['middle_grid'][0]['value']);
+        $this->assertNull($data['room']->settings['middle_grid'][1]['value']);
+        $this->assertNull($data['room']->settings['middle_grid'][2]['value']);
+        $this->assertFalse($data['room']->settings['middle_grid'][0]['face_up']);
+        $this->assertFalse($data['room']->settings['middle_grid'][1]['face_up']);
+        $this->assertFalse($data['room']->settings['middle_grid'][2]['face_up']);
+
+        // Assert other cards are not marked as removed
+        for ($i = 3; $i < $initialMiddleCount; $i++) {
+            $this->assertFalse($data['room']->settings['middle_grid'][$i]['removed'] ?? false);
+        }
+
+        // Verify positions are preserved (not re-indexed)
+        foreach ($data['room']->settings['middle_grid'] as $index => $card) {
+            $this->assertEquals($index, $card['position']);
+        }
+    }
+
+    public function test_claiming_trio_removes_cards_from_player_hands(): void
+    {
+        $data = $this->createGameWithPlayers(3);
+        $this->actingAs($data['host'])->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
+
+        $data['room']->refresh();
+        $currentPlayer = $data['room']->connectedPlayers->find($data['room']->thief_player_id);
+        $player2 = $data['room']->connectedPlayers->where('id', '!=', $currentPlayer->id)->first();
+
+        // Give both players a hand with value 5 in it
+        $gameData1 = $currentPlayer->game_data;
+        $gameData1['hand'] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+        $currentPlayer->update(['game_data' => $gameData1]);
+
+        $gameData2 = $player2->game_data;
+        $gameData2['hand'] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+        $player2->update(['game_data' => $gameData2]);
+
+        // Set up a trio: one from current player (value 5), one from player2 (value 5), one from middle (value 5)
+        $settings = $data['room']->settings;
+        $settings['middle_grid'][0] = ['value' => 5, 'face_up' => true, 'position' => 0];
+        $settings['current_turn']['reveals'] = [
+            ['value' => 5, 'source' => 'player_'.$currentPlayer->id],
+            ['value' => 5, 'source' => 'player_'.$player2->id],
+            ['value' => 5, 'source' => 'middle_0'],
+        ];
+        $data['room']->update(['settings' => $settings]);
+
+        $response = $this->actingAs($currentPlayer->user)
+            ->post(route('rooms.trio.claimTrio', [$data['room']->game->slug, $data['room']->room_code]));
+
+        $response->assertRedirect();
+
+        // Reload the players from database
+        $currentPlayerAfter = $currentPlayer->fresh();
+        $player2After = $player2->fresh();
+
+        // Assert each player's hand reduced from 9 to 8
+        $this->assertCount(8, $currentPlayerAfter->game_data['hand']);
+        $this->assertCount(8, $player2After->game_data['hand']);
+
+        // Assert value 5 removed from each hand
+        $this->assertNotContains(5, $currentPlayerAfter->game_data['hand']);
+        $this->assertNotContains(5, $player2After->game_data['hand']);
+
+        // Assert other cards remain
+        $this->assertContains(1, $currentPlayerAfter->game_data['hand']);
+        $this->assertContains(9, $currentPlayerAfter->game_data['hand']);
+    }
+
+    public function test_claiming_trio_ends_turn_and_passes_to_next_player(): void
+    {
+        $data = $this->createGameWithPlayers(3);
+        $this->actingAs($data['host'])->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
+
+        $data['room']->refresh();
+        $firstPlayer = $data['room']->connectedPlayers->find($data['room']->thief_player_id);
+        $turnOrder = $data['room']->settings['turn_order'];
+        $firstPlayerIndex = array_search($firstPlayer->id, $turnOrder);
+        $nextPlayerIndex = ($firstPlayerIndex + 1) % count($turnOrder);
+        $nextPlayerId = $turnOrder[$nextPlayerIndex];
+        $initialTurnNumber = $data['room']->settings['current_turn']['turn_number'];
+        $initialMiddleCount = count($data['room']->settings['middle_grid']);
+
+        // Set up a trio: middle positions 0, 1, 2 (value 3)
+        $settings = $data['room']->settings;
+        $settings['middle_grid'][0] = ['value' => 3, 'face_up' => true, 'position' => 0];
+        $settings['middle_grid'][1] = ['value' => 3, 'face_up' => true, 'position' => 1];
+        $settings['middle_grid'][2] = ['value' => 3, 'face_up' => true, 'position' => 2];
+        $settings['current_turn']['reveals'] = [
+            ['value' => 3, 'source' => 'middle_0'],
+            ['value' => 3, 'source' => 'middle_1'],
+            ['value' => 3, 'source' => 'middle_2'],
+        ];
+        $data['room']->update(['settings' => $settings]);
+
+        $this->actingAs($firstPlayer->user)
+            ->post(route('rooms.trio.claimTrio', [$data['room']->game->slug, $data['room']->room_code]));
+
+        $data['room']->refresh();
+        $firstPlayer->refresh();
+
+        // Assert trio was collected
+        $this->assertCount(1, $firstPlayer->game_data['collected_trios']);
+
+        // Assert grid count stays the same (cards are marked as removed, not filtered out)
+        $this->assertCount($initialMiddleCount, $data['room']->settings['middle_grid']);
+
+        // Assert claimed positions are marked as removed
+        $this->assertTrue($data['room']->settings['middle_grid'][0]['removed']);
+        $this->assertTrue($data['room']->settings['middle_grid'][1]['removed']);
+        $this->assertTrue($data['room']->settings['middle_grid'][2]['removed']);
+
+        // Assert turn passed to next player
+        $this->assertEquals($nextPlayerId, $data['room']->thief_player_id);
+        $this->assertEquals($nextPlayerId, $data['room']->settings['current_turn']['player_id']);
+
+        // Assert turn number incremented
+        $this->assertEquals($initialTurnNumber + 1, $data['room']->settings['current_turn']['turn_number']);
+
+        // Assert reveals cleared for new turn
+        $this->assertEmpty($data['room']->settings['current_turn']['reveals']);
+
+        // Assert can_continue reset for new turn
+        $this->assertTrue($data['room']->settings['current_turn']['can_continue']);
+
+        // Assert middle cards flipped face-down
+        foreach ($data['room']->settings['middle_grid'] as $card) {
+            $this->assertFalse($card['face_up']);
+        }
+    }
+
+    public function test_trio_from_all_middle_cards_removes_correctly(): void
+    {
+        $data = $this->createGameWithPlayers(3);
+        $this->actingAs($data['host'])->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
+
+        $data['room']->refresh();
+        $currentPlayer = $data['room']->connectedPlayers->find($data['room']->thief_player_id);
+
+        // Set up a trio from non-consecutive middle positions (0, 2, 4)
+        $settings = $data['room']->settings;
+        $originalGrid = $settings['middle_grid'];
+        $initialMiddleCount = count($originalGrid);
+
+        // Store the values we're NOT removing
+        $keepValue1 = $originalGrid[1]['value'];
+        $keepValue3 = $originalGrid[3]['value'];
+
+        $settings['middle_grid'][0] = ['value' => 8, 'face_up' => true, 'position' => 0];
+        $settings['middle_grid'][2] = ['value' => 8, 'face_up' => true, 'position' => 2];
+        $settings['middle_grid'][4] = ['value' => 8, 'face_up' => true, 'position' => 4];
+        $settings['current_turn']['reveals'] = [
+            ['value' => 8, 'source' => 'middle_0'],
+            ['value' => 8, 'source' => 'middle_2'],
+            ['value' => 8, 'source' => 'middle_4'],
+        ];
+        $data['room']->update(['settings' => $settings]);
+
+        $this->actingAs($currentPlayer->user)
+            ->post(route('rooms.trio.claimTrio', [$data['room']->game->slug, $data['room']->room_code]));
+
+        $data['room']->refresh();
+
+        // Assert grid count stays the same (cards are marked as removed, not filtered out)
+        $this->assertCount($initialMiddleCount, $data['room']->settings['middle_grid']);
+
+        // Assert non-consecutive positions 0, 2, 4 are marked as removed
+        $this->assertTrue($data['room']->settings['middle_grid'][0]['removed']);
+        $this->assertTrue($data['room']->settings['middle_grid'][2]['removed']);
+        $this->assertTrue($data['room']->settings['middle_grid'][4]['removed']);
+
+        // Assert positions 1, 3, 5+ are NOT marked as removed
+        $this->assertFalse($data['room']->settings['middle_grid'][1]['removed'] ?? false);
+        $this->assertFalse($data['room']->settings['middle_grid'][3]['removed'] ?? false);
+        $this->assertFalse($data['room']->settings['middle_grid'][5]['removed'] ?? false);
+
+        // Assert positions are preserved (not re-indexed)
+        foreach ($data['room']->settings['middle_grid'] as $index => $card) {
+            $this->assertEquals($index, $card['position']);
+        }
+
+        // Assert correct cards NOT removed still have their values
+        $this->assertEquals($keepValue1, $data['room']->settings['middle_grid'][1]['value']);
+        $this->assertEquals($keepValue3, $data['room']->settings['middle_grid'][3]['value']);
+    }
+
+    public function test_player_cannot_claim_same_trio_value_twice(): void
+    {
+        $data = $this->createGameWithPlayers(3);
+        $this->actingAs($data['host'])->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
+
+        $data['room']->refresh();
+        $currentPlayer = $data['room']->connectedPlayers->find($data['room']->thief_player_id);
+
+        // Give the player an already collected trio of 5s
+        $gameData = $currentPlayer->game_data;
+        $gameData['collected_trios'] = [[5, 5, 5]];
+        $currentPlayer->update(['game_data' => $gameData]);
+
+        // Set up a trio reveal with value 5 (which player already has)
+        $settings = $data['room']->settings;
+        $settings['middle_grid'][0] = ['value' => 5, 'face_up' => true, 'position' => 0];
+        $settings['middle_grid'][1] = ['value' => 5, 'face_up' => true, 'position' => 1];
+        $settings['middle_grid'][2] = ['value' => 5, 'face_up' => true, 'position' => 2];
+        $settings['current_turn']['reveals'] = [
+            ['value' => 5, 'source' => 'middle_0'],
+            ['value' => 5, 'source' => 'middle_1'],
+            ['value' => 5, 'source' => 'middle_2'],
+        ];
+        $data['room']->update(['settings' => $settings]);
+
+        // Attempt to claim the trio again (should fail)
+        $response = $this->actingAs($currentPlayer->user)
+            ->post(route('rooms.trio.claimTrio', [$data['room']->game->slug, $data['room']->room_code]));
+
+        $response->assertSessionHasErrors('error');
+
+        // Verify the player still only has 1 trio (not 2)
+        $currentPlayer->refresh();
+        $this->assertCount(1, $currentPlayer->game_data['collected_trios']);
+    }
+
+    public function test_player_can_ask_same_player_highest_multiple_times_gets_next_highest(): void
+    {
+        $data = $this->createGameWithPlayers(3);
+        $this->actingAs($data['host'])->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
+
+        $data['room']->refresh();
+        $currentPlayer = $data['room']->connectedPlayers->find($data['room']->thief_player_id);
+        $targetPlayer = $data['room']->connectedPlayers->where('id', '!=', $currentPlayer->id)->first();
+
+        // Set up a controlled hand with matching values for a trio
+        $gameData = $targetPlayer->game_data;
+        $gameData['hand'] = [1, 7, 7, 7];
+        $targetPlayer->update(['game_data' => $gameData]);
+
+        // First request for highest card - should get 7
+        $response1 = $this->actingAs($currentPlayer->user)
+            ->post(route('rooms.trio.revealCard', [$data['room']->game->slug, $data['room']->room_code]), [
+                'reveal_type' => 'ask_highest',
+                'target_player_id' => $targetPlayer->id,
+                'card_value' => 0,
+            ]);
+
+        $response1->assertRedirect();
+
+        $data['room']->refresh();
+        $this->assertCount(1, $data['room']->settings['current_turn']['reveals']);
+        $this->assertEquals(7, $data['room']->settings['current_turn']['reveals'][0]['value']);
+
+        // Second request for highest card - should get another 7 (next highest, there are 3 sevens)
+        $response2 = $this->actingAs($currentPlayer->user)
+            ->post(route('rooms.trio.revealCard', [$data['room']->game->slug, $data['room']->room_code]), [
+                'reveal_type' => 'ask_highest',
+                'target_player_id' => $targetPlayer->id,
+                'card_value' => 0,
+            ]);
+
+        $response2->assertRedirect();
+
+        $data['room']->refresh();
+        $this->assertCount(2, $data['room']->settings['current_turn']['reveals']);
+        $this->assertEquals(7, $data['room']->settings['current_turn']['reveals'][1]['value']);
+
+        // Third request for highest card - should get the third 7
+        $response3 = $this->actingAs($currentPlayer->user)
+            ->post(route('rooms.trio.revealCard', [$data['room']->game->slug, $data['room']->room_code]), [
+                'reveal_type' => 'ask_highest',
+                'target_player_id' => $targetPlayer->id,
+                'card_value' => 0,
+            ]);
+
+        $response3->assertRedirect();
+
+        $data['room']->refresh();
+        $this->assertCount(3, $data['room']->settings['current_turn']['reveals']);
+        $this->assertEquals(7, $data['room']->settings['current_turn']['reveals'][2]['value']);
+    }
+
+    public function test_player_can_ask_same_player_lowest_multiple_times_gets_next_lowest(): void
+    {
+        $data = $this->createGameWithPlayers(3);
+        $this->actingAs($data['host'])->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
+
+        $data['room']->refresh();
+        $currentPlayer = $data['room']->connectedPlayers->find($data['room']->thief_player_id);
+        $targetPlayer = $data['room']->connectedPlayers->where('id', '!=', $currentPlayer->id)->first();
+
+        // Set up a controlled hand with matching values for a trio (lowest)
+        $gameData = $targetPlayer->game_data;
+        $gameData['hand'] = [3, 3, 3, 10];
+        $targetPlayer->update(['game_data' => $gameData]);
+
+        // First request for lowest card - should get 3
+        $response1 = $this->actingAs($currentPlayer->user)
+            ->post(route('rooms.trio.revealCard', [$data['room']->game->slug, $data['room']->room_code]), [
+                'reveal_type' => 'ask_lowest',
+                'target_player_id' => $targetPlayer->id,
+                'card_value' => 0,
+            ]);
+
+        $response1->assertRedirect();
+
+        $data['room']->refresh();
+        $this->assertCount(1, $data['room']->settings['current_turn']['reveals']);
+        $this->assertEquals(3, $data['room']->settings['current_turn']['reveals'][0]['value']);
+
+        // Second request for lowest card - should get another 3 (next lowest, there are 3 threes)
+        $response2 = $this->actingAs($currentPlayer->user)
+            ->post(route('rooms.trio.revealCard', [$data['room']->game->slug, $data['room']->room_code]), [
+                'reveal_type' => 'ask_lowest',
+                'target_player_id' => $targetPlayer->id,
+                'card_value' => 0,
+            ]);
+
+        $response2->assertRedirect();
+
+        $data['room']->refresh();
+        $this->assertCount(2, $data['room']->settings['current_turn']['reveals']);
+        $this->assertEquals(3, $data['room']->settings['current_turn']['reveals'][1]['value']);
+
+        // Third request for lowest card - should get the third 3
+        $response3 = $this->actingAs($currentPlayer->user)
+            ->post(route('rooms.trio.revealCard', [$data['room']->game->slug, $data['room']->room_code]), [
+                'reveal_type' => 'ask_lowest',
+                'target_player_id' => $targetPlayer->id,
+                'card_value' => 0,
+            ]);
+
+        $response3->assertRedirect();
+
+        $data['room']->refresh();
+        $this->assertCount(3, $data['room']->settings['current_turn']['reveals']);
+        $this->assertEquals(3, $data['room']->settings['current_turn']['reveals'][2]['value']);
+    }
+
+    public function test_player_can_ask_same_player_highest_and_lowest_in_turn(): void
+    {
+        $data = $this->createGameWithPlayers(3);
+        $this->actingAs($data['host'])->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
+
+        $data['room']->refresh();
+        $currentPlayer = $data['room']->connectedPlayers->find($data['room']->thief_player_id);
+        $targetPlayer = $data['room']->connectedPlayers->where('id', '!=', $currentPlayer->id)->first();
+
+        // Request for highest card - should succeed
+        $response1 = $this->actingAs($currentPlayer->user)
+            ->post(route('rooms.trio.revealCard', [$data['room']->game->slug, $data['room']->room_code]), [
+                'reveal_type' => 'ask_highest',
+                'target_player_id' => $targetPlayer->id,
+                'card_value' => 0,
+            ]);
+
+        $response1->assertRedirect();
+
+        $data['room']->refresh();
+        $this->assertCount(1, $data['room']->settings['current_turn']['reveals']);
+
+        // Request for lowest card from same player - should also succeed (different reveal_type)
+        $response2 = $this->actingAs($currentPlayer->user)
+            ->post(route('rooms.trio.revealCard', [$data['room']->game->slug, $data['room']->room_code]), [
+                'reveal_type' => 'ask_lowest',
+                'target_player_id' => $targetPlayer->id,
+                'card_value' => 0,
+            ]);
+
+        $response2->assertRedirect();
+
+        // Verify 2 reveals now exist
+        $data['room']->refresh();
+        $this->assertCount(2, $data['room']->settings['current_turn']['reveals']);
+    }
+
+    public function test_error_when_all_cards_revealed_from_player(): void
+    {
+        $data = $this->createGameWithPlayers(3);
+        $this->actingAs($data['host'])->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
+
+        $data['room']->refresh();
+        $currentPlayer = $data['room']->connectedPlayers->find($data['room']->thief_player_id);
+        $targetPlayer = $data['room']->connectedPlayers->where('id', '!=', $currentPlayer->id)->first();
+
+        // Set up a small hand with only 2 cards
+        $gameData = $targetPlayer->game_data;
+        $gameData['hand'] = [5, 7];
+        $targetPlayer->update(['game_data' => $gameData]);
+
+        // First reveal - get 7 (highest)
+        $this->actingAs($currentPlayer->user)
+            ->post(route('rooms.trio.revealCard', [$data['room']->game->slug, $data['room']->room_code]), [
+                'reveal_type' => 'ask_highest',
+                'target_player_id' => $targetPlayer->id,
+                'card_value' => 0,
+            ]);
+
+        $data['room']->refresh();
+        $this->assertEquals(7, $data['room']->settings['current_turn']['reveals'][0]['value']);
+
+        // Second reveal - get 5 (next highest)
+        $this->actingAs($currentPlayer->user)
+            ->post(route('rooms.trio.revealCard', [$data['room']->game->slug, $data['room']->room_code]), [
+                'reveal_type' => 'ask_highest',
+                'target_player_id' => $targetPlayer->id,
+                'card_value' => 0,
+            ]);
+
+        $data['room']->refresh();
+        $this->assertEquals(5, $data['room']->settings['current_turn']['reveals'][1]['value']);
+
+        // Third reveal - should fail, no more unrevealed cards
+        $response = $this->actingAs($currentPlayer->user)
+            ->post(route('rooms.trio.revealCard', [$data['room']->game->slug, $data['room']->room_code]), [
+                'reveal_type' => 'ask_highest',
+                'target_player_id' => $targetPlayer->id,
+                'card_value' => 0,
+            ]);
+
+        $response->assertSessionHasErrors('error');
+
+        // Verify still only 2 reveals
+        $data['room']->refresh();
+        $this->assertCount(2, $data['room']->settings['current_turn']['reveals']);
+    }
+
+    public function test_player_can_reveal_duplicate_values_from_same_player(): void
+    {
+        $data = $this->createGameWithPlayers(3);
+        $this->actingAs($data['host'])->post(route('rooms.trio.start', [$data['game']->slug, $data['room']->room_code]));
+
+        $data['room']->refresh();
+        $currentPlayer = $data['room']->connectedPlayers->find($data['room']->thief_player_id);
+        $targetPlayer = $data['room']->connectedPlayers->where('id', '!=', $currentPlayer->id)->first();
+
+        // Set up a hand with duplicate values (three 8s for a potential trio) - highest
+        $gameData = $targetPlayer->game_data;
+        $gameData['hand'] = [3, 8, 8, 8];
+        $targetPlayer->update(['game_data' => $gameData]);
+
+        // First reveal - get 8 (highest)
+        $this->actingAs($currentPlayer->user)
+            ->post(route('rooms.trio.revealCard', [$data['room']->game->slug, $data['room']->room_code]), [
+                'reveal_type' => 'ask_highest',
+                'target_player_id' => $targetPlayer->id,
+                'card_value' => 0,
+            ]);
+
+        $data['room']->refresh();
+        $this->assertEquals(8, $data['room']->settings['current_turn']['reveals'][0]['value']);
+
+        // Second reveal - get another 8 (next highest)
+        $this->actingAs($currentPlayer->user)
+            ->post(route('rooms.trio.revealCard', [$data['room']->game->slug, $data['room']->room_code]), [
+                'reveal_type' => 'ask_highest',
+                'target_player_id' => $targetPlayer->id,
+                'card_value' => 0,
+            ]);
+
+        $data['room']->refresh();
+        $this->assertEquals(8, $data['room']->settings['current_turn']['reveals'][1]['value']);
+
+        // Third reveal - get the third 8
+        $this->actingAs($currentPlayer->user)
+            ->post(route('rooms.trio.revealCard', [$data['room']->game->slug, $data['room']->room_code]), [
+                'reveal_type' => 'ask_highest',
+                'target_player_id' => $targetPlayer->id,
+                'card_value' => 0,
+            ]);
+
+        $data['room']->refresh();
+        $this->assertCount(3, $data['room']->settings['current_turn']['reveals']);
+        $this->assertEquals(8, $data['room']->settings['current_turn']['reveals'][2]['value']);
     }
 }

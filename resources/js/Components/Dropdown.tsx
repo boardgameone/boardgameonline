@@ -73,7 +73,7 @@ const Content = ({
     let widthClasses = '';
 
     if (width === '48') {
-        widthClasses = 'w-48';
+        widthClasses = 'w-48 max-w-[calc(100vw-2rem)]';
     }
 
     return (

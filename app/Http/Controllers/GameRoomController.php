@@ -101,9 +101,15 @@ class GameRoomController extends Controller
             }
         }
 
-        // Route to TRIO game controller if this is a TRIO game
+        // Route to Trio game controller if this is a Trio game
         if ($room->game?->slug === 'trio') {
             return app(TrioGameController::class)->show($game, $room);
+        }
+
+        // Auto-advance expired night hours (driven by frontend polling)
+        if ($room->isPlaying() && $room->current_hour >= 1 && $room->current_hour <= 6) {
+            $this->autoAdvanceNightHours($room);
+            $room->refresh();
         }
 
         // Build game state with visibility rules
@@ -621,19 +627,28 @@ class GameRoomController extends Controller
 
         if ($currentHour === 0) {
             // Rolling phase complete -> move to hour 1
-            $room->update(['current_hour' => 1]);
+            $room->update([
+                'current_hour' => 1,
+                'hour_started_at' => now(),
+            ]);
             $room->refresh();
             // Auto-advance through empty night hours
             $this->autoAdvanceNightHours($room);
         } elseif ($currentHour >= 1 && $currentHour <= 5) {
             // Night hour complete -> move to next hour
-            $room->update(['current_hour' => $currentHour + 1]);
+            $room->update([
+                'current_hour' => $currentHour + 1,
+                'hour_started_at' => now(),
+            ]);
             $room->refresh();
             // Auto-advance through empty night hours
             $this->autoAdvanceNightHours($room);
         } elseif ($currentHour === 6) {
             // Last night hour complete -> move to accomplice selection
-            $room->update(['current_hour' => 7]);
+            $room->update([
+                'current_hour' => 7,
+                'hour_started_at' => null,
+            ]);
         } elseif ($currentHour === 7) {
             // Accomplice selected -> move to voting
             $room->update(['current_hour' => 8]);
@@ -650,14 +665,20 @@ class GameRoomController extends Controller
             if ($room->currentHourComplete()) {
                 if ($room->current_hour === 6) {
                     // Move to accomplice selection
-                    $room->update(['current_hour' => 7]);
+                    $room->update([
+                        'current_hour' => 7,
+                        'hour_started_at' => null,
+                    ]);
 
                     return;
                 }
-                $room->update(['current_hour' => $room->current_hour + 1]);
+                $room->update([
+                    'current_hour' => $room->current_hour + 1,
+                    'hour_started_at' => now(),
+                ]);
                 $room->refresh();
             } else {
-                // Someone needs to take action
+                // Hour not yet complete (timer still running or player needs to act)
                 return;
             }
         }
@@ -756,6 +777,10 @@ class GameRoomController extends Controller
             'is_thief' => $isThief,
             'is_accomplice' => $isAccomplice,
             'isHost' => $currentPlayer?->is_host ?? false,
+            'hour_started_at' => $room->hour_started_at?->toISOString(),
+            'hour_timer_duration' => ($room->current_hour >= 1 && $room->current_hour <= 6)
+                ? $room->getHourTimerDuration()
+                : (int) config('games.cheese_thief.night_hour_timer_seconds', 15),
         ];
     }
 
@@ -860,7 +885,7 @@ class GameRoomController extends Controller
     }
 
     /**
-     * Get voice status of all players (mute state).
+     * Get voice status of all players (mute state and video state).
      */
     public function getVoiceStatus(Game $game, GameRoom $room): JsonResponse
     {
@@ -876,17 +901,42 @@ class GameRoomController extends Controller
         }
 
         $players = $room->connectedPlayers()
-            ->get(['id', 'nickname', 'avatar_color', 'is_muted'])
+            ->get(['id', 'nickname', 'avatar_color', 'is_muted', 'is_video_enabled'])
             ->map(fn (GamePlayer $player) => [
                 'id' => $player->id,
                 'nickname' => $player->nickname,
                 'avatar_color' => $player->avatar_color,
                 'is_muted' => $player->is_muted,
+                'is_video_enabled' => $player->is_video_enabled,
             ]);
 
         return response()->json([
             'players' => $players,
             'current_player_id' => $currentPlayer->id,
+        ]);
+    }
+
+    /**
+     * Toggle video status for the current player.
+     */
+    public function toggleVideo(Game $game, GameRoom $room): JsonResponse
+    {
+        // Validate room belongs to this game
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
+        $currentPlayer = $this->findCurrentPlayer($room);
+
+        if (! $currentPlayer) {
+            return response()->json(['error' => 'You are not a player in this room.'], 403);
+        }
+
+        $currentPlayer->update(['is_video_enabled' => ! $currentPlayer->is_video_enabled]);
+
+        return response()->json([
+            'success' => true,
+            'is_video_enabled' => $currentPlayer->is_video_enabled,
         ]);
     }
 }
