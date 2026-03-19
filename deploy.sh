@@ -16,6 +16,13 @@ if [ -n "$(git status --porcelain)" ]; then
     exit 1
 fi
 
+# Ensure master branch exists locally (needed for gh pr create)
+if ! git show-ref --verify --quiet refs/heads/master; then
+    echo "Setting up local master branch..."
+    git fetch origin master
+    git branch master origin/master
+fi
+
 # ── Step 1: PR Gyan → master ──────────────────────────────────────────
 echo ""
 echo "=== Step 1: Gyan → master ==="
@@ -24,7 +31,8 @@ PR_URL=$(gh pr list -R "$REPO" --state open --head Gyan --base master --json url
 
 if [ -z "$PR_URL" ]; then
     echo "Creating PR from Gyan → master..."
-    PR_URL=$(gh pr create -R "$REPO" --base master --head Gyan --fill)
+    TITLE="Deploy Gyan → master ($(date '+%Y-%m-%d %H:%M'))"
+    PR_URL=$(gh pr create -R "$REPO" --base master --head Gyan --title "$TITLE" --body "Automated deploy from Gyan to master.")
     echo "PR created: $PR_URL"
 else
     echo "Using existing PR: $PR_URL"
@@ -41,7 +49,8 @@ PR_URL=$(gh pr list -R "$REPO" --state open --head master --base main --json url
 
 if [ -z "$PR_URL" ]; then
     echo "Creating PR from master → main..."
-    PR_URL=$(gh pr create -R "$REPO" --base main --head master --fill)
+    TITLE="Deploy master → main ($(date '+%Y-%m-%d %H:%M'))"
+    PR_URL=$(gh pr create -R "$REPO" --base main --head master --title "$TITLE" --body "Automated deploy from master to main.")
     echo "PR created: $PR_URL"
 else
     echo "Using existing PR: $PR_URL"
