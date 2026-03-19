@@ -71,5 +71,10 @@ git pull origin main
 
 git checkout Gyan
 
+# ── Step 3: Deploy on server ─────────────────────────────────────────
 echo ""
-echo "Done! Both PRs merged. Local master and main are synced."
+echo "=== Step 3: Deploying on server ==="
+ssh boardgam1@198.38.86.14 "cd public_html && ./deploy.sh"
+
+echo ""
+echo "Done! Both PRs merged, local branches synced, and server deployed."
