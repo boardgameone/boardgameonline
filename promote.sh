@@ -30,7 +30,7 @@ git fetch origin
 echo ""
 echo "=== Step 1: Gyan → master ==="
 
-if [ "$(git rev-parse origin/Gyan)" = "$(git rev-parse origin/master)" ]; then
+if [ -z "$(git log origin/master..origin/Gyan --oneline)" ]; then
     echo "Gyan and master are already in sync. Skipping."
 else
     PR_URL=$(gh pr list -R "$REPO" --state open --head Gyan --base master --json url -q '.[0].url' 2>/dev/null || true)
@@ -55,7 +55,7 @@ echo "=== Step 2: master → main ==="
 # Re-fetch after potential merge in Step 1
 git fetch origin
 
-if [ "$(git rev-parse origin/master)" = "$(git rev-parse origin/main)" ]; then
+if [ -z "$(git log origin/main..origin/master --oneline)" ]; then
     echo "master and main are already in sync. Skipping."
 else
     PR_URL=$(gh pr list -R "$REPO" --state open --head master --base main --json url -q '.[0].url' 2>/dev/null || true)
