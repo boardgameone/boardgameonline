@@ -23,41 +23,55 @@ if ! git show-ref --verify --quiet refs/heads/master; then
     git branch master origin/master
 fi
 
+# Fetch latest remote refs
+git fetch origin
+
 # ── Step 1: PR Gyan → master ──────────────────────────────────────────
 echo ""
 echo "=== Step 1: Gyan → master ==="
 
-PR_URL=$(gh pr list -R "$REPO" --state open --head Gyan --base master --json url -q '.[0].url' 2>/dev/null || true)
-
-if [ -z "$PR_URL" ]; then
-    echo "Creating PR from Gyan → master..."
-    TITLE="Deploy Gyan → master ($(date '+%Y-%m-%d %H:%M'))"
-    PR_URL=$(gh pr create -R "$REPO" --base master --head Gyan --title "$TITLE" --body "Automated deploy from Gyan to master.")
-    echo "PR created: $PR_URL"
+if [ "$(git rev-parse origin/Gyan)" = "$(git rev-parse origin/master)" ]; then
+    echo "Gyan and master are already in sync. Skipping."
 else
-    echo "Using existing PR: $PR_URL"
-fi
+    PR_URL=$(gh pr list -R "$REPO" --state open --head Gyan --base master --json url -q '.[0].url' 2>/dev/null || true)
 
-echo "Merging PR..."
-gh pr merge "$PR_URL" -R "$REPO" --merge --delete-branch=false
+    if [ -z "$PR_URL" ]; then
+        echo "Creating PR from Gyan → master..."
+        TITLE="Deploy Gyan → master ($(date '+%Y-%m-%d %H:%M'))"
+        PR_URL=$(gh pr create -R "$REPO" --base master --head Gyan --title "$TITLE" --body "Automated deploy from Gyan to master.")
+        echo "PR created: $PR_URL"
+    else
+        echo "Using existing PR: $PR_URL"
+    fi
+
+    echo "Merging PR..."
+    gh pr merge "$PR_URL" -R "$REPO" --merge --delete-branch=false
+fi
 
 # ── Step 2: PR master → main ─────────────────────────────────────────
 echo ""
 echo "=== Step 2: master → main ==="
 
-PR_URL=$(gh pr list -R "$REPO" --state open --head master --base main --json url -q '.[0].url' 2>/dev/null || true)
+# Re-fetch after potential merge in Step 1
+git fetch origin
 
-if [ -z "$PR_URL" ]; then
-    echo "Creating PR from master → main..."
-    TITLE="Deploy master → main ($(date '+%Y-%m-%d %H:%M'))"
-    PR_URL=$(gh pr create -R "$REPO" --base main --head master --title "$TITLE" --body "Automated deploy from master to main.")
-    echo "PR created: $PR_URL"
+if [ "$(git rev-parse origin/master)" = "$(git rev-parse origin/main)" ]; then
+    echo "master and main are already in sync. Skipping."
 else
-    echo "Using existing PR: $PR_URL"
-fi
+    PR_URL=$(gh pr list -R "$REPO" --state open --head master --base main --json url -q '.[0].url' 2>/dev/null || true)
 
-echo "Merging PR..."
-gh pr merge "$PR_URL" -R "$REPO" --merge --delete-branch=false
+    if [ -z "$PR_URL" ]; then
+        echo "Creating PR from master → main..."
+        TITLE="Deploy master → main ($(date '+%Y-%m-%d %H:%M'))"
+        PR_URL=$(gh pr create -R "$REPO" --base main --head master --title "$TITLE" --body "Automated deploy from master to main.")
+        echo "PR created: $PR_URL"
+    else
+        echo "Using existing PR: $PR_URL"
+    fi
+
+    echo "Merging PR..."
+    gh pr merge "$PR_URL" -R "$REPO" --merge --delete-branch=false
+fi
 
 # ── Sync local branches ──────────────────────────────────────────────
 echo ""
