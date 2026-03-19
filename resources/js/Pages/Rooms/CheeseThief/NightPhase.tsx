@@ -196,6 +196,10 @@ export default function NightPhase({ gameState, roomCode, gameSlug }: NightPhase
                             </p>
                         )}
                     </>
+                ) : gameState.awake_player_ids.length === 0 ? (
+                    <p className="text-lg text-gray-600">
+                        {'\u{1F4A4}'} Nobody woke up at {gameState.current_hour} AM...
+                    </p>
                 ) : (
                     <p className="text-lg text-gray-600">
                         {'\u{1F4A4}'} Zzz... waiting for your hour... (Your die: {currentPlayer?.die_value})
