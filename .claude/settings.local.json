@@ -30,7 +30,8 @@
       "Bash(sips:*)",
       "Bash(gh pr list:*)",
       "Bash(gh pr view:*)",
-      "Bash(gh repo:*)"
+      "Bash(gh repo:*)",
+      "Bash(ssh:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
