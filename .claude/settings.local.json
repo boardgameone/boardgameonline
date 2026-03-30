@@ -31,7 +31,8 @@
       "Bash(gh pr list:*)",
       "Bash(gh pr view:*)",
       "Bash(gh repo:*)",
-      "Bash(ssh:*)"
+      "Bash(ssh:*)",
+      "mcp__perplexity__perplexity_search"
     ]
   },
   "enableAllProjectMcpServers": true,

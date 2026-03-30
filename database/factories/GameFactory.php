@@ -59,6 +59,19 @@ class GameFactory extends Factory
         ]);
     }
 
+    public function twentyEight(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'slug' => 'twenty-eight',
+            'name' => 'Twenty-Eight',
+            'description' => 'A classic South Indian trick-taking card game for 4 players in 2 teams.',
+            'min_players' => 4,
+            'max_players' => 4,
+            'estimated_duration_minutes' => 30,
+            'is_active' => true,
+        ]);
+    }
+
     public function inactive(): static
     {
         return $this->state(fn (array $attributes) => [
