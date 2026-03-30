@@ -106,6 +106,11 @@ class GameRoomController extends Controller
             return app(TrioGameController::class)->show($game, $room);
         }
 
+        // Route to Twenty-Eight game controller
+        if ($room->game?->slug === 'twenty-eight') {
+            return app(TwentyEightGameController::class)->show($game, $room);
+        }
+
         // Auto-advance expired night hours (driven by frontend polling)
         if ($room->isPlaying() && $room->current_hour >= 1 && $room->current_hour <= 6) {
             $this->autoAdvanceNightHours($room);

@@ -91,6 +91,98 @@ export interface ChatMessage {
     };
 }
 
+// Twenty-Eight Game Types
+export interface TwentyEightCard {
+    rank: 'J' | '9' | 'A' | '10' | 'K' | 'Q' | '8' | '7';
+    suit: 'hearts' | 'diamonds' | 'clubs' | 'spades';
+}
+
+export interface TwentyEightPlayer {
+    id: number;
+    nickname: string;
+    avatar_color: string;
+    is_host: boolean;
+    is_connected: boolean;
+    team: 'team_a' | 'team_b' | null;
+    seat_position: number;
+    hand: TwentyEightCard[] | null;
+    hand_count: number;
+    is_current_turn: boolean;
+    has_passed: boolean;
+    is_bid_winner: boolean;
+    playable_card_indices: number[];
+}
+
+export interface TwentyEightTrickPlay {
+    player_id: number;
+    card: TwentyEightCard;
+}
+
+export interface TwentyEightCompletedTrick {
+    number: number;
+    cards: TwentyEightTrickPlay[];
+    winner_id: number;
+    points: number;
+}
+
+export interface TwentyEightGameState {
+    phase: 'bidding' | 'trump_selection' | 'playing' | 'round_end' | 'game_over';
+    round_number: number;
+    dealer_index: number;
+    players: TwentyEightPlayer[];
+    teams: {
+        team_a: number[];
+        team_b: number[];
+    };
+    player_order: number[];
+    bidding: {
+        current_bidder_id: number | null;
+        highest_bid: number;
+        highest_bidder_id: number | null;
+        passed_players: number[];
+    };
+    trump: {
+        revealed: boolean;
+        suit: string | null;
+    };
+    current_trick: {
+        number: number;
+        cards: TwentyEightTrickPlay[];
+        lead_suit: string | null;
+        lead_player_id: number | null;
+    };
+    last_completed_trick: TwentyEightCompletedTrick | null;
+    tricks_won: {
+        team_a: number;
+        team_b: number;
+    };
+    points: {
+        team_a: number;
+        team_b: number;
+    };
+    game_scores: {
+        team_a: number;
+        team_b: number;
+    };
+    bid_value: number;
+    bid_team: 'team_a' | 'team_b' | null;
+    round_history: Array<{
+        round_number: number;
+        bid_value: number;
+        bid_team: string;
+        points: { team_a: number; team_b: number };
+        game_scores: { team_a: number; team_b: number };
+    }>;
+    permissions: {
+        can_bid: boolean;
+        can_pass: boolean;
+        can_select_trump: boolean;
+        can_play_card: boolean;
+        can_call_trump: boolean;
+        must_call_trump: boolean;
+    };
+}
+
 export interface GameState {
     current_hour: number; // 0=rolling, 1-6=night, 7=accomplice, 8=voting, 9=results
     players: GameStatePlayer[];

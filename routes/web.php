@@ -4,6 +4,7 @@ use App\Http\Controllers\GameController;
 use App\Http\Controllers\GameRoomController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TrioGameController;
+use App\Http\Controllers\TwentyEightGameController;
 use App\Models\Game;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -59,6 +60,14 @@ Route::post('/rooms/{game:slug}/{room:room_code}/trio/start', [TrioGameControlle
 Route::post('/rooms/{game:slug}/{room:room_code}/trio/reveal-card', [TrioGameController::class, 'revealCard'])->name('rooms.trio.revealCard');
 Route::post('/rooms/{game:slug}/{room:room_code}/trio/claim-trio', [TrioGameController::class, 'claimTrio'])->name('rooms.trio.claimTrio');
 Route::post('/rooms/{game:slug}/{room:room_code}/trio/end-turn', [TrioGameController::class, 'endTurn'])->name('rooms.trio.endTurn');
+
+// Twenty-Eight game routes
+Route::post('/rooms/{game:slug}/{room:room_code}/twenty-eight/start', [TwentyEightGameController::class, 'start'])->name('rooms.twentyEight.start');
+Route::post('/rooms/{game:slug}/{room:room_code}/twenty-eight/place-bid', [TwentyEightGameController::class, 'placeBid'])->name('rooms.twentyEight.placeBid');
+Route::post('/rooms/{game:slug}/{room:room_code}/twenty-eight/select-trump', [TwentyEightGameController::class, 'selectTrump'])->name('rooms.twentyEight.selectTrump');
+Route::post('/rooms/{game:slug}/{room:room_code}/twenty-eight/play-card', [TwentyEightGameController::class, 'playCard'])->name('rooms.twentyEight.playCard');
+Route::post('/rooms/{game:slug}/{room:room_code}/twenty-eight/call-trump', [TwentyEightGameController::class, 'callTrump'])->name('rooms.twentyEight.callTrump');
+Route::post('/rooms/{game:slug}/{room:room_code}/twenty-eight/next-round', [TwentyEightGameController::class, 'startNextRound'])->name('rooms.twentyEight.nextRound');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
