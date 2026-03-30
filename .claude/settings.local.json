@@ -34,11 +34,12 @@
       "Bash(ssh:*)",
       "mcp__perplexity__perplexity_search",
       "WebFetch(domain:github.com)",
-      "Bash(node -e \"const pkg = require\\(''./node_modules/vite/package.json''\\); console.log\\(''vite:'', pkg.version\\)\")",
-      "Bash(node -e \"const pkg = require\\(''./node_modules/laravel-vite-plugin/package.json''\\); console.log\\(''laravel-vite-plugin:'', pkg.version\\)\")",
-      "Bash(node -e \"const pkg = require\\(''./node_modules/@vitejs/plugin-react/package.json''\\); console.log\\(''@vitejs/plugin-react:'', pkg.version\\)\")",
-      "Bash(node -e \"const pkg = require\\(''./node_modules/vite-plugin-pwa/package.json''\\); console.log\\(''vite-plugin-pwa:'', pkg.version\\)\")",
-      "Bash(node -e \"const pkg = require\\(''./node_modules/@tailwindcss/vite/package.json''\\); console.log\\(''@tailwindcss/vite:'', pkg.version\\)\")",
+      "Bash(npm outdated:*)",
+      "Bash(composer outdated:*)",
+      "Bash(composer update:*)",
+      "Bash(composer install:*)",
+      "Bash(composer dump-autoload:*)",
+      "Bash(node:*)",
       "Bash(npm -v)",
       "Bash(npm view:*)"
     ]
