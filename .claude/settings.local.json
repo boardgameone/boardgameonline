@@ -41,7 +41,11 @@
       "Bash(composer dump-autoload:*)",
       "Bash(node:*)",
       "Bash(npm -v)",
-      "Bash(npm view:*)"
+      "Bash(npm view:*)",
+      "WebSearch",
+      "Bash(php -v)",
+      "Bash(python3 -c \"import sys,json; v=json.load\\(sys.stdin\\); print\\(v if isinstance\\(v,str\\) else v[-1]\\)\")",
+      "Bash(composer show:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
