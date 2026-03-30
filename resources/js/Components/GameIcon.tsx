@@ -1,3 +1,5 @@
+import React from 'react';
+
 interface GameIconProps {
     name: IconName;
     size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
@@ -54,7 +56,7 @@ const sizeClasses = {
     '2xl': 'h-16 w-16',
 };
 
-const icons: Record<IconName, JSX.Element> = {
+const icons: Record<IconName, React.JSX.Element> = {
     target: (
         <path
             strokeLinecap="round"
