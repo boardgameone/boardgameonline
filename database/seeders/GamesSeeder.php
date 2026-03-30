@@ -57,5 +57,26 @@ class GamesSeeder extends Seeder
                 'sort_order' => 2,
             ]
         );
+
+        Game::updateOrCreate(
+            ['slug' => 'twenty-eight'],
+            [
+                'name' => 'Twenty-Eight',
+                'description' => 'A classic South Indian trick-taking card game for 4 players in 2 teams. Bid for trump, play tricks, and score points to win!',
+                'thumbnail' => null,
+                'min_players' => 4,
+                'max_players' => 4,
+                'estimated_duration_minutes' => 30,
+                'rules' => [
+                    'objective' => 'Win tricks worth enough card points to meet your team\'s bid. First team to reach 6 game points wins.',
+                    'cards' => '32 cards: J(3pts), 9(2pts), A(1pt), 10(1pt), K, Q, 8, 7 from each suit. Total: 28 points.',
+                    'bidding' => 'Players bid 14-28 on how many points their team will win. Highest bidder selects a hidden trump suit.',
+                    'gameplay' => 'Play 8 tricks following suit. Trump is revealed when a player cannot follow suit. Highest card of led suit (or trump) wins the trick.',
+                    'scoring' => 'Bidding team gains/loses 1 game point based on meeting their bid. First to +6 or -6 ends the game.',
+                ],
+                'is_active' => true,
+                'sort_order' => 3,
+            ]
+        );
     }
 }
