@@ -1,10 +1,14 @@
 /**
  * Waiting-room phase for CubeTac online mode (light theme).
+ *
+ * Supports 2..6 players. The seat grid sizes from `room.game.max_players`
+ * so the lobby always shows all possible slots, filled or empty.
  */
 
 import { GamePlayer, GameRoom } from '@/types';
 import { Link, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
+import { SLOT_CHARS } from './PlayingPhase';
 
 interface WaitingPhaseProps {
     room: GameRoom;
@@ -15,9 +19,11 @@ interface WaitingPhaseProps {
 }
 
 export default function WaitingPhase({ room, currentPlayer, players, isHost, gameSlug }: WaitingPhaseProps) {
-    const [xPlayer, oPlayer] = [players[0] ?? null, players[1] ?? null];
-    const canStart = isHost && players.length === 2;
-    const isMissingPlayer = players.length < 2;
+    const min = room.game?.min_players ?? 2;
+    const max = room.game?.max_players ?? 6;
+    const seatCount = Math.max(max, players.length);
+    const canStart = isHost && players.length >= min && players.length <= max;
+    const isBelowMin = players.length < min;
     const [copied, setCopied] = useState(false);
 
     const handleStart = () => {
@@ -77,19 +83,19 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
                     </div>
                 </button>
 
-                {/* Seats */}
-                <div className="flex items-center gap-4 sm:gap-6">
-                    <SeatCard
-                        symbol="X"
-                        player={xPlayer}
-                        isSelf={currentPlayer?.id === xPlayer?.id}
-                    />
-                    <span className="text-2xl font-black text-yellow-900/50 sm:text-3xl">vs</span>
-                    <SeatCard
-                        symbol="O"
-                        player={oPlayer}
-                        isSelf={currentPlayer?.id === oPlayer?.id}
-                    />
+                {/* Seats grid */}
+                <div className="grid grid-cols-2 justify-items-center gap-3 sm:grid-cols-3 sm:gap-4">
+                    {Array.from({ length: seatCount }, (_, slot) => {
+                        const player = players[slot] ?? null;
+                        return (
+                            <SeatCard
+                                key={slot}
+                                slot={slot}
+                                player={player}
+                                isSelf={player !== null && currentPlayer?.id === player.id}
+                            />
+                        );
+                    })}
                 </div>
 
                 {canStart ? (
@@ -102,11 +108,11 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
                     </button>
                 ) : (
                     <div className="mt-4 rounded-full bg-white/80 px-6 py-3 text-xs font-bold uppercase tracking-[0.3em] text-gray-600 shadow-md">
-                        {isMissingPlayer
-                            ? 'Waiting for opponent…'
+                        {isBelowMin
+                            ? `Waiting for players… (${players.length} / ${min})`
                             : !isHost
                                 ? 'Waiting for host to start…'
-                                : 'Ready'}
+                                : `Ready (${players.length} / ${max})`}
                     </div>
                 )}
 
@@ -124,28 +130,35 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
 // -----------------------------------------------------------------------------
 
 interface SeatCardProps {
-    symbol: 'X' | 'O';
+    slot: number;
     player: GamePlayer | null;
     isSelf: boolean;
 }
 
-function SeatCard({ symbol, player, isSelf }: SeatCardProps) {
-    // Literal class name strings so Tailwind's scanner detects them
-    const symbolColor = symbol === 'X' ? 'text-red-500' : 'text-blue-600';
-    const bgTint = symbol === 'X' ? 'bg-red-50' : 'bg-blue-50';
-    const borderClass = symbol === 'X' ? 'border-red-300' : 'border-blue-300';
-    const shadowClass = symbol === 'X'
-        ? 'shadow-[0_0_28px_rgba(239,68,68,0.25)]'
-        : 'shadow-[0_0_28px_rgba(37,99,235,0.25)]';
+function SeatCard({ slot, player, isSelf }: SeatCardProps) {
+    const char = SLOT_CHARS[slot] ?? '?';
+    const color = player?.avatar_color ?? '#94a3b8';
+
+    const filled = player !== null;
+    const cardStyle: CSSProperties = filled
+        ? {
+              borderColor: color,
+              boxShadow: `0 0 28px ${hexWithAlpha(color, 0.28)}`,
+          }
+        : {};
 
     return (
         <div
-            className={`relative flex w-36 flex-col items-center gap-2 rounded-2xl border-2 bg-white px-4 py-5 sm:w-44 ${
-                player ? `${borderClass} ${shadowClass}` : 'border-gray-200'
+            className={`relative flex w-32 flex-col items-center gap-2 rounded-2xl border-2 bg-white px-3 py-4 sm:w-40 ${
+                filled ? '' : 'border-gray-200'
             }`}
+            style={cardStyle}
         >
-            <div className={`grid h-16 w-16 place-items-center rounded-full ${bgTint} ring-4 ring-white shadow-md ${symbolColor}`}>
-                <span className="text-3xl font-black">{symbol}</span>
+            <div
+                className="grid h-14 w-14 place-items-center rounded-full ring-4 ring-white shadow-md text-2xl font-black"
+                style={{ backgroundColor: hexWithAlpha(color, 0.15), color }}
+            >
+                {char}
             </div>
             <span className="max-w-full truncate text-sm font-black text-gray-900">
                 {player ? player.nickname : 'Empty'}
@@ -157,4 +170,16 @@ function SeatCard({ symbol, player, isSelf }: SeatCardProps) {
             )}
         </div>
     );
+}
+
+function hexWithAlpha(hex: string, alpha: number): string {
+    let h = hex.replace('#', '');
+    if (h.length === 3) {
+        h = h.split('').map((c) => c + c).join('');
+    }
+    if (h.length !== 6) return `rgba(148, 163, 184, ${alpha})`;
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }

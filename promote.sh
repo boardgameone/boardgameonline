@@ -92,3 +92,5 @@ ssh boardgam1@198.38.86.14 "cd public_html && ./deploy.sh"
 
 echo ""
 echo "Done! Both PRs merged, local branches synced, and server deployed."
+
+say -v Samantha "Deployment complete."

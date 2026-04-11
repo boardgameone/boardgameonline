@@ -5,10 +5,13 @@
  * Inertia poll) and local hotseat mode (fed by reducer). The parent is
  * responsible for turning user actions into the correct side effect
  * (HTTP POST vs. reducer dispatch).
+ *
+ * Supports 2..6 players. Player 0/1 use X/O for the HUD chip (matching
+ * the 3D cube glyphs); 2..5 use triangle, square, plus, hexagon.
  */
 
-import { Suspense, lazy, useMemo, type Ref } from 'react';
-import { Marks, Mark, Move } from '@/lib/rubikCube';
+import { Suspense, lazy, useMemo, type CSSProperties, type Ref } from 'react';
+import { Marks, Move } from '@/lib/rubikCube';
 import RotateControls from './components/RotateControls';
 import type { CubeSceneHandle } from './CubeScene';
 
@@ -22,12 +25,13 @@ export interface CubeTacPlayerInfo {
 
 export interface PlayingPhaseProps {
     marks: Marks;
-    currentTurn: 'X' | 'O';
+    currentTurn: number;
     moveCount: number;
     moveLimit: number;
-    xPlayer: CubeTacPlayerInfo;
-    oPlayer: CubeTacPlayerInfo;
-    mySymbol: 'X' | 'O' | null;
+    /** One entry per slot (0..N-1). Length determines N. */
+    players: CubeTacPlayerInfo[];
+    /** Viewer's slot, or `null` for spectators / local mode. */
+    mySlot: number | null;
     isMyTurn: boolean;
     onMark: (face: number, row: number, col: number) => void;
     onRotate: (move: Move) => void;
@@ -39,14 +43,16 @@ export interface PlayingPhaseProps {
     cubeRef?: Ref<CubeSceneHandle>;
 }
 
+/** 2D HUD chips for each slot — Unicode chars so the badges stay cheap. */
+export const SLOT_CHARS = ['X', 'O', '△', '▢', '✚', '⬡'] as const;
+
 export default function PlayingPhase({
     marks,
     currentTurn,
     moveCount,
     moveLimit,
-    xPlayer,
-    oPlayer,
-    mySymbol,
+    players,
+    mySlot,
     isMyTurn,
     onMark,
     onRotate,
@@ -54,16 +60,18 @@ export default function PlayingPhase({
     onLeave,
     cubeRef,
 }: PlayingPhaseProps) {
-    const xCount = useMemo(() => countMarks(marks, 'X'), [marks]);
-    const oCount = useMemo(() => countMarks(marks, 'O'), [marks]);
+    const markCounts = useMemo(() => countMarksBySlot(marks, players.length), [marks, players.length]);
+    const playerColors = useMemo(() => players.map((p) => p.avatar_color), [players]);
 
+    const currentPlayer = players[currentTurn];
+    const currentColor = currentPlayer?.avatar_color ?? '#5b9bd5';
     const turnLabel =
         turnLabelOverride ??
-        (mySymbol === null
-            ? `${currentTurn} to move`
+        (mySlot === null
+            ? `${currentPlayer?.nickname ?? SLOT_CHARS[currentTurn] ?? '?'} to move`
             : isMyTurn
                 ? 'Your Turn'
-                : "Opponent's Turn");
+                : `${currentPlayer?.nickname ?? 'Opponent'}'s Turn`);
 
     const subLabel = isMyTurn || turnLabelOverride ? 'Tap a sticker · or rotate a face' : 'Waiting…';
 
@@ -97,9 +105,8 @@ export default function PlayingPhase({
             {/* Turn banner */}
             <div className="mt-3 flex flex-col items-center">
                 <div
-                    className={`text-3xl font-black leading-none sm:text-4xl drop-shadow-sm ${
-                        currentTurn === 'X' ? 'text-red-500' : 'text-blue-600'
-                    }`}
+                    className="text-3xl font-black leading-none sm:text-4xl drop-shadow-sm"
+                    style={{ color: currentColor }}
                 >
                     {turnLabel}
                 </div>
@@ -122,6 +129,7 @@ export default function PlayingPhase({
                     <CubeScene
                         ref={cubeRef}
                         marks={marks}
+                        playerColors={playerColors}
                         onStickerClick={isMyTurn ? onMark : undefined}
                         interactive={isMyTurn}
                     />
@@ -138,21 +146,16 @@ export default function PlayingPhase({
 
             {/* Player HUD + rotate controls */}
             <div className="flex flex-col gap-3 border-t-2 border-yellow-600/30 bg-white/80 px-4 py-4 backdrop-blur-sm sm:px-6">
-                <div className="flex items-center justify-between gap-3">
-                    <PlayerBadge
-                        player={xPlayer}
-                        symbol="X"
-                        isActive={currentTurn === 'X'}
-                        markCount={xCount}
-                        align="left"
-                    />
-                    <PlayerBadge
-                        player={oPlayer}
-                        symbol="O"
-                        isActive={currentTurn === 'O'}
-                        markCount={oCount}
-                        align="right"
-                    />
+                <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+                    {players.map((p, slot) => (
+                        <PlayerBadge
+                            key={slot}
+                            player={p}
+                            slot={slot}
+                            isActive={currentTurn === slot}
+                            markCount={markCounts[slot] ?? 0}
+                        />
+                    ))}
                 </div>
 
                 <RotateControls onRotate={onRotate} disabled={!isMyTurn} />
@@ -165,36 +168,40 @@ export default function PlayingPhase({
 
 interface PlayerBadgeProps {
     player: CubeTacPlayerInfo;
-    symbol: 'X' | 'O';
+    slot: number;
     isActive: boolean;
     markCount: number;
-    align: 'left' | 'right';
 }
 
-function PlayerBadge({ player, symbol, isActive, markCount, align }: PlayerBadgeProps) {
-    const symbolColor = symbol === 'X' ? 'text-red-500' : 'text-blue-600';
-    const ringClass = symbol === 'X' ? 'ring-red-400' : 'ring-blue-400';
-    const glow = symbol === 'X'
-        ? 'shadow-[0_0_22px_rgba(239,68,68,0.4)]'
-        : 'shadow-[0_0_22px_rgba(37,99,235,0.4)]';
-    const bgTint = symbol === 'X' ? 'bg-red-50' : 'bg-blue-50';
+function PlayerBadge({ player, slot, isActive, markCount }: PlayerBadgeProps) {
+    const color = player.avatar_color;
+    const char = SLOT_CHARS[slot] ?? '?';
+
+    // Active player gets a colored ring + drop glow. Inline styles for the
+    // dynamic color — Tailwind v3 JIT can't synthesize arbitrary class names.
+    const activeStyle: CSSProperties = isActive
+        ? {
+              borderColor: color,
+              boxShadow: `0 0 22px ${hexWithAlpha(color, 0.45)}`,
+          }
+        : {};
 
     return (
         <div
-            className={`flex items-center gap-3 rounded-xl border-2 border-gray-200 bg-white px-3 py-2 shadow-sm transition ${
-                isActive ? `ring-2 ${ringClass} ${glow}` : ''
-            } ${align === 'right' ? 'flex-row-reverse text-right' : ''}`}
+            className="flex items-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-2.5 py-1.5 shadow-sm transition"
+            style={activeStyle}
         >
             <div
-                className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${bgTint} ring-2 ring-gray-200 ${symbolColor}`}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full ring-2 ring-white text-lg font-black"
+                style={{ backgroundColor: hexWithAlpha(color, 0.15), color }}
             >
-                <span className="text-xl font-black">{symbol}</span>
+                {char}
             </div>
-            <div className={`flex flex-col leading-tight ${align === 'right' ? 'items-end' : ''}`}>
-                <span className="max-w-[110px] truncate text-sm font-black text-gray-900">
+            <div className="flex flex-col leading-tight">
+                <span className="max-w-[96px] truncate text-xs font-black text-gray-900">
                     {player.nickname || 'Waiting…'}
                 </span>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">
                     {markCount} marks
                 </span>
             </div>
@@ -202,8 +209,26 @@ function PlayerBadge({ player, symbol, isActive, markCount, align }: PlayerBadge
     );
 }
 
-function countMarks(marks: Marks, symbol: Mark): number {
-    let n = 0;
-    for (const m of marks) if (m === symbol) n++;
-    return n;
+function countMarksBySlot(marks: Marks, n: number): number[] {
+    const out = new Array<number>(n).fill(0);
+    for (const m of marks) {
+        if (m !== null && m !== undefined && m >= 0 && m < n) {
+            out[m] += 1;
+        }
+    }
+    return out;
 }
+
+/** Expand a #rrggbb string to `rgba(r, g, b, a)`. Tolerates #rgb shorthand. */
+function hexWithAlpha(hex: string, alpha: number): string {
+    let h = hex.replace('#', '');
+    if (h.length === 3) {
+        h = h.split('').map((c) => c + c).join('');
+    }
+    if (h.length !== 6) return `rgba(91, 155, 213, ${alpha})`;
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+

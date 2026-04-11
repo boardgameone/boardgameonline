@@ -11,7 +11,13 @@
  *   - Optimistic validation (is sticker empty, is it my turn)
  */
 
-export type Player = 'X' | 'O';
+/**
+ * A mark is a player slot index (0..N-1) or null for an empty sticker.
+ * The per-face winning-line check compares marks with `===`, so any
+ * scalar type works — this module is intentionally agnostic about how
+ * slots map to players, colors, or glyphs.
+ */
+export type Player = number;
 export type Mark = Player | null;
 export type Marks = Mark[]; // length 54
 

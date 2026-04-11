@@ -73,10 +73,19 @@ export interface CubeSceneHandle {
 
 interface CubeSceneProps {
     marks: Marks;
+    /**
+     * Hex colors indexed by slot (0..N-1). `playerColors[mark]` is the
+     * glyph color for any non-null `mark` in `marks`. Length should equal
+     * the number of players in the game; a missing entry falls back to a
+     * neutral gray.
+     */
+    playerColors: string[];
     winningIndices?: Set<number>;
     onStickerClick?: StickerClickHandler;
     interactive: boolean;
 }
+
+const FALLBACK_GLYPH_COLOR = '#94a3b8'; // slate-400
 
 interface Animation {
     move: Move;
@@ -90,7 +99,7 @@ interface Animation {
 const DEFAULT_DURATION_MS = 280;
 
 const CubeScene = forwardRef<CubeSceneHandle, CubeSceneProps>(function CubeScene(
-    { marks, winningIndices, onStickerClick, interactive },
+    { marks, playerColors, winningIndices, onStickerClick, interactive },
     ref,
 ) {
     const [displayedMarks, setDisplayedMarks] = useState<Marks>(marks);
@@ -178,6 +187,7 @@ const CubeScene = forwardRef<CubeSceneHandle, CubeSceneProps>(function CubeScene
                 <Environment preset="apartment" />
                 <CubeRoot
                     marks={displayedMarks}
+                    playerColors={playerColors}
                     animation={animation}
                     onAnimationComplete={onAnimationComplete}
                     winningIndices={winningIndices}
@@ -209,6 +219,7 @@ type StickerSpec = { face: Face; row: number; col: number };
 
 interface CubeRootProps {
     marks: Marks;
+    playerColors: string[];
     animation: Animation | null;
     onAnimationComplete: () => void;
     winningIndices?: Set<number>;
@@ -217,6 +228,7 @@ interface CubeRootProps {
 
 const CubeRoot = memo(function CubeRoot({
     marks,
+    playerColors,
     animation,
     onAnimationComplete,
     winningIndices,
@@ -265,6 +277,9 @@ const CubeRoot = memo(function CubeRoot({
     const renderSticker = (s: StickerSpec) => {
         const idx = indexOf(s.face, s.row, s.col);
         const mark = marks[idx];
+        const color = mark !== null && mark !== undefined
+            ? playerColors[mark] ?? FALLBACK_GLYPH_COLOR
+            : null;
         const isWinning = winningIndices?.has(idx) ?? false;
         return (
             <Sticker
@@ -273,6 +288,7 @@ const CubeRoot = memo(function CubeRoot({
                 row={s.row}
                 col={s.col}
                 mark={mark}
+                glyphColor={color}
                 isWinning={isWinning}
                 onClick={onStickerClick}
             />
@@ -414,7 +430,7 @@ function Cubie({ position }: CubieProps) {
 }
 
 // -----------------------------------------------------------------------------
-// Sticker — a flat plate on a cubie's face, with optional X/O glyph
+// Sticker — a flat plate on a cubie's face, with optional slot glyph
 // -----------------------------------------------------------------------------
 
 interface StickerProps {
@@ -422,6 +438,8 @@ interface StickerProps {
     row: number;
     col: number;
     mark: Mark;
+    /** Hex color for the glyph when mark is non-null; null otherwise. */
+    glyphColor: string | null;
     isWinning: boolean;
     onClick?: StickerClickHandler;
 }
@@ -430,7 +448,7 @@ const STICKER_SIZE = 0.84;
 const STICKER_OFFSET = 0.49;
 const GLYPH_OFFSET = 0.06;
 
-function Sticker({ face, row, col, mark, isWinning, onClick }: StickerProps) {
+function Sticker({ face, row, col, mark, glyphColor, isWinning, onClick }: StickerProps) {
     const { position, rotation } = useMemo(() => {
         const cubiePos = sticker3D(face, row, col);
         const normal = faceNormal(face);
@@ -454,14 +472,12 @@ function Sticker({ face, row, col, mark, isWinning, onClick }: StickerProps) {
         onClick(face, row, col);
     };
 
-    const stickerColor = isWinning
-        ? mark === 'X'
-            ? '#fff1e6'
-            : '#e6f0ff'
-        : mark === null
-            ? '#f8fafc'
-            : '#ffffff';
-    const emissive = isWinning ? (mark === 'X' ? '#ff7a4d' : '#5fb3ff') : '#000000';
+    // Background stays light but slightly off-white so the glyphs read
+    // with more contrast. On a winning sticker we glow the owner's color
+    // via the emissive channel so the winning line pops on any of the
+    // six palettes without having to pre-compute tinted backdrops.
+    const stickerColor = mark === null ? '#16233f' : '#1f2e4d';
+    const emissive = isWinning && glyphColor ? glyphColor : '#000000';
     const emissiveIntensity = isWinning ? 0.9 : 0;
 
     return (
@@ -480,65 +496,124 @@ function Sticker({ face, row, col, mark, isWinning, onClick }: StickerProps) {
             {/* Thin frame */}
             <lineSegments>
                 <edgesGeometry args={[new THREE.PlaneGeometry(STICKER_SIZE, STICKER_SIZE)]} />
-                <lineBasicMaterial color="#1e2a44" transparent opacity={0.25} />
+                <lineBasicMaterial color="#8ba3c9" transparent opacity={0.35} />
             </lineSegments>
 
-            {mark !== null && <MarkGlyph mark={mark} />}
+            {mark !== null && mark !== undefined && (
+                <MarkGlyph slot={mark} color={glyphColor ?? FALLBACK_GLYPH_COLOR} />
+            )}
         </group>
     );
 }
 
 // -----------------------------------------------------------------------------
-// MarkGlyph — extruded X or O, positioned slightly above the sticker
+// MarkGlyph — one of six extruded slot glyphs, positioned slightly above
+// the sticker. Slots 0/1 preserve the original X / O look; slots 2..5 add
+// distinct shapes so 3..6-player games stay readable even in screenshots.
 // -----------------------------------------------------------------------------
 
-function MarkGlyph({ mark }: { mark: 'X' | 'O' }) {
-    if (mark === 'X') return <XGlyph />;
-    return <OGlyph />;
+function MarkGlyph({ slot, color }: { slot: number; color: string }) {
+    switch (slot) {
+        case 0: return <XGlyph color={color} />;
+        case 1: return <OGlyph color={color} />;
+        case 2: return <TriangleGlyph color={color} />;
+        case 3: return <SquareGlyph color={color} />;
+        case 4: return <PlusGlyph color={color} />;
+        case 5: return <HexagonGlyph color={color} />;
+        default: return null;
+    }
 }
 
-function XGlyph() {
-    const color = '#ef4444'; // red-500
-    const emissive = '#ff6b6b';
+/**
+ * Shared material for every glyph — saturated base color with a strong
+ * self-lit halo so each of the six palettes reads vividly against the
+ * near-white sticker. Emissive is the same hex as `color`, so no extra
+ * tinting math is needed per slot.
+ */
+function glyphMaterial(color: string) {
+    return (
+        <meshStandardMaterial
+            color={color}
+            emissive={color}
+            emissiveIntensity={1.15}
+            metalness={0.15}
+            roughness={0.22}
+            toneMapped={false}
+        />
+    );
+}
+
+function XGlyph({ color }: { color: string }) {
     return (
         <group position={[0, 0, GLYPH_OFFSET]}>
             <mesh rotation={[0, 0, Math.PI / 4]}>
-                <boxGeometry args={[0.68, 0.13, 0.07]} />
-                <meshStandardMaterial
-                    color={color}
-                    emissive={emissive}
-                    emissiveIntensity={0.55}
-                    metalness={0.4}
-                    roughness={0.25}
-                />
+                <boxGeometry args={[0.72, 0.16, 0.1]} />
+                {glyphMaterial(color)}
             </mesh>
             <mesh rotation={[0, 0, -Math.PI / 4]}>
-                <boxGeometry args={[0.68, 0.13, 0.07]} />
-                <meshStandardMaterial
-                    color={color}
-                    emissive={emissive}
-                    emissiveIntensity={0.55}
-                    metalness={0.4}
-                    roughness={0.25}
-                />
+                <boxGeometry args={[0.72, 0.16, 0.1]} />
+                {glyphMaterial(color)}
             </mesh>
         </group>
     );
 }
 
-function OGlyph() {
-    const color = '#2563eb'; // blue-600
-    const emissive = '#60a5fa';
+function OGlyph({ color }: { color: string }) {
     return (
         <mesh position={[0, 0, GLYPH_OFFSET]}>
-            <torusGeometry args={[0.27, 0.08, 20, 40]} />
-            <meshStandardMaterial
-                color={color}
-                emissive={emissive}
-                emissiveIntensity={0.55}
-                metalness={0.4}
-                roughness={0.25}
-            />
+            <torusGeometry args={[0.29, 0.1, 20, 40]} />
+            {glyphMaterial(color)}
+        </mesh>
+    );
+}
+
+function TriangleGlyph({ color }: { color: string }) {
+    // Cylinder with 3 radial segments = flat triangular prism. We tilt it
+    // onto its face so the triangle reads head-on to the viewer and shift
+    // it down slightly so the visual weight looks centered on the sticker.
+    return (
+        <mesh position={[0, -0.02, GLYPH_OFFSET]} rotation={[-Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.38, 0.38, 0.1, 3]} />
+            {glyphMaterial(color)}
+        </mesh>
+    );
+}
+
+function SquareGlyph({ color }: { color: string }) {
+    // Thin flat box, a few mm smaller than the sticker so the frame still
+    // reads. Rotated 0° (not a diamond — that's too close to the plus).
+    return (
+        <mesh position={[0, 0, GLYPH_OFFSET]}>
+            <boxGeometry args={[0.58, 0.58, 0.1]} />
+            {glyphMaterial(color)}
+        </mesh>
+    );
+}
+
+function PlusGlyph({ color }: { color: string }) {
+    // Two perpendicular bars — same boxGeometry dims as X but without the
+    // π/4 rotation, so the silhouette is a clean cross.
+    return (
+        <group position={[0, 0, GLYPH_OFFSET]}>
+            <mesh>
+                <boxGeometry args={[0.66, 0.17, 0.1]} />
+                {glyphMaterial(color)}
+            </mesh>
+            <mesh rotation={[0, 0, Math.PI / 2]}>
+                <boxGeometry args={[0.66, 0.17, 0.1]} />
+                {glyphMaterial(color)}
+            </mesh>
+        </group>
+    );
+}
+
+function HexagonGlyph({ color }: { color: string }) {
+    // Cylinder with 6 radial segments = flat hexagonal prism, same
+    // orientation trick as the triangle so it faces the viewer.
+    return (
+        <mesh position={[0, 0, GLYPH_OFFSET]} rotation={[-Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.36, 0.36, 0.1, 6]} />
+            {glyphMaterial(color)}
         </mesh>
     );
 }

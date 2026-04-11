@@ -78,9 +78,9 @@ class GameFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'slug' => 'cubetac',
             'name' => 'CubeTac',
-            'description' => "Tic-tac-toe on a Rubik's cube.",
+            'description' => "Tic-tac-toe on a Rubik's cube, 2–6 players.",
             'min_players' => 2,
-            'max_players' => 2,
+            'max_players' => 6,
             'estimated_duration_minutes' => 10,
             'is_active' => true,
         ]);
