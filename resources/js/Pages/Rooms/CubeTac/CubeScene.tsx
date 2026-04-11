@@ -5,15 +5,29 @@
  * gradient shows through, bright lighting, soft matte cubies with glowing
  * X/O glyphs that read well against a light backdrop.
  *
- * No rotation animation in V1 — marks snap to new positions when the
- * `marks` prop updates. A rotation is visually communicated by the move
- * counter and turn banner outside the canvas.
+ * Rotation animation is handled internally: the parent calls the imperative
+ * `playMove(move)` handle via a ref, and CubeScene splits the 9 layer cubies
+ * plus 21 band stickers into a `<RotatingLayer>` group driven by `useFrame`.
+ * `displayedMarks` is buffered so the marks prop can update freely without
+ * causing a mid-animation snap — the handoff at t=1 advances displayedMarks
+ * via `apply()` atomically.
  */
 
-import { Canvas, ThreeEvent } from '@react-three/fiber';
+import { Canvas, ThreeEvent, useFrame } from '@react-three/fiber';
 import { Environment, Html, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
-import { Suspense, memo, useMemo } from 'react';
+import {
+    ReactNode,
+    Suspense,
+    forwardRef,
+    memo,
+    useCallback,
+    useEffect,
+    useImperativeHandle,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import {
     FACE_B,
     FACE_D,
@@ -24,8 +38,11 @@ import {
     Face,
     Mark,
     Marks,
+    Move,
+    apply,
     faceNormal,
     indexOf,
+    moveParams,
     sticker3D,
 } from '@/lib/rubikCube';
 
@@ -49,6 +66,11 @@ const FACE_LABEL_COLORS: Record<Face, { bg: string; text: string; ring: string }
 
 export type StickerClickHandler = (face: number, row: number, col: number) => void;
 
+export interface CubeSceneHandle {
+    /** Queue a rotation animation. Resolves when this specific move finishes. */
+    playMove: (move: Move) => Promise<void>;
+}
+
 interface CubeSceneProps {
     marks: Marks;
     winningIndices?: Set<number>;
@@ -56,7 +78,89 @@ interface CubeSceneProps {
     interactive: boolean;
 }
 
-export default function CubeScene({ marks, winningIndices, onStickerClick, interactive }: CubeSceneProps) {
+interface Animation {
+    move: Move;
+    axis: THREE.Vector3; // unit vector
+    targetAngle: number; // signed radians, taken verbatim from moveParams()
+    startTime: number;   // performance.now() when the animation began
+    duration: number;    // milliseconds
+    resolve: () => void; // fulfilled when the animation commits
+}
+
+const DEFAULT_DURATION_MS = 280;
+
+const CubeScene = forwardRef<CubeSceneHandle, CubeSceneProps>(function CubeScene(
+    { marks, winningIndices, onStickerClick, interactive },
+    ref,
+) {
+    const [displayedMarks, setDisplayedMarks] = useState<Marks>(marks);
+    const [animation, setAnimation] = useState<Animation | null>(null);
+    const queueRef = useRef<Array<{ move: Move; resolve: () => void }>>([]);
+    const isAnimatingRef = useRef(false);
+    const marksRef = useRef(marks);
+
+    // Always track the latest marks prop so completion handlers can reconcile.
+    useEffect(() => {
+        marksRef.current = marks;
+    }, [marks]);
+
+    // Idle sync: when no animation is running or queued, accept the prop
+    // directly. During an animation this effect still runs but is a no-op,
+    // and `startNext` explicitly reconciles from `marksRef` at drain time.
+    useEffect(() => {
+        if (!isAnimatingRef.current && queueRef.current.length === 0) {
+            setDisplayedMarks(marks);
+        }
+    }, [marks]);
+
+    const startNext = useCallback(() => {
+        const next = queueRef.current.shift();
+        if (!next) {
+            isAnimatingRef.current = false;
+            // Catch any prop updates (e.g. opponent moves via poll) that
+            // arrived during the animation sequence.
+            setDisplayedMarks((prev) => (marksRef.current !== prev ? marksRef.current : prev));
+            return;
+        }
+        const { move, resolve } = next;
+        const { axis, angle } = moveParams()[move];
+        isAnimatingRef.current = true;
+        setAnimation({
+            move,
+            axis: new THREE.Vector3(axis[0], axis[1], axis[2]).normalize(),
+            targetAngle: angle,
+            startTime: performance.now(),
+            duration: DEFAULT_DURATION_MS,
+            resolve,
+        });
+    }, []);
+
+    const onAnimationComplete = useCallback(() => {
+        setAnimation((current) => {
+            if (!current) return null;
+            setDisplayedMarks((prev) => apply(current.move, prev));
+            current.resolve();
+            // Drain the queue on the next microtask so React can commit the
+            // current render (removing <RotatingLayer>, advancing marks)
+            // before we mount the next animation's rotating group.
+            queueMicrotask(startNext);
+            return null;
+        });
+    }, [startNext]);
+
+    const playMove = useCallback(
+        (move: Move) =>
+            new Promise<void>((resolve) => {
+                queueRef.current.push({ move, resolve });
+                if (!isAnimatingRef.current) {
+                    startNext();
+                }
+            }),
+        [startNext],
+    );
+
+    useImperativeHandle(ref, () => ({ playMove }), [playMove]);
+
     return (
         <Canvas
             camera={{ position: [4.8, 3.8, 5.2], fov: 40 }}
@@ -73,7 +177,9 @@ export default function CubeScene({ marks, winningIndices, onStickerClick, inter
             <Suspense fallback={null}>
                 <Environment preset="apartment" />
                 <CubeRoot
-                    marks={marks}
+                    marks={displayedMarks}
+                    animation={animation}
+                    onAnimationComplete={onAnimationComplete}
                     winningIndices={winningIndices}
                     onStickerClick={interactive ? onStickerClick : undefined}
                 />
@@ -90,44 +196,104 @@ export default function CubeScene({ marks, winningIndices, onStickerClick, inter
             />
         </Canvas>
     );
-}
+});
+
+export default CubeScene;
 
 // -----------------------------------------------------------------------------
-// CubeRoot — renders all 27 cubies + their visible stickers
+// CubeRoot — renders all 26 cubies + their visible stickers, splitting the
+// rotating layer into a <RotatingLayer> subgroup while an animation is active.
 // -----------------------------------------------------------------------------
+
+type StickerSpec = { face: Face; row: number; col: number };
 
 interface CubeRootProps {
     marks: Marks;
+    animation: Animation | null;
+    onAnimationComplete: () => void;
     winningIndices?: Set<number>;
     onStickerClick?: StickerClickHandler;
 }
 
-const CubeRoot = memo(function CubeRoot({ marks, winningIndices, onStickerClick }: CubeRootProps) {
+const CubeRoot = memo(function CubeRoot({
+    marks,
+    animation,
+    onAnimationComplete,
+    winningIndices,
+    onStickerClick,
+}: CubeRootProps) {
     const stickers = useMemo(() => collectStickers(), []);
     const faces: Face[] = [0, 1, 2, 3, 4, 5];
 
+    // Partition cubies and stickers into { inLayer, static } whenever an
+    // animation starts or ends. This dot-product test mirrors the one used
+    // in `generatePermutations()` at rubikCube.ts:149, so it catches the same
+    // 9 face cubies + 21 face/band stickers that `apply()` will permute.
+    const { cubiesInLayer, cubiesStatic, stickersInLayer, stickersStatic } = useMemo(() => {
+        if (!animation) {
+            return {
+                cubiesInLayer: [] as Array<[number, number, number]>,
+                cubiesStatic: allCubiePositions(),
+                stickersInLayer: [] as StickerSpec[],
+                stickersStatic: stickers,
+            };
+        }
+        const ax = animation.axis;
+        const dot = (v: [number, number, number]) => v[0] * ax.x + v[1] * ax.y + v[2] * ax.z;
+
+        const cIn: Array<[number, number, number]> = [];
+        const cOut: Array<[number, number, number]> = [];
+        for (const p of allCubiePositions()) {
+            (dot(p) >= 0.5 ? cIn : cOut).push(p);
+        }
+
+        const sIn: StickerSpec[] = [];
+        const sOut: StickerSpec[] = [];
+        for (const s of stickers) {
+            const pos = sticker3D(s.face, s.row, s.col);
+            (dot(pos) >= 0.5 ? sIn : sOut).push(s);
+        }
+
+        return {
+            cubiesInLayer: cIn,
+            cubiesStatic: cOut,
+            stickersInLayer: sIn,
+            stickersStatic: sOut,
+        };
+    }, [animation, stickers]);
+
+    const renderSticker = (s: StickerSpec) => {
+        const idx = indexOf(s.face, s.row, s.col);
+        const mark = marks[idx];
+        const isWinning = winningIndices?.has(idx) ?? false;
+        return (
+            <Sticker
+                key={`sticker-${idx}`}
+                face={s.face}
+                row={s.row}
+                col={s.col}
+                mark={mark}
+                isWinning={isWinning}
+                onClick={onStickerClick}
+            />
+        );
+    };
+
     return (
         <group>
-            {allCubiePositions().map(([x, y, z]) => (
+            {cubiesStatic.map(([x, y, z]) => (
                 <Cubie key={`cubie-${x}-${y}-${z}`} position={[x, y, z]} />
             ))}
+            {stickersStatic.map(renderSticker)}
 
-            {stickers.map((s) => {
-                const idx = indexOf(s.face, s.row, s.col);
-                const mark = marks[idx];
-                const isWinning = winningIndices?.has(idx) ?? false;
-                return (
-                    <Sticker
-                        key={`sticker-${idx}`}
-                        face={s.face}
-                        row={s.row}
-                        col={s.col}
-                        mark={mark}
-                        isWinning={isWinning}
-                        onClick={onStickerClick}
-                    />
-                );
-            })}
+            {animation && (
+                <RotatingLayer animation={animation} onComplete={onAnimationComplete}>
+                    {cubiesInLayer.map(([x, y, z]) => (
+                        <Cubie key={`rcubie-${x}-${y}-${z}`} position={[x, y, z]} />
+                    ))}
+                    {stickersInLayer.map(renderSticker)}
+                </RotatingLayer>
+            )}
 
             {faces.map((f) => (
                 <FaceLabel key={`label-${f}`} face={f} />
@@ -135,6 +301,46 @@ const CubeRoot = memo(function CubeRoot({ marks, winningIndices, onStickerClick 
         </group>
     );
 });
+
+// -----------------------------------------------------------------------------
+// RotatingLayer — a <group> whose quaternion is interpolated each frame from
+// identity to the move's target axis-angle. At t>=1 it snaps to the exact
+// target and notifies the parent, which removes this component and advances
+// the displayed marks atomically via apply().
+// -----------------------------------------------------------------------------
+
+interface RotatingLayerProps {
+    animation: Animation;
+    onComplete: () => void;
+    children: ReactNode;
+}
+
+function RotatingLayer({ animation, onComplete, children }: RotatingLayerProps) {
+    const groupRef = useRef<THREE.Group>(null);
+    const firedRef = useRef(false);
+
+    useFrame(() => {
+        const g = groupRef.current;
+        if (!g || firedRef.current) return;
+        const elapsed = performance.now() - animation.startTime;
+        const tRaw = Math.min(1, elapsed / animation.duration);
+        const t = easeInOutCubic(tRaw);
+        g.quaternion.setFromAxisAngle(animation.axis, animation.targetAngle * t);
+        if (tRaw >= 1) {
+            // Snap to the exact target so the final frame matches the
+            // post-handoff static render pixel-for-pixel.
+            g.quaternion.setFromAxisAngle(animation.axis, animation.targetAngle);
+            firedRef.current = true;
+            onComplete();
+        }
+    });
+
+    return <group ref={groupRef}>{children}</group>;
+}
+
+function easeInOutCubic(t: number): number {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
 
 // -----------------------------------------------------------------------------
 // FaceLabel — a DOM pill floating just outside each face's center

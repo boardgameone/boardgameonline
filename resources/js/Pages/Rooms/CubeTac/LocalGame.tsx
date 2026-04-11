@@ -9,8 +9,9 @@
 import GameLayout from '@/Layouts/GameLayout';
 import PlayingPhase from '@/Pages/Rooms/CubeTac/PlayingPhase';
 import FinishedPhase from '@/Pages/Rooms/CubeTac/FinishedPhase';
+import type { CubeSceneHandle } from '@/Pages/Rooms/CubeTac/CubeScene';
 import { Head, router } from '@inertiajs/react';
-import { useReducer } from 'react';
+import { useReducer, useRef } from 'react';
 import {
     Marks,
     Move,
@@ -104,6 +105,7 @@ function reducer(state: LocalState, action: LocalAction): LocalState {
 
 export default function LocalGame() {
     const [state, dispatch] = useReducer(reducer, undefined, freshState);
+    const cubeRef = useRef<CubeSceneHandle>(null);
 
     const playerX = { id: null, nickname: 'Player 1', avatar_color: '#ff4d2e' };
     const playerO = { id: null, nickname: 'Player 2', avatar_color: '#3a90ff' };
@@ -112,6 +114,9 @@ export default function LocalGame() {
         dispatch({ type: 'MARK', face, row, col });
     };
     const handleRotate = (move: Move) => {
+        // Queue the visual animation first so CubeScene's `isAnimatingRef`
+        // is set before the dispatch-driven marks prop update propagates.
+        cubeRef.current?.playMove(move);
         dispatch({ type: 'ROTATE', move });
     };
     const handleReset = () => {
@@ -128,6 +133,7 @@ export default function LocalGame() {
             <div className="relative flex h-full flex-col">
                 {state.winner === null ? (
                     <PlayingPhase
+                        cubeRef={cubeRef}
                         marks={state.marks}
                         currentTurn={state.currentTurn}
                         moveCount={state.moveCount}

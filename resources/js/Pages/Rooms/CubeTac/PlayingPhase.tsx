@@ -7,9 +7,10 @@
  * (HTTP POST vs. reducer dispatch).
  */
 
-import { Suspense, lazy, useMemo } from 'react';
+import { Suspense, lazy, useMemo, type Ref } from 'react';
 import { Marks, Mark, Move } from '@/lib/rubikCube';
 import RotateControls from './components/RotateControls';
+import type { CubeSceneHandle } from './CubeScene';
 
 const CubeScene = lazy(() => import('./CubeScene'));
 
@@ -34,6 +35,8 @@ export interface PlayingPhaseProps {
     turnLabelOverride?: string;
     /** Back / leave handler */
     onLeave?: () => void;
+    /** Ref for the cube scene's imperative handle (drives rotation animation). */
+    cubeRef?: Ref<CubeSceneHandle>;
 }
 
 export default function PlayingPhase({
@@ -49,6 +52,7 @@ export default function PlayingPhase({
     onRotate,
     turnLabelOverride,
     onLeave,
+    cubeRef,
 }: PlayingPhaseProps) {
     const xCount = useMemo(() => countMarks(marks, 'X'), [marks]);
     const oCount = useMemo(() => countMarks(marks, 'O'), [marks]);
@@ -116,6 +120,7 @@ export default function PlayingPhase({
                     }
                 >
                     <CubeScene
+                        ref={cubeRef}
                         marks={marks}
                         onStickerClick={isMyTurn ? onMark : undefined}
                         interactive={isMyTurn}

@@ -2,6 +2,7 @@ import GameLayout from '@/Layouts/GameLayout';
 import { Game, PageProps } from '@/types';
 import { Head, Link } from '@inertiajs/react';
 import GameIcon from '@/Components/GameIcon';
+import { LogoCube } from '@/Pages/Rooms/CubeTac/components/CubeTacLogo';
 
 interface Props extends PageProps {
     games: Game[];
@@ -146,6 +147,7 @@ function GameCardCompact({ game }: Readonly<{ game: Game }>) {
     const gradients: Record<string, string> = {
         'cheese-thief': 'from-amber-600 to-amber-800',
         'trio': 'from-blue-500 via-cyan-500 to-teal-500',
+        'cubetac': 'from-orange-500 via-rose-500 to-indigo-700',
     };
     const gradient = gradients[game.slug] || 'from-amber-600 to-amber-800';
 
@@ -161,6 +163,8 @@ function GameCardCompact({ game }: Readonly<{ game: Game }>) {
                         <TrioGameVisualMini />
                     ) : game.slug === 'cheese-thief' ? (
                         <span className="text-4xl -rotate-[100deg]">{'\u{1F9C0}'}</span>
+                    ) : game.slug === 'cubetac' ? (
+                        <LogoCube px={64} animated={false} />
                     ) : (
                         <GameIcon name={getGameIcon(game.slug)} className="h-10 w-10 text-white" />
                     )}
@@ -206,6 +210,7 @@ function GameCard({ game }: Readonly<{ game: Game }>) {
     const gradients: Record<string, string> = {
         'cheese-thief': 'from-amber-600 to-amber-800',
         'trio': 'from-blue-500 via-cyan-500 to-teal-500',
+        'cubetac': 'from-orange-500 via-rose-500 to-indigo-700',
     };
     const gradient = gradients[game.slug] || 'from-amber-600 to-amber-800';
 
@@ -227,6 +232,10 @@ function GameCard({ game }: Readonly<{ game: Game }>) {
                     <TrioGameVisual />
                 ) : game.slug === 'cheese-thief' ? (
                     <span className="text-6xl group-hover:scale-125 transition-transform duration-500 drop-shadow-lg relative z-10 -rotate-[100deg]">{'\u{1F9C0}'}</span>
+                ) : game.slug === 'cubetac' ? (
+                    <div className="group-hover:scale-110 transition-transform duration-500 drop-shadow-lg relative z-10">
+                        <LogoCube px={112} animated={false} />
+                    </div>
                 ) : (
                     <div className="group-hover:scale-125 transition-transform duration-500 drop-shadow-lg relative z-10 text-white">
                         <GameIcon name={gameIconName} className="h-16 w-16" />
