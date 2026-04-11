@@ -61,7 +61,10 @@
       "Bash(rm -rf /tmp/cubetac-clean-test)",
       "Bash(mkdir /tmp/cubetac-clean-test)",
       "Bash(cp /Users/gyanps/boardgameonline/package.json /Users/gyanps/boardgameonline/package-lock.json /tmp/cubetac-clean-test/)",
-      "Bash(npm ci:*)"
+      "Bash(npm ci:*)",
+      "Bash(rm -f deploy.sh deploy.sh.edited)",
+      "Bash(scp boardgam1@198.38.86.14:public_html/deploy.sh /tmp/deploy.sh)",
+      "Bash(scp boardgam1@198.38.86.14:public_html/deploy.sh /tmp/deploy.sh.remote)"
     ]
   },
   "enableAllProjectMcpServers": true,
