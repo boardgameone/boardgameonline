@@ -57,7 +57,11 @@
       "Bash(pkill -f 'artisan serve')",
       "Bash(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8765/games/cubetac)",
       "Bash(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8765/play/cubetac/local)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(rm -rf /tmp/cubetac-clean-test)",
+      "Bash(mkdir /tmp/cubetac-clean-test)",
+      "Bash(cp /Users/gyanps/boardgameonline/package.json /Users/gyanps/boardgameonline/package-lock.json /tmp/cubetac-clean-test/)",
+      "Bash(npm ci:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
