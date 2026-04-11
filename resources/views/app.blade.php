@@ -24,13 +24,27 @@
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
         <link href="https://fonts.bunny.net/css?family=audiowide:400|orbitron:500,700,900|rajdhani:400,500,600,700&display=swap" rel="stylesheet" />
 
+        <!-- Theme (must run before Vite styles to prevent flash of wrong theme) -->
+        <script>
+            (function () {
+                try {
+                    var stored = localStorage.getItem('theme');
+                    var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    var isDark = stored ? stored === 'dark' : prefersDark;
+                    if (isDark) {
+                        document.documentElement.classList.add('dark');
+                    }
+                } catch (e) {}
+            })();
+        </script>
+
         <!-- Scripts -->
         @routes
         @viteReactRefresh
         @vite(['resources/js/app.tsx', "resources/js/Pages/{$page['component']}.tsx"])
         @inertiaHead
     </head>
-    <body class="font-sans antialiased w-full min-h-screen">
+    <body class="font-sans antialiased w-full min-h-screen dark:bg-gray-900 dark:text-gray-100 transition-colors duration-200">
         @inertia
     </body>
 </html>

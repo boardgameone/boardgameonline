@@ -35,16 +35,16 @@ export default function Login({
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full mb-4 shadow-lg text-white">
                     <GameIcon name="gamepad" size="lg" />
                 </div>
-                <h1 className="text-2xl font-black text-gray-900">
+                <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100">
                     Welcome Back!
                 </h1>
-                <p className="text-gray-500 mt-1">
+                <p className="text-gray-500 mt-1 dark:text-gray-400">
                     Ready to play some games?
                 </p>
             </div>
 
             {status && (
-                <div className="mb-4 rounded-xl bg-green-100 p-3 text-sm font-medium text-green-700 text-center">
+                <div className="mb-4 rounded-xl bg-green-100 p-3 text-sm font-medium text-green-700 text-center dark:bg-green-900/40 dark:text-green-200">
                     {status}
                 </div>
             )}
@@ -53,7 +53,7 @@ export default function Login({
                 <div>
                     <label
                         htmlFor="email"
-                        className="block text-sm font-bold text-gray-700 mb-1"
+                        className="block text-sm font-bold text-gray-700 mb-1 dark:text-gray-300"
                     >
                         Email
                     </label>
@@ -62,7 +62,7 @@ export default function Login({
                         type="email"
                         name="email"
                         value={data.email}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors font-medium"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors font-medium dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                         autoComplete="username"
                         autoFocus
                         placeholder="you@example.com"
@@ -74,7 +74,7 @@ export default function Login({
                 <div>
                     <label
                         htmlFor="password"
-                        className="block text-sm font-bold text-gray-700 mb-1"
+                        className="block text-sm font-bold text-gray-700 mb-1 dark:text-gray-300"
                     >
                         Password
                     </label>
@@ -83,7 +83,7 @@ export default function Login({
                         type="password"
                         name="password"
                         value={data.password}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors font-medium"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors font-medium dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                         autoComplete="current-password"
                         placeholder="Enter your password"
                         onChange={(e) => setData('password', e.target.value)}
@@ -104,7 +104,7 @@ export default function Login({
                             }
                             className="rounded-md border-gray-300 text-blue-500 focus:ring-blue-400"
                         />
-                        <span className="ms-2 text-sm text-gray-600 font-medium">
+                        <span className="ms-2 text-sm text-gray-600 font-medium dark:text-gray-400">
                             Remember me
                         </span>
                     </label>
@@ -112,7 +112,7 @@ export default function Login({
                     {canResetPassword && (
                         <Link
                             href={route('password.request')}
-                            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                            className="text-sm text-blue-600 hover:text-blue-700 font-medium dark:text-blue-400 dark:hover:text-blue-300"
                         >
                             Forgot password?
                         </Link>
@@ -151,11 +151,11 @@ export default function Login({
             </form>
 
             <div className="mt-6 text-center">
-                <p className="text-gray-600">
+                <p className="text-gray-600 dark:text-gray-400">
                     New player?{' '}
                     <Link
                         href={route('register')}
-                        className="font-bold text-blue-600 hover:text-blue-700"
+                        className="font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                     >
                         Create an account
                     </Link>

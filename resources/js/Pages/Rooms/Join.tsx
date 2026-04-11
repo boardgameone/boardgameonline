@@ -25,7 +25,7 @@ export default function Join({ auth }: PageProps) {
             <div className="mb-6">
                 <Link
                     href={route('games.index')}
-                    className="inline-flex items-center gap-2 text-yellow-900 hover:text-yellow-700 font-bold transition"
+                    className="inline-flex items-center gap-2 text-yellow-900 hover:text-yellow-700 font-bold transition dark:text-yellow-300 dark:hover:text-yellow-100"
                 >
                     <svg
                         className="h-5 w-5"
@@ -45,7 +45,7 @@ export default function Join({ auth }: PageProps) {
             </div>
 
             <div className="max-w-md mx-auto">
-                <div className="bg-white rounded-3xl shadow-xl overflow-hidden border-b-8 border-blue-500">
+                <div className="bg-white rounded-3xl shadow-xl overflow-hidden border-b-8 border-blue-500 dark:bg-gray-800 dark:border-blue-700">
                     {/* Header */}
                     <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-8 text-center">
                         <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full mb-4 text-white">
@@ -65,7 +65,7 @@ export default function Join({ auth }: PageProps) {
                             <div>
                                 <label
                                     htmlFor="room_code"
-                                    className="block text-sm font-bold text-gray-700 mb-2 text-center"
+                                    className="block text-sm font-bold text-gray-700 mb-2 text-center dark:text-gray-300"
                                 >
                                     Room Code
                                 </label>
@@ -78,12 +78,12 @@ export default function Join({ auth }: PageProps) {
                                     }
                                     placeholder="ABCD12"
                                     maxLength={6}
-                                    className="w-full px-6 py-4 rounded-xl border-2 border-gray-200 text-center text-3xl font-mono tracking-[0.5em] focus:border-blue-400 focus:ring-blue-400 transition-colors uppercase"
+                                    className="w-full px-6 py-4 rounded-xl border-2 border-gray-200 text-center text-3xl font-mono tracking-[0.5em] focus:border-blue-400 focus:ring-blue-400 transition-colors uppercase dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
                                     autoComplete="off"
                                     autoFocus
                                 />
                                 {errors.room_code && (
-                                    <p className="mt-2 text-center text-sm text-red-600 font-medium">
+                                    <p className="mt-2 text-center text-sm text-red-600 font-medium dark:text-red-400">
                                         {errors.room_code}
                                     </p>
                                 )}
@@ -93,7 +93,7 @@ export default function Join({ auth }: PageProps) {
                                 <div>
                                     <label
                                         htmlFor="nickname"
-                                        className="block text-sm font-bold text-gray-700 mb-1"
+                                        className="block text-sm font-bold text-gray-700 mb-1 dark:text-gray-300"
                                     >
                                         Your Nickname
                                     </label>
@@ -104,11 +104,11 @@ export default function Join({ auth }: PageProps) {
                                         onChange={(e) => setData('nickname', e.target.value)}
                                         placeholder="Enter your nickname"
                                         maxLength={20}
-                                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors font-medium"
+                                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors font-medium dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
                                         required
                                     />
                                     {errors.nickname && (
-                                        <p className="mt-1 text-sm text-red-600">
+                                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                                             {errors.nickname}
                                         </p>
                                     )}
@@ -149,19 +149,19 @@ export default function Join({ auth }: PageProps) {
                         <div className="mt-8 text-center">
                             <div className="relative">
                                 <div className="absolute inset-0 flex items-center">
-                                    <div className="w-full border-t border-gray-200" />
+                                    <div className="w-full border-t border-gray-200 dark:border-gray-700" />
                                 </div>
                                 <div className="relative flex justify-center text-sm">
-                                    <span className="bg-white px-4 text-gray-500">
+                                    <span className="bg-white px-4 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
                                         or
                                     </span>
                                 </div>
                             </div>
-                            <p className="mt-4 text-gray-600">
+                            <p className="mt-4 text-gray-600 dark:text-gray-400">
                                 Don't have a code?{' '}
                                 <Link
                                     href={route('games.index')}
-                                    className="font-bold text-blue-600 hover:text-blue-700"
+                                    className="font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                                 >
                                     Browse games
                                 </Link>
@@ -171,21 +171,21 @@ export default function Join({ auth }: PageProps) {
                 </div>
 
                 {/* Tips */}
-                <div className="mt-6 bg-white/60 backdrop-blur-sm rounded-2xl p-5">
-                    <h3 className="font-bold text-yellow-900 flex items-center gap-2">
+                <div className="mt-6 bg-white/60 backdrop-blur-sm rounded-2xl p-5 dark:bg-gray-800/60">
+                    <h3 className="font-bold text-yellow-900 flex items-center gap-2 dark:text-yellow-300">
                         <GameIcon name="lightbulb" size="sm" /> Tips
                     </h3>
-                    <ul className="mt-2 space-y-2 text-sm text-yellow-800">
+                    <ul className="mt-2 space-y-2 text-sm text-yellow-800 dark:text-yellow-200">
                         <li className="flex items-start gap-2">
-                            <span className="text-yellow-600"><GameIcon name="circle" size="xs" /></span>
+                            <span className="text-yellow-600 dark:text-yellow-400"><GameIcon name="circle" size="xs" /></span>
                             Ask your friend for the room code
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="text-yellow-600"><GameIcon name="circle" size="xs" /></span>
+                            <span className="text-yellow-600 dark:text-yellow-400"><GameIcon name="circle" size="xs" /></span>
                             Codes are 6 characters (letters and numbers)
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="text-yellow-600"><GameIcon name="circle" size="xs" /></span>
+                            <span className="text-yellow-600 dark:text-yellow-400"><GameIcon name="circle" size="xs" /></span>
                             Make sure the room hasn't started yet
                         </li>
                     </ul>

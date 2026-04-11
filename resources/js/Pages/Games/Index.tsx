@@ -97,11 +97,11 @@ export default function Index({ games }: Props) {
 function EmptyState() {
     return (
         <div className="text-center py-12">
-            <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full mb-4 shadow-inner">
-                <GameIcon name="dice" size="xl" className="opacity-40 text-gray-500" />
+            <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full mb-4 shadow-inner dark:from-gray-800 dark:to-gray-900">
+                <GameIcon name="dice" size="xl" className="opacity-40 text-gray-500 dark:text-gray-500" />
             </div>
-            <p className="text-gray-600 font-bold text-lg">No games available yet</p>
-            <p className="text-gray-500 mt-1 text-sm">Check back soon for exciting new games!</p>
+            <p className="text-gray-600 font-bold text-lg dark:text-gray-300">No games available yet</p>
+            <p className="text-gray-500 mt-1 text-sm dark:text-gray-400">Check back soon for exciting new games!</p>
         </div>
     );
 }
@@ -154,7 +154,7 @@ function GameCardCompact({ game }: Readonly<{ game: Game }>) {
     return (
         <Link
             href={route('games.show', game.slug)}
-            className="group relative bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-xl"
+            className="group relative bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-xl dark:bg-gray-800"
         >
             <div className="flex">
                 {/* Game Visual - Left */}
@@ -181,10 +181,10 @@ function GameCardCompact({ game }: Readonly<{ game: Game }>) {
 
                 {/* Game Info - Right */}
                 <div className="flex-1 p-3 flex flex-col justify-center min-w-0">
-                    <h3 className="text-base font-black text-gray-900 truncate">
+                    <h3 className="text-base font-black text-gray-900 truncate dark:text-gray-100">
                         {game.name}
                     </h3>
-                    <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                    <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
                         <span className="inline-flex items-center gap-1">
                             <UsersIcon className="h-3 w-3" />
                             {game.min_players}-{game.max_players}
@@ -196,7 +196,7 @@ function GameCardCompact({ game }: Readonly<{ game: Game }>) {
                             </span>
                         )}
                     </div>
-                    <div className="mt-2 text-xs font-bold text-purple-600 flex items-center gap-1">
+                    <div className="mt-2 text-xs font-bold text-purple-600 flex items-center gap-1 dark:text-purple-300">
                         Play <GameIcon name="rocket" size="xs" />
                     </div>
                 </div>
@@ -217,7 +217,7 @@ function GameCard({ game }: Readonly<{ game: Game }>) {
     return (
         <Link
             href={route('games.show', game.slug)}
-            className="group relative bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-xl"
+            className="group relative bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-xl dark:bg-gray-800"
         >
             {/* Game Image Area */}
             <div className={`aspect-[4/3] bg-gradient-to-br ${gradient} flex items-center justify-center relative overflow-hidden`}>
@@ -264,21 +264,21 @@ function GameCard({ game }: Readonly<{ game: Game }>) {
 
             {/* Game Info */}
             <div className="p-4">
-                <h3 className="text-xl font-black text-gray-900 group-hover:text-purple-600 transition-colors">
+                <h3 className="text-xl font-black text-gray-900 group-hover:text-purple-600 transition-colors dark:text-gray-100 dark:group-hover:text-purple-300">
                     {game.name}
                 </h3>
-                <p className="mt-1 text-gray-500 line-clamp-2 text-sm">
+                <p className="mt-1 text-gray-500 line-clamp-2 text-sm dark:text-gray-400">
                     {game.description}
                 </p>
 
                 {/* Stats */}
                 <div className="mt-3 flex items-center gap-2 flex-wrap">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 text-blue-600 text-xs font-bold">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 text-blue-600 text-xs font-bold dark:bg-blue-900/40 dark:text-blue-300">
                         <UsersIcon className="h-3.5 w-3.5" />
                         {game.min_players}-{game.max_players}
                     </span>
                     {game.estimated_duration_minutes && (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-50 text-purple-600 text-xs font-bold">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-50 text-purple-600 text-xs font-bold dark:bg-purple-900/40 dark:text-purple-300">
                             <ClockIcon className="h-3.5 w-3.5" />
                             ~{game.estimated_duration_minutes}m
                         </span>
