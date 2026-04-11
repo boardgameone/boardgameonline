@@ -2,11 +2,12 @@
 
 namespace Database\Factories;
 
+use App\Models\Game;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Game>
+ * @extends Factory<Game>
  */
 class GameFactory extends Factory
 {
@@ -68,6 +69,19 @@ class GameFactory extends Factory
             'min_players' => 4,
             'max_players' => 4,
             'estimated_duration_minutes' => 30,
+            'is_active' => true,
+        ]);
+    }
+
+    public function cubeTac(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'slug' => 'cubetac',
+            'name' => 'CubeTac',
+            'description' => "Tic-tac-toe on a Rubik's cube.",
+            'min_players' => 2,
+            'max_players' => 2,
+            'estimated_duration_minutes' => 10,
             'is_active' => true,
         ]);
     }
