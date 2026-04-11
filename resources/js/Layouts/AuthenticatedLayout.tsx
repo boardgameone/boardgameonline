@@ -1,5 +1,6 @@
 import Dropdown from '@/Components/Dropdown';
 import GameIcon from '@/Components/GameIcon';
+import ThemeToggle from '@/Components/ThemeToggle';
 import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useState } from 'react';
 
@@ -13,7 +14,7 @@ export default function Authenticated({
         useState(false);
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-yellow-400 to-yellow-500">
+        <div className="min-h-screen bg-gradient-to-b from-yellow-400 to-yellow-500 dark:from-gray-900 dark:to-gray-950 transition-colors duration-200">
             {/* Nav */}
             <nav className="relative">
                 {/* Gradient Background */}
@@ -101,13 +102,18 @@ export default function Authenticated({
                                 </Dropdown.Trigger>
 
                                 <Dropdown.Content align="right">
-                                    <div className="px-4 py-3 border-b border-gray-100">
-                                        <p className="text-sm font-bold text-gray-900">{user.name}</p>
-                                        <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                                    <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+                                        <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{user.name}</p>
+                                        <p className="text-xs text-gray-500 truncate dark:text-gray-400">{user.email}</p>
                                     </div>
+                                    <ThemeToggle
+                                        showLabel
+                                        className="block w-full px-4 py-2 text-start text-sm leading-5 text-gray-700 transition duration-150 ease-in-out hover:bg-gray-100 focus:bg-gray-100 focus:outline-none dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:bg-gray-700"
+                                    />
+                                    <div className="border-t border-gray-100 dark:border-gray-700" />
                                     <Dropdown.Link href={route('profile.edit')}>
                                         <span className="flex items-center gap-2">
-                                            <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg className="h-4 w-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                             </svg>
                                             Profile Settings
@@ -118,7 +124,7 @@ export default function Authenticated({
                                         method="post"
                                         as="button"
                                     >
-                                        <span className="flex items-center gap-2 text-red-600">
+                                        <span className="flex items-center gap-2 text-red-600 dark:text-red-400">
                                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                                             </svg>
@@ -214,6 +220,10 @@ export default function Authenticated({
                             </div>
 
                             <div className="space-y-1">
+                                <ThemeToggle
+                                    showLabel
+                                    className="w-full flex items-center px-4 py-3 text-white/80 hover:text-white hover:bg-white/10 rounded-xl font-medium transition"
+                                />
                                 <MobileNavLink href={route('profile.edit')}>
                                     <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -241,7 +251,7 @@ export default function Authenticated({
             </nav>
 
             {header && (
-                <header className="bg-white/80 backdrop-blur-sm shadow-sm">
+                <header className="bg-white/80 backdrop-blur-sm shadow-sm dark:bg-gray-800/80">
                     <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
                         {header}
                     </div>
@@ -256,7 +266,7 @@ export default function Authenticated({
 
             {/* Footer */}
             <footer className="py-6 text-center">
-                <p className="text-yellow-800 font-medium text-sm flex items-center justify-center gap-2">
+                <p className="text-yellow-800 font-medium text-sm flex items-center justify-center gap-2 dark:text-yellow-300">
                     <GameIcon name="dice" size="sm" /> Play together, anywhere! <GameIcon name="gamepad" size="sm" />
                 </p>
             </footer>

@@ -1,4 +1,5 @@
 import GameIcon from '@/Components/GameIcon';
+import ThemeToggle from '@/Components/ThemeToggle';
 import { Game, PageProps } from '@/types';
 import { Head, Link } from '@inertiajs/react';
 import { LogoCube } from '@/Pages/Rooms/CubeTac/components/CubeTacLogo';
@@ -11,7 +12,7 @@ export default function Welcome({ auth, featuredGames }: Props) {
     return (
         <>
             <Head title="Board Game Online" />
-            <div className="min-h-screen w-full bg-yellow-400 flex flex-col overflow-x-hidden">
+            <div className="min-h-screen w-full bg-yellow-400 dark:bg-gray-900 flex flex-col overflow-x-hidden transition-colors duration-200">
                 {/* Nav */}
                 <nav className="flex items-center justify-between p-4 sm:p-6 shrink-0">
                     <Link href="/" className="group">
@@ -26,11 +27,12 @@ export default function Welcome({ auth, featuredGames }: Props) {
                             </div>
                         </div>
                     </Link>
-                    <div className="flex gap-2 sm:gap-3">
+                    <div className="flex gap-2 sm:gap-3 items-center">
+                        <ThemeToggle />
                         {auth.user ? (
                             <Link
                                 href={route('dashboard')}
-                                className="rounded-full bg-white px-4 sm:px-6 py-2 font-bold text-yellow-600 shadow-lg transition hover:scale-105 border-b-4 border-yellow-500 text-sm sm:text-base"
+                                className="rounded-full bg-white px-4 sm:px-6 py-2 font-bold text-yellow-600 shadow-lg transition hover:scale-105 border-b-4 border-yellow-500 text-sm sm:text-base dark:bg-gray-800 dark:text-yellow-300 dark:border-gray-700"
                             >
                                 Dashboard
                             </Link>
@@ -38,7 +40,7 @@ export default function Welcome({ auth, featuredGames }: Props) {
                             <>
                                 <Link
                                     href={route('login')}
-                                    className="rounded-full bg-white px-4 sm:px-6 py-2 font-bold text-yellow-600 shadow-lg transition hover:scale-105 border-b-4 border-yellow-500 text-sm sm:text-base"
+                                    className="rounded-full bg-white px-4 sm:px-6 py-2 font-bold text-yellow-600 shadow-lg transition hover:scale-105 border-b-4 border-yellow-500 text-sm sm:text-base dark:bg-gray-800 dark:text-yellow-300 dark:border-gray-700"
                                 >
                                     Log in
                                 </Link>
@@ -57,13 +59,13 @@ export default function Welcome({ auth, featuredGames }: Props) {
                 <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 min-h-0">
                     {/* Title */}
                     <div className="text-center mb-6">
-                        <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white drop-shadow-[2px_2px_0px_rgba(0,0,0,0.2)]">
+                        <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white drop-shadow-[2px_2px_0px_rgba(0,0,0,0.2)] dark:text-gray-100">
                             Board Game{' '}
-                            <span className="text-blue-600 drop-shadow-[2px_2px_0px_rgba(255,255,255,0.5)]">
+                            <span className="text-blue-600 drop-shadow-[2px_2px_0px_rgba(255,255,255,0.5)] dark:text-blue-400">
                                 Online
                             </span>
                         </h1>
-                        <p className="text-base sm:text-lg text-yellow-900 font-medium mt-2">
+                        <p className="text-base sm:text-lg text-yellow-900 font-medium mt-2 dark:text-yellow-300">
                             Play with friends. No downloads required.
                         </p>
                     </div>
@@ -91,7 +93,7 @@ export default function Welcome({ auth, featuredGames }: Props) {
                         </Link>
                         <Link
                             href={route('rooms.join')}
-                            className="rounded-full bg-white px-8 py-3 text-base font-bold text-yellow-600 shadow-xl transition hover:scale-105 border-b-4 border-yellow-500"
+                            className="rounded-full bg-white px-8 py-3 text-base font-bold text-yellow-600 shadow-xl transition hover:scale-105 border-b-4 border-yellow-500 dark:bg-gray-800 dark:text-yellow-300 dark:border-gray-700"
                         >
                             Join Room
                         </Link>
@@ -99,7 +101,7 @@ export default function Welcome({ auth, featuredGames }: Props) {
                 </main>
 
                 {/* Footer */}
-                <footer className="p-3 text-center text-yellow-800 font-medium text-sm shrink-0">
+                <footer className="p-3 text-center text-yellow-800 font-medium text-sm shrink-0 dark:text-yellow-300">
                     Play together, anywhere!
                 </footer>
             </div>
@@ -145,7 +147,7 @@ function GameCard({ game }: { game: Game }) {
     return (
         <Link
             href={route('games.show', game.slug)}
-            className="bg-white rounded-xl shadow-lg overflow-hidden transition hover:scale-105 hover:shadow-xl group"
+            className="bg-white rounded-xl shadow-lg overflow-hidden transition hover:scale-105 hover:shadow-xl group dark:bg-gray-800"
         >
             <div className={`aspect-square bg-gradient-to-br ${gradient} flex items-center justify-center`}>
                 {game.slug === 'trio' ? (
@@ -163,8 +165,8 @@ function GameCard({ game }: { game: Game }) {
                 )}
             </div>
             <div className="p-2 sm:p-3 text-center">
-                <h3 className="font-bold text-gray-900 text-sm sm:text-base truncate">{game.name}</h3>
-                <p className="text-xs text-gray-500">{game.min_players}-{game.max_players} players</p>
+                <h3 className="font-bold text-gray-900 text-sm sm:text-base truncate dark:text-gray-100">{game.name}</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{game.min_players}-{game.max_players} players</p>
             </div>
         </Link>
     );
@@ -172,15 +174,15 @@ function GameCard({ game }: { game: Game }) {
 
 function ComingSoonCard() {
     return (
-        <div className="bg-white/50 rounded-xl shadow-lg overflow-hidden">
-            <div className="aspect-square bg-gray-200 flex items-center justify-center">
-                <div className="text-3xl sm:text-4xl opacity-40 text-gray-400">
+        <div className="bg-white/50 rounded-xl shadow-lg overflow-hidden dark:bg-gray-800/60">
+            <div className="aspect-square bg-gray-200 flex items-center justify-center dark:bg-gray-700">
+                <div className="text-3xl sm:text-4xl opacity-40 text-gray-400 dark:text-gray-500">
                     <GameIcon name="question" size="xl" />
                 </div>
             </div>
             <div className="p-2 sm:p-3 text-center">
-                <h3 className="font-bold text-gray-400 text-sm sm:text-base">Coming Soon</h3>
-                <p className="text-xs text-gray-400">Stay tuned!</p>
+                <h3 className="font-bold text-gray-400 text-sm sm:text-base dark:text-gray-500">Coming Soon</h3>
+                <p className="text-xs text-gray-400 dark:text-gray-500">Stay tuned!</p>
             </div>
         </div>
     );

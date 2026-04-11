@@ -29,10 +29,10 @@ export default function Register() {
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full mb-4 shadow-lg text-white">
                     <GameIcon name="trophy" size="lg" />
                 </div>
-                <h1 className="text-2xl font-black text-gray-900">
+                <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100">
                     Join the Fun!
                 </h1>
-                <p className="text-gray-500 mt-1">
+                <p className="text-gray-500 mt-1 dark:text-gray-400">
                     Create your player account
                 </p>
             </div>
@@ -41,7 +41,7 @@ export default function Register() {
                 <div>
                     <label
                         htmlFor="name"
-                        className="block text-sm font-bold text-gray-700 mb-1"
+                        className="block text-sm font-bold text-gray-700 mb-1 dark:text-gray-300"
                     >
                         Player Name
                     </label>
@@ -49,7 +49,7 @@ export default function Register() {
                         id="name"
                         name="name"
                         value={data.name}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors font-medium"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors font-medium dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                         autoComplete="name"
                         autoFocus
                         placeholder="Your awesome nickname"
@@ -62,7 +62,7 @@ export default function Register() {
                 <div>
                     <label
                         htmlFor="email"
-                        className="block text-sm font-bold text-gray-700 mb-1"
+                        className="block text-sm font-bold text-gray-700 mb-1 dark:text-gray-300"
                     >
                         Email
                     </label>
@@ -71,7 +71,7 @@ export default function Register() {
                         type="email"
                         name="email"
                         value={data.email}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors font-medium"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors font-medium dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                         autoComplete="username"
                         placeholder="you@example.com"
                         onChange={(e) => setData('email', e.target.value)}
@@ -83,7 +83,7 @@ export default function Register() {
                 <div>
                     <label
                         htmlFor="password"
-                        className="block text-sm font-bold text-gray-700 mb-1"
+                        className="block text-sm font-bold text-gray-700 mb-1 dark:text-gray-300"
                     >
                         Password
                     </label>
@@ -92,7 +92,7 @@ export default function Register() {
                         type="password"
                         name="password"
                         value={data.password}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors font-medium"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors font-medium dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                         autoComplete="new-password"
                         placeholder="Create a strong password"
                         onChange={(e) => setData('password', e.target.value)}
@@ -104,7 +104,7 @@ export default function Register() {
                 <div>
                     <label
                         htmlFor="password_confirmation"
-                        className="block text-sm font-bold text-gray-700 mb-1"
+                        className="block text-sm font-bold text-gray-700 mb-1 dark:text-gray-300"
                     >
                         Confirm Password
                     </label>
@@ -113,7 +113,7 @@ export default function Register() {
                         type="password"
                         name="password_confirmation"
                         value={data.password_confirmation}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors font-medium"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors font-medium dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                         autoComplete="new-password"
                         placeholder="Confirm your password"
                         onChange={(e) =>
@@ -159,11 +159,11 @@ export default function Register() {
             </form>
 
             <div className="mt-6 text-center">
-                <p className="text-gray-600">
+                <p className="text-gray-600 dark:text-gray-400">
                     Already a player?{' '}
                     <Link
                         href={route('login')}
-                        className="font-bold text-blue-600 hover:text-blue-700"
+                        className="font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                     >
                         Log in here
                     </Link>
