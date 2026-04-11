@@ -1,6 +1,7 @@
 import GameIcon from '@/Components/GameIcon';
 import { Game, PageProps } from '@/types';
 import { Head, Link } from '@inertiajs/react';
+import { LogoCube } from '@/Pages/Rooms/CubeTac/components/CubeTacLogo';
 
 interface Props extends PageProps {
     featuredGames: Game[];
@@ -137,6 +138,7 @@ function GameCard({ game }: { game: Game }) {
     const gradients: Record<string, string> = {
         'cheese-thief': 'from-amber-600 to-amber-800',
         'trio': 'from-blue-500 via-cyan-500 to-teal-500',
+        'cubetac': 'from-orange-500 via-rose-500 to-indigo-700',
     };
     const gradient = gradients[game.slug] || 'from-amber-600 to-amber-800';
 
@@ -150,6 +152,10 @@ function GameCard({ game }: { game: Game }) {
                     <TrioGameVisualSmall />
                 ) : game.slug === 'cheese-thief' ? (
                     <span className="text-4xl sm:text-5xl group-hover:scale-125 transition-transform duration-500 drop-shadow-lg -rotate-[100deg]">{'\u{1F9C0}'}</span>
+                ) : game.slug === 'cubetac' ? (
+                    <div className="group-hover:scale-110 transition-transform duration-300 drop-shadow-lg">
+                        <LogoCube px={72} animated={false} />
+                    </div>
                 ) : (
                     <div className="text-4xl sm:text-5xl group-hover:scale-125 transition-transform duration-500 drop-shadow-lg text-white">
                         <GameIcon name="dice" size="xl" />
