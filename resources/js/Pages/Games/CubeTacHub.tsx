@@ -35,27 +35,27 @@ export default function CubeTacHub({ auth, game, waitingRooms }: Props) {
             <div className="h-full flex flex-col gap-3 p-2 lg:hidden overflow-auto">
                 <Link
                     href={route('games.index')}
-                    className="inline-flex items-center gap-1.5 text-yellow-900 hover:text-yellow-700 font-bold transition text-sm"
+                    className="inline-flex items-center gap-1.5 text-yellow-900 hover:text-yellow-700 font-bold transition text-sm dark:text-yellow-300 dark:hover:text-yellow-100"
                 >
                     <BackArrow className="h-4 w-4" />
                     Back
                 </Link>
 
                 {/* Hero card — mobile */}
-                <div className="relative rounded-3xl bg-gradient-to-br from-rose-100 via-amber-50 to-sky-100 p-5 shadow-xl border-2 border-white/60 overflow-hidden">
+                <div className="relative rounded-3xl bg-gradient-to-br from-rose-100 via-amber-50 to-sky-100 p-5 shadow-xl border-2 border-white/60 overflow-hidden dark:from-gray-800 dark:via-gray-800 dark:to-gray-800 dark:border-gray-700">
                     <FloatingMarks variant="mobile" />
                     <div className="relative z-10 flex flex-col items-center gap-4">
                         <CubeTacLogo size="md" layout="stacked" showTagline />
-                        <p className="text-center text-gray-700 text-sm font-medium line-clamp-3 max-w-xs">
+                        <p className="text-center text-gray-700 text-sm font-medium line-clamp-3 max-w-xs dark:text-gray-300">
                             {game.description}
                         </p>
                         <div className="flex items-center gap-2 flex-wrap justify-center">
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/80 text-indigo-700 font-bold text-xs">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/80 text-indigo-700 font-bold text-xs dark:bg-gray-700 dark:text-indigo-300">
                                 <UsersIcon className="h-3.5 w-3.5" />
                                 {game.min_players}-{game.max_players}
                             </span>
                             {game.estimated_duration_minutes && (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/80 text-purple-700 font-bold text-xs">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/80 text-purple-700 font-bold text-xs dark:bg-gray-700 dark:text-purple-300">
                                     <ClockIcon className="h-3.5 w-3.5" />
                                     ~{game.estimated_duration_minutes}m
                                 </span>
@@ -77,14 +77,14 @@ export default function CubeTacHub({ auth, game, waitingRooms }: Props) {
                 </Link>
 
                 {/* Create Online Room */}
-                <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-teal-100 p-4 shadow-lg border border-teal-200">
-                    <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 mb-3">
+                <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-teal-100 p-4 shadow-lg border border-teal-200 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
+                    <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 mb-3 dark:text-gray-100">
                         <GameIcon name="gamepad" size="sm" /> Online Match
                     </h2>
                     <form onSubmit={submit} className="space-y-3">
                         {!auth.user && (
                             <div>
-                                <label htmlFor="nickname-mobile" className="block text-xs font-bold text-gray-700 mb-1">
+                                <label htmlFor="nickname-mobile" className="block text-xs font-bold text-gray-700 mb-1 dark:text-gray-300">
                                     Your Nickname
                                 </label>
                                 <input
@@ -94,14 +94,14 @@ export default function CubeTacHub({ auth, game, waitingRooms }: Props) {
                                     onChange={(e) => setData('nickname', e.target.value)}
                                     placeholder="Enter your nickname"
                                     maxLength={20}
-                                    className="w-full px-3 py-2 rounded-lg border-2 border-gray-200 focus:border-teal-400 focus:ring-teal-400 transition-colors font-medium text-sm"
+                                    className="w-full px-3 py-2 rounded-lg border-2 border-gray-200 focus:border-teal-400 focus:ring-teal-400 transition-colors font-medium text-sm dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
                                     required
                                 />
-                                {errors.nickname && <p className="mt-1 text-xs text-red-600">{errors.nickname}</p>}
+                                {errors.nickname && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.nickname}</p>}
                             </div>
                         )}
                         <div>
-                            <label htmlFor="name-mobile" className="block text-xs font-bold text-gray-700 mb-1">
+                            <label htmlFor="name-mobile" className="block text-xs font-bold text-gray-700 mb-1 dark:text-gray-300">
                                 Room Name (optional)
                             </label>
                             <input
@@ -110,9 +110,9 @@ export default function CubeTacHub({ auth, game, waitingRooms }: Props) {
                                 value={data.name}
                                 onChange={(e) => setData('name', e.target.value)}
                                 placeholder="My Awesome Game Room"
-                                className="w-full px-3 py-2 rounded-lg border-2 border-gray-200 focus:border-teal-400 focus:ring-teal-400 transition-colors font-medium text-sm"
+                                className="w-full px-3 py-2 rounded-lg border-2 border-gray-200 focus:border-teal-400 focus:ring-teal-400 transition-colors font-medium text-sm dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
                             />
-                            {errors.name && <p className="mt-1 text-xs text-red-600">{errors.name}</p>}
+                            {errors.name && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.name}</p>}
                         </div>
                         <button
                             type="submit"
@@ -125,28 +125,28 @@ export default function CubeTacHub({ auth, game, waitingRooms }: Props) {
                 </div>
 
                 {waitingRooms.length > 0 && (
-                    <div className="rounded-xl bg-gradient-to-br from-green-50 to-emerald-100 p-4 shadow-lg border border-green-200">
-                        <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 mb-3">
-                            <GameIcon name="circle" size="sm" className="text-green-600" /> Open Rooms
+                    <div className="rounded-xl bg-gradient-to-br from-green-50 to-emerald-100 p-4 shadow-lg border border-green-200 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
+                        <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 mb-3 dark:text-gray-100">
+                            <GameIcon name="circle" size="sm" className="text-green-600 dark:text-green-400" /> Open Rooms
                         </h2>
                         <ul className="space-y-2">
                             {waitingRooms.map((room) => (
                                 <li key={room.id}>
                                     <Link
                                         href={route('rooms.show', [game.slug, room.room_code])}
-                                        className="block rounded-lg border-2 border-green-200 bg-white/50 p-3 transition hover:border-green-400 hover:bg-green-50"
+                                        className="block rounded-lg border-2 border-green-200 bg-white/50 p-3 transition hover:border-green-400 hover:bg-green-50 dark:bg-gray-700/40 dark:border-gray-600 dark:hover:bg-green-900/20 dark:hover:border-green-700"
                                     >
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <p className="font-bold text-gray-900 text-sm">
+                                                <p className="font-bold text-gray-900 text-sm dark:text-gray-100">
                                                     {room.name || `Room ${room.room_code}`}
                                                 </p>
-                                                <p className="text-xs text-gray-500">
+                                                <p className="text-xs text-gray-500 dark:text-gray-400">
                                                     Hosted by {room.host?.name || 'Unknown'}
                                                 </p>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-lg font-black text-green-600">
+                                                <p className="text-lg font-black text-green-600 dark:text-green-400">
                                                     {room.connected_players_count || 0}/{game.max_players}
                                                 </p>
                                             </div>
@@ -160,8 +160,8 @@ export default function CubeTacHub({ auth, game, waitingRooms }: Props) {
 
                 {/* Rules */}
                 {game.rules && (
-                    <div className="rounded-xl bg-gradient-to-br from-amber-50 to-yellow-100 p-4 shadow-lg border border-yellow-200">
-                        <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 mb-3">
+                    <div className="rounded-xl bg-gradient-to-br from-amber-50 to-yellow-100 p-4 shadow-lg border border-yellow-200 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
+                        <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 mb-3 dark:text-gray-100">
                             <GameIcon name="book" size="sm" /> How to Play
                         </h2>
                         <div className="space-y-3">
@@ -173,14 +173,14 @@ export default function CubeTacHub({ auth, game, waitingRooms }: Props) {
                 )}
 
                 {/* Join with code */}
-                <div className="rounded-xl bg-gradient-to-br from-purple-50 to-violet-100 p-4 shadow-lg border border-purple-200">
-                    <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <div className="rounded-xl bg-gradient-to-br from-purple-50 to-violet-100 p-4 shadow-lg border border-purple-200 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
+                    <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 dark:text-gray-100">
                         <GameIcon name="link" size="sm" /> Have a Room Code?
                     </h2>
-                    <p className="mt-1 text-xs text-gray-600">Join a friend&apos;s room directly.</p>
+                    <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Join a friend&apos;s room directly.</p>
                     <Link
                         href={route('rooms.join')}
-                        className="mt-3 block w-full rounded-full bg-white px-4 py-2 text-center font-bold text-purple-600 shadow-md hover:scale-105 transition border-b-4 border-purple-300 text-sm"
+                        className="mt-3 block w-full rounded-full bg-white px-4 py-2 text-center font-bold text-purple-600 shadow-md hover:scale-105 transition border-b-4 border-purple-300 text-sm dark:bg-gray-700 dark:text-purple-300 dark:border-purple-700"
                     >
                         Join with Code
                     </Link>
@@ -193,13 +193,13 @@ export default function CubeTacHub({ auth, game, waitingRooms }: Props) {
                 <div className="col-span-8 flex flex-col gap-4 min-h-0">
                     <Link
                         href={route('games.index')}
-                        className="inline-flex items-center gap-2 text-yellow-900 hover:text-yellow-700 font-bold transition w-fit"
+                        className="inline-flex items-center gap-2 text-yellow-900 hover:text-yellow-700 font-bold transition w-fit dark:text-yellow-300 dark:hover:text-yellow-100"
                     >
                         <BackArrow className="h-5 w-5" />
                         Back to Games
                     </Link>
 
-                    <div className="relative rounded-3xl bg-gradient-to-br from-rose-100 via-amber-50 to-sky-100 shadow-2xl border-2 border-white/60 overflow-hidden">
+                    <div className="relative rounded-3xl bg-gradient-to-br from-rose-100 via-amber-50 to-sky-100 shadow-2xl border-2 border-white/60 overflow-hidden dark:from-gray-800 dark:via-gray-800 dark:to-gray-800 dark:border-gray-700">
                         {/* Animated background accents */}
                         <FloatingMarks variant="desktop" />
                         {/* Two giant blurred color pools for depth */}
@@ -228,21 +228,21 @@ export default function CubeTacHub({ auth, game, waitingRooms }: Props) {
 
                             {/* Description and badges */}
                             <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                <p className="text-gray-800 text-lg leading-relaxed font-medium">
+                                <p className="text-gray-800 text-lg leading-relaxed font-medium dark:text-gray-300">
                                     {game.description}
                                 </p>
                                 <div className="mt-5 flex items-center gap-2 flex-wrap">
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-sm text-indigo-700 font-black text-sm shadow-sm ring-1 ring-indigo-200">
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-sm text-indigo-700 font-black text-sm shadow-sm ring-1 ring-indigo-200 dark:bg-gray-700 dark:text-indigo-300 dark:ring-indigo-700">
                                         <UsersIcon className="h-4 w-4" />
                                         {game.min_players}-{game.max_players} players
                                     </span>
                                     {game.estimated_duration_minutes && (
-                                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-sm text-purple-700 font-black text-sm shadow-sm ring-1 ring-purple-200">
+                                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-sm text-purple-700 font-black text-sm shadow-sm ring-1 ring-purple-200 dark:bg-gray-700 dark:text-purple-300 dark:ring-purple-700">
                                             <ClockIcon className="h-4 w-4" />
                                             ~{game.estimated_duration_minutes} min
                                         </span>
                                     )}
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-sm text-orange-700 font-black text-sm shadow-sm ring-1 ring-orange-200">
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-sm text-orange-700 font-black text-sm shadow-sm ring-1 ring-orange-200 dark:bg-gray-700 dark:text-orange-300 dark:ring-orange-700">
                                         <SparkIcon className="h-4 w-4" />
                                         3D Puzzle
                                     </span>
@@ -256,9 +256,9 @@ export default function CubeTacHub({ auth, game, waitingRooms }: Props) {
 
                     {/* Rules - scrollable within container */}
                     {game.rules && (
-                        <div className="flex-1 rounded-2xl bg-gradient-to-br from-amber-50 to-yellow-100 shadow-lg border border-yellow-200 flex flex-col min-h-0 overflow-hidden">
-                            <div className="p-4 border-b border-yellow-200/50">
-                                <h2 className="text-lg font-black text-gray-900 flex items-center gap-2">
+                        <div className="flex-1 rounded-2xl bg-gradient-to-br from-amber-50 to-yellow-100 shadow-lg border border-yellow-200 flex flex-col min-h-0 overflow-hidden dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
+                            <div className="p-4 border-b border-yellow-200/50 dark:border-gray-700">
+                                <h2 className="text-lg font-black text-gray-900 flex items-center gap-2 dark:text-gray-100">
                                     <GameIcon name="book" /> How to Play
                                 </h2>
                             </div>
@@ -295,7 +295,7 @@ export default function CubeTacHub({ auth, game, waitingRooms }: Props) {
                     </Link>
 
                     {/* Create online room */}
-                    <div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-100 shadow-lg border border-teal-200 overflow-hidden">
+                    <div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-100 shadow-lg border border-teal-200 overflow-hidden dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
                         <div className="bg-gradient-to-r from-teal-600 to-teal-700 px-4 py-3">
                             <h2 className="text-base font-bold text-white flex items-center gap-2">
                                 <GameIcon name="gamepad" size="sm" /> Online Match
@@ -305,7 +305,7 @@ export default function CubeTacHub({ auth, game, waitingRooms }: Props) {
                             <form onSubmit={submit} className="space-y-3">
                                 {!auth.user && (
                                     <div>
-                                        <label htmlFor="nickname" className="block text-xs font-bold text-gray-700 mb-1">
+                                        <label htmlFor="nickname" className="block text-xs font-bold text-gray-700 mb-1 dark:text-gray-300">
                                             Your Nickname
                                         </label>
                                         <input
@@ -315,14 +315,14 @@ export default function CubeTacHub({ auth, game, waitingRooms }: Props) {
                                             onChange={(e) => setData('nickname', e.target.value)}
                                             placeholder="Enter your nickname"
                                             maxLength={20}
-                                            className="w-full px-3 py-2.5 rounded-xl border-2 border-gray-200 focus:border-teal-400 focus:ring-teal-400 transition-colors font-medium"
+                                            className="w-full px-3 py-2.5 rounded-xl border-2 border-gray-200 focus:border-teal-400 focus:ring-teal-400 transition-colors font-medium dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
                                             required
                                         />
-                                        {errors.nickname && <p className="mt-1 text-sm text-red-600">{errors.nickname}</p>}
+                                        {errors.nickname && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.nickname}</p>}
                                     </div>
                                 )}
                                 <div>
-                                    <label htmlFor="name" className="block text-xs font-bold text-gray-700 mb-1">
+                                    <label htmlFor="name" className="block text-xs font-bold text-gray-700 mb-1 dark:text-gray-300">
                                         Room Name (optional)
                                     </label>
                                     <input
@@ -331,9 +331,9 @@ export default function CubeTacHub({ auth, game, waitingRooms }: Props) {
                                         value={data.name}
                                         onChange={(e) => setData('name', e.target.value)}
                                         placeholder="My Awesome Game Room"
-                                        className="w-full px-3 py-2.5 rounded-xl border-2 border-gray-200 focus:border-teal-400 focus:ring-teal-400 transition-colors font-medium"
+                                        className="w-full px-3 py-2.5 rounded-xl border-2 border-gray-200 focus:border-teal-400 focus:ring-teal-400 transition-colors font-medium dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
                                     />
-                                    {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
+                                    {errors.name && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name}</p>}
                                 </div>
                                 <button
                                     type="submit"
@@ -347,7 +347,7 @@ export default function CubeTacHub({ auth, game, waitingRooms }: Props) {
                     </div>
 
                     {waitingRooms.length > 0 && (
-                        <div className="rounded-2xl bg-gradient-to-br from-green-50 to-emerald-100 shadow-lg border border-green-200 overflow-hidden flex-1 min-h-0 flex flex-col">
+                        <div className="rounded-2xl bg-gradient-to-br from-green-50 to-emerald-100 shadow-lg border border-green-200 overflow-hidden flex-1 min-h-0 flex flex-col dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
                             <div className="bg-gradient-to-r from-green-500 to-green-600 px-4 py-3">
                                 <h2 className="text-base font-bold text-white flex items-center gap-2">
                                     <GameIcon name="circle" size="sm" className="text-green-300" /> Open Rooms
@@ -359,19 +359,19 @@ export default function CubeTacHub({ auth, game, waitingRooms }: Props) {
                                         <li key={room.id}>
                                             <Link
                                                 href={route('rooms.show', [game.slug, room.room_code])}
-                                                className="block rounded-xl border-2 border-green-200 bg-white/50 p-3 transition hover:border-green-400 hover:bg-green-50"
+                                                className="block rounded-xl border-2 border-green-200 bg-white/50 p-3 transition hover:border-green-400 hover:bg-green-50 dark:bg-gray-700/40 dark:border-gray-600 dark:hover:bg-green-900/20 dark:hover:border-green-700"
                                             >
                                                 <div className="flex items-center justify-between">
                                                     <div>
-                                                        <p className="font-bold text-gray-900 text-sm">
+                                                        <p className="font-bold text-gray-900 text-sm dark:text-gray-100">
                                                             {room.name || `Room ${room.room_code}`}
                                                         </p>
-                                                        <p className="text-xs text-gray-500">
+                                                        <p className="text-xs text-gray-500 dark:text-gray-400">
                                                             Hosted by {room.host?.name || 'Unknown'}
                                                         </p>
                                                     </div>
                                                     <div className="text-right">
-                                                        <p className="text-lg font-black text-green-600">
+                                                        <p className="text-lg font-black text-green-600 dark:text-green-400">
                                                             {room.connected_players_count || 0}/{game.max_players}
                                                         </p>
                                                     </div>
@@ -384,14 +384,14 @@ export default function CubeTacHub({ auth, game, waitingRooms }: Props) {
                         </div>
                     )}
 
-                    <div className="rounded-2xl bg-gradient-to-br from-purple-50 to-violet-100 shadow-lg border border-purple-200 p-4">
-                        <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                    <div className="rounded-2xl bg-gradient-to-br from-purple-50 to-violet-100 shadow-lg border border-purple-200 p-4 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
+                        <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 dark:text-gray-100">
                             <GameIcon name="link" size="sm" /> Have a Room Code?
                         </h2>
-                        <p className="mt-1 text-sm text-gray-600">Join a friend&apos;s room directly.</p>
+                        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Join a friend&apos;s room directly.</p>
                         <Link
                             href={route('rooms.join')}
-                            className="mt-3 block w-full rounded-full bg-white px-4 py-2.5 text-center font-bold text-purple-600 shadow-md hover:scale-105 transition border-b-4 border-purple-300"
+                            className="mt-3 block w-full rounded-full bg-white px-4 py-2.5 text-center font-bold text-purple-600 shadow-md hover:scale-105 transition border-b-4 border-purple-300 dark:bg-gray-700 dark:text-purple-300 dark:border-purple-700"
                         >
                             Join with Code
                         </Link>
@@ -409,7 +409,7 @@ export default function CubeTacHub({ auth, game, waitingRooms }: Props) {
 function Credit() {
     return (
         <div
-            className="inline-flex items-center gap-2 rounded-full bg-white/70 backdrop-blur-sm px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-gray-600 shadow-sm ring-1 ring-white/80"
+            className="inline-flex items-center gap-2 rounded-full bg-white/70 backdrop-blur-sm px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-gray-600 shadow-sm ring-1 ring-white/80 dark:bg-gray-700/60 dark:text-gray-300 dark:ring-gray-600"
             aria-label="Designed and ideated by Nitin Joseph"
         >
             <svg viewBox="0 0 24 24" className="h-3 w-3 text-rose-500" fill="currentColor">
@@ -417,7 +417,7 @@ function Credit() {
             </svg>
             <span>
                 Designed &amp; ideated by{' '}
-                <span className="text-gray-900 tracking-normal normal-case italic font-black">
+                <span className="text-gray-900 tracking-normal normal-case italic font-black dark:text-gray-100">
                     Nitin Joseph
                 </span>
             </span>
@@ -505,15 +505,15 @@ function FloatingMarks({ variant }: { variant: 'desktop' | 'mobile' }) {
 
 function RuleItem({ label, value }: { label: string; value: unknown }) {
     return (
-        <div className="bg-white/60 rounded-xl p-4">
-            <h3 className="font-bold text-yellow-800 capitalize">{label.replace(/_/g, ' ')}</h3>
+        <div className="bg-white/60 rounded-xl p-4 dark:bg-gray-700/40">
+            <h3 className="font-bold text-yellow-800 capitalize dark:text-yellow-300">{label.replace(/_/g, ' ')}</h3>
             {typeof value === 'string' ? (
-                <p className="mt-2 text-gray-700">{value}</p>
+                <p className="mt-2 text-gray-700 dark:text-gray-300">{value}</p>
             ) : value && typeof value === 'object' ? (
                 <ul className="mt-2 space-y-1.5">
                     {Object.entries(value as Record<string, string>).map(([subKey, subValue]) => (
-                        <li key={subKey} className="flex gap-2 text-gray-700">
-                            <span className="font-bold text-yellow-700">{subKey}:</span>
+                        <li key={subKey} className="flex gap-2 text-gray-700 dark:text-gray-300">
+                            <span className="font-bold text-yellow-700 dark:text-yellow-400">{subKey}:</span>
                             <span>{subValue}</span>
                         </li>
                     ))}

@@ -83,7 +83,7 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
             <div className="mb-6 flex items-center justify-between">
                 <Link
                     href={room.game ? route('games.show', room.game.slug) : route('games.index')}
-                    className="inline-flex items-center gap-2 text-yellow-900 hover:text-yellow-700 font-bold transition"
+                    className="inline-flex items-center gap-2 text-yellow-900 hover:text-yellow-700 font-bold transition dark:text-yellow-300 dark:hover:text-yellow-100"
                 >
                     <svg
                         className="h-5 w-5"
@@ -121,7 +121,7 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                 <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
                     {/* Main content */}
                     <div>
-                        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+                        <div className="bg-white rounded-2xl shadow-xl overflow-hidden dark:bg-gray-800">
                             {/* Room Header */}
                             <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5">
                                 <div className="flex items-center gap-4">
@@ -150,10 +150,10 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                                         <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-400 to-green-500 rounded-full mb-4 shadow-lg text-white">
                                             <GameIcon name="wave" size="xl" />
                                         </div>
-                                        <h3 className="text-xl font-black text-gray-900 mb-2">
+                                        <h3 className="text-xl font-black text-gray-900 mb-2 dark:text-gray-100">
                                             Join this game!
                                         </h3>
-                                        <p className="text-gray-500 mb-6">
+                                        <p className="text-gray-500 mb-6 dark:text-gray-400">
                                             Enter your nickname to join the room
                                         </p>
                                         <form onSubmit={handleJoin} className="max-w-xs mx-auto space-y-4">
@@ -164,12 +164,12 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                                                     onChange={(e) => setData('nickname', e.target.value)}
                                                     placeholder="Your nickname"
                                                     maxLength={20}
-                                                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-400 focus:ring-green-400 transition-colors font-medium text-center"
+                                                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-400 focus:ring-green-400 transition-colors font-medium text-center dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
                                                     autoFocus
                                                     required
                                                 />
                                                 {errors.nickname && (
-                                                    <p className="mt-2 text-sm text-red-600 font-medium">
+                                                    <p className="mt-2 text-sm text-red-600 font-medium dark:text-red-400">
                                                         {errors.nickname}
                                                     </p>
                                                 )}
@@ -189,10 +189,10 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                                 {!needsToJoin || !isGuest ? (
                                     <>
                                         <div className="flex items-center justify-between mb-6">
-                                            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 dark:text-gray-100">
                                                 <GameIcon name="users" className="inline-block mr-1" /> Players
                                             </h3>
-                                            <p className="text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                                            <p className="text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full dark:bg-gray-700 dark:text-gray-300">
                                                 {Math.max(0, minPlayers - connectedPlayers.length) > 0
                                                     ? `Need ${minPlayers - connectedPlayers.length} more`
                                                     : 'Ready to start!'}
@@ -232,19 +232,19 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                             <div className="p-6 space-y-4">
                                 {/* Room Code */}
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2 dark:text-gray-300">
                                         Room Code
                                     </label>
                                     <div className="flex items-center gap-2">
-                                        <code className="flex-1 rounded-xl bg-gray-100 px-4 py-3 text-center text-2xl font-mono font-black tracking-[0.3em] text-gray-900">
+                                        <code className="flex-1 rounded-xl bg-gray-100 px-4 py-3 text-center text-2xl font-mono font-black tracking-[0.3em] text-gray-900 dark:bg-gray-700 dark:text-gray-100">
                                             {room.room_code}
                                         </code>
                                         <button
                                             onClick={copyRoomCode}
                                             className={`rounded-xl p-3 transition hover:scale-105 ${
                                                 copiedCode
-                                                    ? 'bg-green-100 text-green-600'
-                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                    ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-300'
+                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                                             }`}
                                             title="Copy room code"
                                         >
@@ -264,28 +264,28 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                                 {/* Divider */}
                                 <div className="relative">
                                     <div className="absolute inset-0 flex items-center">
-                                        <div className="w-full border-t border-gray-200" />
+                                        <div className="w-full border-t border-gray-200 dark:border-gray-700" />
                                     </div>
                                     <div className="relative flex justify-center text-sm">
-                                        <span className="bg-white px-3 text-gray-500">or share link</span>
+                                        <span className="bg-white px-3 text-gray-500 dark:bg-gray-800 dark:text-gray-400">or share link</span>
                                     </div>
                                 </div>
 
                                 {/* Room Link */}
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2 dark:text-gray-300">
                                         Direct Link
                                     </label>
                                     <div className="flex items-center gap-2">
-                                        <div className="flex-1 rounded-xl bg-gray-100 px-3 py-3 text-sm text-gray-600 truncate font-medium">
+                                        <div className="flex-1 rounded-xl bg-gray-100 px-3 py-3 text-sm text-gray-600 truncate font-medium dark:bg-gray-700 dark:text-gray-300">
                                             {roomLink}
                                         </div>
                                         <button
                                             onClick={copyRoomLink}
                                             className={`rounded-xl p-3 transition hover:scale-105 ${
                                                 copiedLink
-                                                    ? 'bg-green-100 text-green-600'
-                                                    : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                                                    ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-300'
+                                                    : 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:hover:bg-blue-900/60'
                                             }`}
                                             title="Copy link"
                                         >
@@ -302,15 +302,15 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                                     </div>
                                 </div>
 
-                                <p className="text-xs text-gray-500 text-center">
+                                <p className="text-xs text-gray-500 text-center dark:text-gray-400">
                                     Friends can join directly with the link!
                                 </p>
                             </div>
                         </div>
 
                         {/* Actions */}
-                        <div className="bg-white rounded-2xl shadow-lg p-6">
-                            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
+                        <div className="bg-white rounded-2xl shadow-lg p-6 dark:bg-gray-800">
+                            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4 dark:text-gray-100">
                                 <GameIcon name="gamepad" className="inline-block mr-1" /> Actions
                             </h3>
                             <div className="space-y-3">
@@ -323,15 +323,15 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                                         {canStart ? "Start Game!" : `Need ${minPlayers} players`}
                                     </button>
                                 ) : (
-                                    <div className="text-center py-3 bg-yellow-50 rounded-xl">
-                                        <p className="text-sm text-yellow-700 font-medium">
+                                    <div className="text-center py-3 bg-yellow-50 rounded-xl dark:bg-yellow-900/20">
+                                        <p className="text-sm text-yellow-700 font-medium dark:text-yellow-300">
                                             <GameIcon name="hourglass" className="inline-block mr-1" /> Waiting for host to start...
                                         </p>
                                     </div>
                                 )}
                                 <button
                                     onClick={handleLeave}
-                                    className="w-full rounded-full bg-gray-100 px-6 py-3 font-bold text-gray-700 shadow-md transition hover:scale-105 hover:bg-gray-200 border-b-4 border-gray-300"
+                                    className="w-full rounded-full bg-gray-100 px-6 py-3 font-bold text-gray-700 shadow-md transition hover:scale-105 hover:bg-gray-200 border-b-4 border-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 dark:border-gray-600"
                                 >
                                     Leave Room
                                 </button>
@@ -340,7 +340,7 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
 
                         {/* Game Info */}
                         {room.game && (
-                            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6">
+                            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 dark:bg-gray-800/80">
                                 <div className="flex items-center gap-4">
                                     <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 shadow-md text-white">
                                         {room.game.slug === 'cheese-thief' ? (
@@ -350,10 +350,10 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                                         )}
                                     </div>
                                     <div>
-                                        <h3 className="font-bold text-gray-900">
+                                        <h3 className="font-bold text-gray-900 dark:text-gray-100">
                                             {room.game.name}
                                         </h3>
-                                        <p className="text-sm text-gray-500">
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">
                                             {room.game.min_players}-{room.game.max_players} players
                                         </p>
                                     </div>
@@ -392,10 +392,10 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
 
 function EmptySlot() {
     return (
-        <div className="flex items-center gap-3 rounded-xl border-2 border-dashed border-gray-200 p-4 bg-gray-50/50">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-200">
+        <div className="flex items-center gap-3 rounded-xl border-2 border-dashed border-gray-200 p-4 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-700/20">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700">
                 <svg
-                    className="h-6 w-6 text-gray-400"
+                    className="h-6 w-6 text-gray-400 dark:text-gray-500"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -408,7 +408,7 @@ function EmptySlot() {
                     />
                 </svg>
             </div>
-            <p className="text-sm text-gray-400 font-medium">Waiting for player...</p>
+            <p className="text-sm text-gray-400 font-medium dark:text-gray-500">Waiting for player...</p>
         </div>
     );
 }

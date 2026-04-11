@@ -1,10 +1,11 @@
 import GameIcon from '@/Components/GameIcon';
+import ThemeToggle from '@/Components/ThemeToggle';
 import { Link } from '@inertiajs/react';
 import { PropsWithChildren } from 'react';
 
 export default function Guest({ children }: PropsWithChildren) {
     return (
-        <div className="min-h-screen bg-yellow-400 flex flex-col">
+        <div className="min-h-screen bg-yellow-400 dark:bg-gray-900 flex flex-col">
             {/* Nav */}
             <nav className="flex items-center justify-between p-4 sm:p-6 shrink-0">
                 <Link href="/" className="group">
@@ -19,10 +20,11 @@ export default function Guest({ children }: PropsWithChildren) {
                         </div>
                     </div>
                 </Link>
-                <div className="flex gap-2 sm:gap-3">
+                <div className="flex gap-2 sm:gap-3 items-center">
+                    <ThemeToggle />
                     <Link
                         href={route('login')}
-                        className="rounded-full bg-white px-4 sm:px-6 py-2 font-bold text-yellow-600 shadow-lg transition hover:scale-105 border-b-4 border-yellow-500 text-sm sm:text-base"
+                        className="rounded-full bg-white px-4 sm:px-6 py-2 font-bold text-yellow-600 shadow-lg transition hover:scale-105 border-b-4 border-yellow-500 text-sm sm:text-base dark:bg-gray-800 dark:text-yellow-300 dark:border-gray-700"
                     >
                         Log in
                     </Link>
@@ -53,7 +55,7 @@ export default function Guest({ children }: PropsWithChildren) {
 
                 {/* Card container */}
                 <div className="w-full max-w-md">
-                    <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border-b-8 border-blue-500">
+                    <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border-b-8 border-blue-500 dark:bg-gray-800 dark:border-blue-700">
                         <div className="p-8">
                             {children}
                         </div>
@@ -62,7 +64,7 @@ export default function Guest({ children }: PropsWithChildren) {
             </main>
 
             {/* Footer */}
-            <footer className="p-3 text-center text-yellow-800 font-medium text-sm shrink-0">
+            <footer className="p-3 text-center text-yellow-800 font-medium text-sm shrink-0 dark:text-yellow-300">
                 Play together, anywhere!
             </footer>
         </div>
