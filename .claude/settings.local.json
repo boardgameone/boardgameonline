@@ -45,7 +45,19 @@
       "WebSearch",
       "Bash(php -v)",
       "Bash(python3 -c \"import sys,json; v=json.load\\(sys.stdin\\); print\\(v if isinstance\\(v,str\\) else v[-1]\\)\")",
-      "Bash(composer show:*)"
+      "Bash(composer show:*)",
+      "Bash(curl -sI http://127.0.0.1:8765/play/cubetac/local)",
+      "Bash(curl -s -H \"X-Inertia: true\" -H \"Accept: application/json\" http://127.0.0.1:8765/games/cubetac)",
+      "Bash(python3 -c \"import sys, json; d = json.load\\(sys.stdin\\); print\\('component:', d.get\\('component'\\)\\); print\\('game_slug:', d['props']['game']['slug']\\); print\\('game_name:', d['props']['game']['name']\\); print\\('waitingRooms count:', len\\(d['props']['waitingRooms']\\)\\)\")",
+      "Bash(curl -s http://127.0.0.1:8765/games/cubetac)",
+      "Bash(python3 -c ':*)",
+      "Bash(python3:*)",
+      "Read(//private/tmp/**)",
+      "Bash(kill %1)",
+      "Bash(pkill -f 'artisan serve')",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8765/games/cubetac)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8765/play/cubetac/local)",
+      "Bash(curl:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

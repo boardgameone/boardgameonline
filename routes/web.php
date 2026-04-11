@@ -1,11 +1,13 @@
 <?php
 
+use App\Http\Controllers\CubeTacGameController;
 use App\Http\Controllers\GameController;
 use App\Http\Controllers\GameRoomController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TrioGameController;
 use App\Http\Controllers\TwentyEightGameController;
 use App\Models\Game;
+use App\Models\GameRoom;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -69,6 +71,13 @@ Route::post('/rooms/{game:slug}/{room:room_code}/twenty-eight/play-card', [Twent
 Route::post('/rooms/{game:slug}/{room:room_code}/twenty-eight/call-trump', [TwentyEightGameController::class, 'callTrump'])->name('rooms.twentyEight.callTrump');
 Route::post('/rooms/{game:slug}/{room:room_code}/twenty-eight/next-round', [TwentyEightGameController::class, 'startNextRound'])->name('rooms.twentyEight.nextRound');
 
+// CubeTac game routes (Rubik's Tac Toe)
+Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/start', [CubeTacGameController::class, 'start'])->name('rooms.cubetac.start');
+Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/mark', [CubeTacGameController::class, 'mark'])->name('rooms.cubetac.mark');
+Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/rotate', [CubeTacGameController::class, 'rotate'])->name('rooms.cubetac.rotate');
+Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/reset', [CubeTacGameController::class, 'reset'])->name('rooms.cubetac.reset');
+Route::get('/play/cubetac/local', [CubeTacGameController::class, 'local'])->name('cubetac.local');
+
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -76,7 +85,7 @@ Route::middleware('auth')->group(function () {
 });
 
 // Backwards compatibility redirect for old room URLs
-Route::get('/rooms/{room:room_code}', function (\App\Models\GameRoom $room) {
+Route::get('/rooms/{room:room_code}', function (GameRoom $room) {
     return redirect()->route('rooms.show', [$room->game->slug, $room->room_code], 301);
 })->name('rooms.show.legacy');
 
