@@ -107,7 +107,7 @@ interface LogoCubeProps {
     animated: boolean;
 }
 
-function LogoCube({ px, animated }: LogoCubeProps) {
+export function LogoCube({ px, animated }: LogoCubeProps) {
     const half = px / 2;
 
     // Face patterns: each face shows a subset of a tic-tac-toe-on-a-cube situation.
