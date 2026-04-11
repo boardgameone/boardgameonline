@@ -1,8 +1,11 @@
 /**
  * Game-over phase: reveal + rematch button (light theme).
+ *
+ * Supports 2..6 players. The winner headline shows the owner's color via
+ * an inline style (Tailwind JIT can't synthesize dynamic hex colors).
  */
 
-import { Suspense, lazy, useMemo } from 'react';
+import { Suspense, lazy, useMemo, type CSSProperties } from 'react';
 import { Marks, indexOf } from '@/lib/rubikCube';
 
 const CubeScene = lazy(() => import('./CubeScene'));
@@ -10,21 +13,22 @@ const CubeScene = lazy(() => import('./CubeScene'));
 export interface WinningLineData {
     face: number;
     cells: Array<[number, number]>;
-    player: 'X' | 'O';
+    player: number;
 }
 
 export interface CubeTacPlayerLite {
     id: number | null;
     nickname: string;
+    avatar_color: string;
 }
 
 export interface FinishedPhaseProps {
     marks: Marks;
-    winner: 'X' | 'O' | 'draw';
+    winner: number | 'draw';
     winningLines: WinningLineData[];
-    xPlayer: CubeTacPlayerLite;
-    oPlayer: CubeTacPlayerLite;
-    mySymbol: 'X' | 'O' | null;
+    /** One entry per slot. */
+    players: CubeTacPlayerLite[];
+    mySlot: number | null;
     canRematch: boolean;
     onRematch?: () => void;
     onLeave?: () => void;
@@ -35,9 +39,8 @@ export default function FinishedPhase({
     marks,
     winner,
     winningLines,
-    xPlayer,
-    oPlayer,
-    mySymbol,
+    players,
+    mySlot,
     canRematch,
     onRematch,
     onLeave,
@@ -53,39 +56,46 @@ export default function FinishedPhase({
         return set;
     }, [winningLines]);
 
+    const playerColors = useMemo(() => players.map((p) => p.avatar_color), [players]);
+
     const isDraw = winner === 'draw';
-    const winnerName = winner === 'X' ? xPlayer.nickname : winner === 'O' ? oPlayer.nickname : null;
-    const didIWin = mySymbol !== null && mySymbol === winner;
+    const winnerPlayer = !isDraw && typeof winner === 'number' ? players[winner] ?? null : null;
+    const winnerColor = winnerPlayer?.avatar_color ?? '#f9b233';
+    const didIWin = mySlot !== null && mySlot === winner;
 
     const headline = isDraw
         ? 'Draw!'
-        : mySymbol === null
-            ? `${winner} Wins!`
+        : mySlot === null
+            ? `${winnerPlayer?.nickname ?? 'Player'} Wins!`
             : didIWin
                 ? 'You Win!'
                 : 'You Lose';
 
     const subHeadline = isDraw
         ? 'No three-in-a-row'
-        : `${winnerName ?? winner} · 3 in a row`;
+        : `${winnerPlayer?.nickname ?? 'Unknown'} · 3 in a row`;
 
-    const headlineColor = winner === 'X'
-        ? 'text-red-500 drop-shadow-[0_0_18px_rgba(239,68,68,0.45)]'
-        : winner === 'O'
-            ? 'text-blue-600 drop-shadow-[0_0_18px_rgba(37,99,235,0.45)]'
-            : 'text-yellow-700 drop-shadow-[0_0_18px_rgba(234,179,8,0.45)]';
+    const headlineStyle: CSSProperties = {
+        color: winnerColor,
+        filter: `drop-shadow(0 0 18px ${hexWithAlpha(winnerColor, 0.45)})`,
+    };
 
     return (
         <div className="relative flex h-full w-full flex-col overflow-hidden">
             <div className="relative flex-1 min-h-0">
                 <Suspense fallback={<div className="h-full" />}>
-                    <CubeScene marks={marks} winningIndices={winningIndices} interactive={false} />
+                    <CubeScene
+                        marks={marks}
+                        playerColors={playerColors}
+                        winningIndices={winningIndices}
+                        interactive={false}
+                    />
                 </Suspense>
 
                 {/* Reveal overlay */}
                 <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-start pt-8 sm:pt-14">
                     <div className="animate-winReveal flex flex-col items-center">
-                        <div className={`text-5xl font-black leading-none sm:text-7xl ${headlineColor}`}>
+                        <div className="text-5xl font-black leading-none sm:text-7xl" style={headlineStyle}>
                             {headline}
                         </div>
                         <div className="mt-3 rounded-full bg-white/80 px-4 py-1 text-xs font-bold uppercase tracking-[0.3em] text-gray-600 shadow-md backdrop-blur-sm sm:text-sm">
@@ -120,4 +130,16 @@ export default function FinishedPhase({
             </div>
         </div>
     );
+}
+
+function hexWithAlpha(hex: string, alpha: number): string {
+    let h = hex.replace('#', '');
+    if (h.length === 3) {
+        h = h.split('').map((c) => c + c).join('');
+    }
+    if (h.length !== 6) return `rgba(249, 178, 51, ${alpha})`;
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }

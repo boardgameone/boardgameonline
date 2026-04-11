@@ -16,9 +16,22 @@ use Inertia\Response;
 
 class CubeTacGameController extends Controller
 {
-    private const MOVE_LIMIT = 60;
+    /**
+     * Move-limit scaling factor. Each player gets roughly this many turns
+     * before the game hits the soft draw cap, so 2-player games cap at 60
+     * (preserving the pre-refactor limit), and 6-player games cap at 180.
+     */
+    private const MOVES_PER_PLAYER = 30;
 
     private const HISTORY_CAP = 20;
+
+    /**
+     * Per-slot avatar color palette. Joiner N gets $colors[N]. Must be kept
+     * in sync with the 3D glyph palette in resources/js/Pages/Rooms/CubeTac/CubeScene.tsx.
+     *
+     * @var list<string>
+     */
+    private const SLOT_COLORS = ['#ff4d2e', '#3a90ff', '#22d3ee', '#a855f7', '#f59e0b', '#10b981'];
 
     /**
      * Render the online match room.
@@ -70,7 +83,9 @@ class CubeTacGameController extends Controller
     }
 
     /**
-     * Start a CubeTac game. Host only. Requires exactly 2 connected players.
+     * Start a CubeTac game. Host only. Requires between game.min_players
+     * and game.max_players connected players (inclusive). Slot order is
+     * determined by join time.
      */
     public function start(Game $game, GameRoom $room): RedirectResponse
     {
@@ -86,14 +101,18 @@ class CubeTacGameController extends Controller
 
         $connectedPlayers = $room->connectedPlayers()->orderBy('created_at')->get();
 
-        if ($connectedPlayers->count() !== 2) {
-            return back()->withErrors(['error' => 'CubeTac needs exactly 2 players.']);
+        $min = $game->min_players;
+        $max = $game->max_players;
+        $count = $connectedPlayers->count();
+
+        if ($count < $min || $count > $max) {
+            return back()->withErrors(['error' => "CubeTac needs between {$min} and {$max} players."]);
         }
 
-        $xPlayer = $connectedPlayers->first();
-        $oPlayer = $connectedPlayers->last();
+        /** @var list<int> $playerIds */
+        $playerIds = $connectedPlayers->pluck('id')->values()->all();
 
-        $settings = $this->freshGameState($xPlayer->id, $oPlayer->id);
+        $settings = $this->freshGameState($playerIds);
 
         $room->update([
             'status' => 'playing',
@@ -107,7 +126,7 @@ class CubeTacGameController extends Controller
     }
 
     /**
-     * Mark an empty sticker with the current player's symbol.
+     * Mark an empty sticker with the current player's slot index.
      */
     public function mark(MarkStickerRequest $request, Game $game, GameRoom $room): RedirectResponse
     {
@@ -141,20 +160,20 @@ class CubeTacGameController extends Controller
         $col = (int) $request->validated('col');
         $idx = RubikCube::indexOf($face, $row, $col);
 
-        /** @var array<int, string|null> $marks */
+        /** @var array<int, int|null> $marks */
         $marks = $settings['marks'];
         if ($marks[$idx] !== null) {
             return back()->withErrors(['error' => 'That sticker is already marked.']);
         }
 
-        $symbol = $settings['current_turn'];
-        $marks[$idx] = $symbol;
+        $slot = (int) $settings['current_turn'];
+        $marks[$idx] = $slot;
         $settings['marks'] = $marks;
         $settings['move_count'] = ($settings['move_count'] ?? 0) + 1;
 
         $action = [
             'type' => 'mark',
-            'player' => $symbol,
+            'player' => $slot,
             'face' => $face,
             'row' => $row,
             'col' => $col,
@@ -167,7 +186,7 @@ class CubeTacGameController extends Controller
 
         $room->update([
             'settings' => $settings,
-            'winner' => $settings['winner'],
+            'winner' => $settings['winner'] !== null ? (string) $settings['winner'] : null,
             'status' => $settings['winner'] !== null ? 'finished' : 'playing',
             'ended_at' => $settings['winner'] !== null ? now() : null,
         ]);
@@ -207,7 +226,7 @@ class CubeTacGameController extends Controller
 
         /** @var string $move */
         $move = $request->validated('move');
-        /** @var array<int, string|null> $marks */
+        /** @var array<int, int|null> $marks */
         $marks = $settings['marks'];
 
         $settings['marks'] = RubikCube::apply($move, $marks);
@@ -215,7 +234,7 @@ class CubeTacGameController extends Controller
 
         $action = [
             'type' => 'rotate',
-            'player' => $settings['current_turn'],
+            'player' => (int) $settings['current_turn'],
             'move' => $move,
             'move_id' => $settings['move_count'],
         ];
@@ -226,7 +245,7 @@ class CubeTacGameController extends Controller
 
         $room->update([
             'settings' => $settings,
-            'winner' => $settings['winner'],
+            'winner' => $settings['winner'] !== null ? (string) $settings['winner'] : null,
             'status' => $settings['winner'] !== null ? 'finished' : 'playing',
             'ended_at' => $settings['winner'] !== null ? now() : null,
         ]);
@@ -235,7 +254,10 @@ class CubeTacGameController extends Controller
     }
 
     /**
-     * Reset a finished CubeTac game for a rematch. Host only. Swaps X and O.
+     * Reset a finished CubeTac game for a rematch. Host only. Rotates the
+     * player order by one slot so the previous slot-0 opener moves to the
+     * end and whoever was in slot 1 opens the rematch. For 2-player games
+     * this degenerates to the original "swap X and O" behavior.
      */
     public function reset(Game $game, GameRoom $room): RedirectResponse
     {
@@ -254,15 +276,14 @@ class CubeTacGameController extends Controller
         }
 
         $settings = $room->settings ?? [];
-        $previousX = $settings['x_player_id'] ?? null;
-        $previousO = $settings['o_player_id'] ?? null;
+        /** @var list<int> $previousIds */
+        $previousIds = $settings['player_ids'] ?? [];
 
-        // Swap X and O so the previous O (loser on wins, or either on draw)
-        // goes first in the rematch.
-        $newSettings = $this->freshGameState(
-            $previousO ?? $previousX,
-            $previousX ?? $previousO,
-        );
+        $rotated = count($previousIds) > 1
+            ? array_merge(array_slice($previousIds, 1), [$previousIds[0]])
+            : $previousIds;
+
+        $newSettings = $this->freshGameState($rotated);
 
         $room->update([
             'status' => 'playing',
@@ -277,7 +298,11 @@ class CubeTacGameController extends Controller
 
     /**
      * Build the game state for Inertia props. CubeTac has no hidden
-     * information — both players see everything.
+     * information — every player sees everything.
+     *
+     * The `players` array is indexed by slot (same order as `player_ids`);
+     * a slot whose player disconnected becomes `null`. `my_slot` is the
+     * viewer's slot index, or `null` if the viewer isn't playing.
      *
      * @return array<string, mixed>|null
      */
@@ -288,86 +313,90 @@ class CubeTacGameController extends Controller
         }
 
         $settings = $room->settings ?? [];
-        $players = $room->connectedPlayers()->get();
+        $roomPlayers = $room->players()->get();
 
-        $xPlayerId = $settings['x_player_id'] ?? null;
-        $oPlayerId = $settings['o_player_id'] ?? null;
-        $xPlayer = $players->firstWhere('id', $xPlayerId);
-        $oPlayer = $players->firstWhere('id', $oPlayerId);
+        /** @var list<int> $playerIds */
+        $playerIds = $settings['player_ids'] ?? [];
 
-        $mySymbol = null;
-        if ($currentPlayer) {
-            if ($currentPlayer->id === $xPlayerId) {
-                $mySymbol = 'X';
-            } elseif ($currentPlayer->id === $oPlayerId) {
-                $mySymbol = 'O';
+        $playersBySlot = [];
+        $mySlot = null;
+        foreach ($playerIds as $slot => $playerId) {
+            $player = $roomPlayers->firstWhere('id', $playerId);
+            $playersBySlot[] = $player ? $this->serializePlayer($player) : null;
+            if ($currentPlayer && $currentPlayer->id === $playerId) {
+                $mySlot = $slot;
             }
         }
+
+        $moveLimit = $settings['move_limit']
+            ?? (count($playerIds) > 0 ? self::MOVES_PER_PLAYER * count($playerIds) : self::MOVES_PER_PLAYER * 2);
 
         return [
             'status' => $room->status,
             'marks' => $settings['marks'] ?? RubikCube::initialMarks(),
-            'current_turn' => $settings['current_turn'] ?? 'X',
+            'current_turn' => $settings['current_turn'] ?? 0,
             'move_count' => $settings['move_count'] ?? 0,
-            'move_limit' => $settings['move_limit'] ?? self::MOVE_LIMIT,
+            'move_limit' => $moveLimit,
             'winner' => $settings['winner'] ?? null,
             'winning_lines' => $settings['winning_lines'] ?? [],
             'last_action' => $settings['last_action'] ?? null,
             'move_history' => $settings['move_history'] ?? [],
-            'x_player_id' => $xPlayerId,
-            'o_player_id' => $oPlayerId,
+            'player_ids' => $playerIds,
             'current_player_id' => $currentPlayer?->id,
             'is_my_turn' => $currentPlayer !== null
                 && $this->expectedPlayerId($settings) === $currentPlayer->id
                 && ($settings['winner'] ?? null) === null,
-            'my_symbol' => $mySymbol,
-            'players' => [
-                'x' => $xPlayer ? $this->serializePlayer($xPlayer) : null,
-                'o' => $oPlayer ? $this->serializePlayer($oPlayer) : null,
-            ],
+            'my_slot' => $mySlot,
+            'players' => $playersBySlot,
         ];
     }
 
     /**
+     * @param  list<int>  $playerIds  Ordered slot-0..N-1 player IDs.
      * @return array<string, mixed>
      */
-    private function freshGameState(int $xPlayerId, int $oPlayerId): array
+    private function freshGameState(array $playerIds): array
     {
+        $count = count($playerIds);
+
         return [
             'marks' => RubikCube::initialMarks(),
-            'current_turn' => 'X',
+            'current_turn' => 0,
             'move_count' => 0,
-            'move_limit' => self::MOVE_LIMIT,
+            'move_limit' => self::MOVES_PER_PLAYER * max(1, $count),
             'winner' => null,
             'winning_lines' => [],
             'last_action' => null,
             'move_history' => [],
-            'x_player_id' => $xPlayerId,
-            'o_player_id' => $oPlayerId,
+            'player_ids' => array_values($playerIds),
         ];
     }
 
     /**
-     * After a mark or rotate: check win / draw and swap turns if the game continues.
+     * After a mark or rotate: check win / draw and advance to the next
+     * slot if the game continues. `current_turn` is an int slot index
+     * (0..N-1) that wraps via modular arithmetic.
      *
      * @param  array<string, mixed>  $settings
      * @return array<string, mixed>
      */
     private function finalizeAfterAction(array $settings): array
     {
-        /** @var array<int, string|null> $marks */
+        /** @var array<int, int|null> $marks */
         $marks = $settings['marks'];
         $lines = RubikCube::winningLines($marks);
-        $currentSymbol = $settings['current_turn'];
+        $currentSlot = (int) $settings['current_turn'];
 
         if (count($lines) > 0) {
-            $mine = array_values(array_filter($lines, fn ($l) => $l['player'] === $currentSymbol));
+            $mine = array_values(array_filter($lines, fn ($l) => $l['player'] === $currentSlot));
             if (count($mine) > 0) {
-                $settings['winner'] = $currentSymbol;
+                $settings['winner'] = $currentSlot;
                 $settings['winning_lines'] = $mine;
             } else {
-                // Only opponent has lines — but "player whose turn it was wins."
-                $settings['winner'] = $currentSymbol;
+                // Only another player has a line, but by rule "the player
+                // whose turn it was wins" — this primarily matters for
+                // rotations that complete someone else's line.
+                $settings['winner'] = $currentSlot;
                 $settings['winning_lines'] = $lines;
             }
 
@@ -375,7 +404,8 @@ class CubeTacGameController extends Controller
         }
 
         // Draw on move limit OR full board
-        if (($settings['move_count'] ?? 0) >= ($settings['move_limit'] ?? self::MOVE_LIMIT)
+        $moveLimit = (int) ($settings['move_limit'] ?? self::MOVES_PER_PLAYER * 2);
+        if (($settings['move_count'] ?? 0) >= $moveLimit
             || RubikCube::isComplete($marks)) {
             $settings['winner'] = 'draw';
             $settings['winning_lines'] = [];
@@ -383,8 +413,11 @@ class CubeTacGameController extends Controller
             return $settings;
         }
 
-        // Swap turn
-        $settings['current_turn'] = $currentSymbol === 'X' ? 'O' : 'X';
+        // Advance to the next slot
+        /** @var list<int> $playerIds */
+        $playerIds = $settings['player_ids'] ?? [];
+        $n = max(1, count($playerIds));
+        $settings['current_turn'] = ($currentSlot + 1) % $n;
 
         return $settings;
     }
@@ -412,14 +445,12 @@ class CubeTacGameController extends Controller
     private function expectedPlayerId(array $settings): ?int
     {
         $turn = $settings['current_turn'] ?? null;
-        if ($turn === 'X') {
-            return $settings['x_player_id'] ?? null;
-        }
-        if ($turn === 'O') {
-            return $settings['o_player_id'] ?? null;
+        $playerIds = $settings['player_ids'] ?? [];
+        if (! is_int($turn) || ! is_array($playerIds) || ! array_key_exists($turn, $playerIds)) {
+            return null;
         }
 
-        return null;
+        return $playerIds[$turn] ?? null;
     }
 
     /**
@@ -452,14 +483,21 @@ class CubeTacGameController extends Controller
     private function joinAsPlayer(GameRoom $room, bool $isHost, ?string $nickname = null): GamePlayer
     {
         $user = Auth::user();
-        $colors = ['#ff4d2e', '#3a90ff', '#22d3ee', '#a855f7', '#f59e0b', '#10b981'];
+
+        // Deterministic slot-based color: first joiner gets slot 0, second
+        // gets slot 1, etc. This mirrors the slot assignment that
+        // freshGameState() will use when the host starts the game, so
+        // avatar colors stay in sync with in-game glyph colors.
+        $slot = $room->connectedPlayers()->count();
+        $palette = self::SLOT_COLORS;
+        $color = $palette[$slot] ?? $palette[count($palette) - 1];
 
         return GamePlayer::create([
             'game_room_id' => $room->id,
             'user_id' => $user?->id,
             'session_id' => session()->getId(),
             'nickname' => $nickname ?? $user?->name ?? 'Guest',
-            'avatar_color' => $colors[array_rand($colors)],
+            'avatar_color' => $color,
             'is_host' => $isHost,
             'is_connected' => true,
         ]);
