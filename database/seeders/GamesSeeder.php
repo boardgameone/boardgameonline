@@ -83,10 +83,10 @@ class GamesSeeder extends Seeder
             ['slug' => 'cubetac'],
             [
                 'name' => 'CubeTac',
-                'description' => "Tic-tac-toe played on the surface of a Rubik's cube. Mark a sticker or rotate a face. Get three in a row on any face — and don't let your opponent spin away your win.",
+                'description' => "Tic-tac-toe played on the surface of a Rubik's cube, for 2 to 6 players. Mark a sticker or rotate a face. Get three in a row on any face — and don't let the others spin away your win.",
                 'thumbnail' => null,
                 'min_players' => 2,
-                'max_players' => 2,
+                'max_players' => 6,
                 'estimated_duration_minutes' => 10,
                 'rules' => [
                     'objective' => 'Get three of your symbol in a row on any single face of the cube.',

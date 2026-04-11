@@ -26,26 +26,23 @@ interface CubeTacPlayer {
 interface CubeTacGameState {
     status: 'playing' | 'finished';
     marks: Marks;
-    current_turn: 'X' | 'O';
+    current_turn: number;
     move_count: number;
     move_limit: number;
-    winner: 'X' | 'O' | 'draw' | null;
+    winner: number | 'draw' | null;
     winning_lines: Array<{
         face: number;
         cells: Array<[number, number]>;
-        player: 'X' | 'O';
+        player: number;
     }>;
     last_action: Record<string, unknown> | null;
     move_history: Array<Record<string, unknown>>;
-    x_player_id: number | null;
-    o_player_id: number | null;
+    player_ids: Array<number | null>;
     current_player_id: number | null;
     is_my_turn: boolean;
-    my_symbol: 'X' | 'O' | null;
-    players: {
-        x: CubeTacPlayer | null;
-        o: CubeTacPlayer | null;
-    };
+    my_slot: number | null;
+    /** One entry per slot (0..N-1). `null` means that slot's player disconnected. */
+    players: Array<CubeTacPlayer | null>;
 }
 
 interface Props extends PageProps {
@@ -135,9 +132,8 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
                         currentTurn={gameState.current_turn}
                         moveCount={gameState.move_count}
                         moveLimit={gameState.move_limit}
-                        xPlayer={toPlayerInfo(gameState.players.x)}
-                        oPlayer={toPlayerInfo(gameState.players.o)}
-                        mySymbol={gameState.my_symbol}
+                        players={gameState.players.map(toPlayerInfo)}
+                        mySlot={gameState.my_slot}
                         isMyTurn={gameState.is_my_turn}
                         onMark={handleMark}
                         onRotate={handleRotate}
@@ -148,15 +144,12 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
                         marks={gameState.marks}
                         winner={gameState.winner ?? 'draw'}
                         winningLines={gameState.winning_lines}
-                        xPlayer={{
-                            id: gameState.x_player_id,
-                            nickname: gameState.players.x?.nickname ?? 'X',
-                        }}
-                        oPlayer={{
-                            id: gameState.o_player_id,
-                            nickname: gameState.players.o?.nickname ?? 'O',
-                        }}
-                        mySymbol={gameState.my_symbol}
+                        players={gameState.players.map((p, slot) => ({
+                            id: p?.id ?? null,
+                            nickname: p?.nickname ?? `Player ${slot + 1}`,
+                            avatar_color: p?.avatar_color ?? '#5b9bd5',
+                        }))}
+                        mySlot={gameState.my_slot}
                         canRematch={isHost}
                         onRematch={handleRematch}
                         onLeave={handleLeave}
@@ -220,3 +213,5 @@ function toPlayerInfo(p: CubeTacPlayer | null) {
     if (!p) return { id: null, nickname: 'Waiting…', avatar_color: '#5b9bd5' };
     return { id: p.id, nickname: p.nickname, avatar_color: p.avatar_color };
 }
+
+export type { CubeTacPlayer, CubeTacGameState };

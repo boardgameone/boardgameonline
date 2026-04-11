@@ -10,8 +10,13 @@ use RuntimeException;
  *
  * Sticker indexing
  * ----------------
- * A flat 54-element array `[X|O|null, ...]` indexed by
+ * A flat 54-element array `[int|null, ...]` indexed by
  *   index = face * 9 + row * 3 + col
+ *
+ * Each non-null slot holds the slot-index (0..N-1) of the player who
+ * marked it. The per-face winning-line check compares marks with `===`,
+ * so any scalar type (int or string) works; this service is intentionally
+ * agnostic about player identity encoding.
  *
  * Face order (Singmaster-adjacent):
  *   U=0, D=1, L=2, R=3, F=4, B=5
@@ -61,7 +66,7 @@ final class RubikCube
     /**
      * Return a fresh 54-element mark array (all nulls).
      *
-     * @return list<string|null>
+     * @return list<int|null>
      */
     public static function initialMarks(): array
     {
@@ -89,8 +94,8 @@ final class RubikCube
     /**
      * Apply a quarter-turn to a marks array and return the new array.
      *
-     * @param  list<string|null>  $marks
-     * @return list<string|null>
+     * @param  list<int|null>  $marks
+     * @return list<int|null>
      */
     public static function apply(string $move, array $marks): array
     {
@@ -106,8 +111,8 @@ final class RubikCube
     /**
      * Return all currently-winning lines across all 6 faces (for either player).
      *
-     * @param  list<string|null>  $marks
-     * @return list<array{face:int, cells: list<array{0:int,1:int}>, player:string}>
+     * @param  list<int|null>  $marks
+     * @return list<array{face:int, cells: list<array{0:int,1:int}>, player:int}>
      */
     public static function winningLines(array $marks): array
     {
@@ -131,7 +136,7 @@ final class RubikCube
     /**
      * Whether all 54 stickers are marked.
      *
-     * @param  list<string|null>  $marks
+     * @param  list<int|null>  $marks
      */
     public static function isComplete(array $marks): bool
     {
