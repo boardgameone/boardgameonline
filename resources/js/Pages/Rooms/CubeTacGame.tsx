@@ -9,9 +9,10 @@ import GameLayout from '@/Layouts/GameLayout';
 import WaitingPhase from '@/Pages/Rooms/CubeTac/WaitingPhase';
 import PlayingPhase from '@/Pages/Rooms/CubeTac/PlayingPhase';
 import FinishedPhase from '@/Pages/Rooms/CubeTac/FinishedPhase';
+import type { CubeSceneHandle } from '@/Pages/Rooms/CubeTac/CubeScene';
 import { GamePlayer, GameRoom, PageProps } from '@/types';
 import { Head, router, useForm, usePoll } from '@inertiajs/react';
-import { FormEventHandler } from 'react';
+import { FormEventHandler, useRef } from 'react';
 import { Marks, Move } from '@/lib/rubikCube';
 
 interface CubeTacPlayer {
@@ -57,6 +58,8 @@ interface Props extends PageProps {
 export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gameState }: Props) {
     usePoll(2500, {}, { keepAlive: room.status !== 'finished' });
 
+    const cubeRef = useRef<CubeSceneHandle>(null);
+
     const gameSlug = room.game?.slug || 'cubetac';
     const isGuest = !auth.user;
     const needsToJoin = !currentPlayer && room.status === 'waiting' && !room.is_full;
@@ -79,6 +82,10 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
     };
 
     const handleRotate = (move: Move) => {
+        // Start the visual animation immediately; the server round-trip runs
+        // in parallel. CubeScene holds `displayedMarks` during the animation
+        // so the incoming prop update won't cause a mid-rotation snap.
+        cubeRef.current?.playMove(move);
         router.post(
             route('rooms.cubetac.rotate', [gameSlug, room.room_code]),
             { move },
@@ -123,6 +130,7 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
                     />
                 ) : gameState && room.status === 'playing' ? (
                     <PlayingPhase
+                        cubeRef={cubeRef}
                         marks={gameState.marks}
                         currentTurn={gameState.current_turn}
                         moveCount={gameState.move_count}
