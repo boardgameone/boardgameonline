@@ -64,7 +64,8 @@
       "Bash(npm ci:*)",
       "Bash(rm -f deploy.sh deploy.sh.edited)",
       "Bash(scp boardgam1@198.38.86.14:public_html/deploy.sh /tmp/deploy.sh)",
-      "Bash(scp boardgam1@198.38.86.14:public_html/deploy.sh /tmp/deploy.sh.remote)"
+      "Bash(scp boardgam1@198.38.86.14:public_html/deploy.sh /tmp/deploy.sh.remote)",
+      "Bash(./promote.sh)"
     ]
   },
   "enableAllProjectMcpServers": true,
