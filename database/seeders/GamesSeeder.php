@@ -78,5 +78,26 @@ class GamesSeeder extends Seeder
                 'sort_order' => 3,
             ]
         );
+
+        Game::updateOrCreate(
+            ['slug' => 'cubetac'],
+            [
+                'name' => 'CubeTac',
+                'description' => "Tic-tac-toe played on the surface of a Rubik's cube. Mark a sticker or rotate a face. Get three in a row on any face — and don't let your opponent spin away your win.",
+                'thumbnail' => null,
+                'min_players' => 2,
+                'max_players' => 2,
+                'estimated_duration_minutes' => 10,
+                'rules' => [
+                    'objective' => 'Get three of your symbol in a row on any single face of the cube.',
+                    'turn' => 'On your turn, EITHER mark an empty sticker with your symbol OR rotate one face of the cube by a quarter turn.',
+                    'rotations' => 'Marks travel with stickers when a face is rotated. Use rotations offensively (to complete your line) or defensively (to break your opponent\'s).',
+                    'win' => 'First player to make three-in-a-row on any face wins. Lines are per-face — no wraparound across faces.',
+                    'draw' => 'If all 54 stickers fill with no winner, or 60 moves pass, the game is a draw.',
+                ],
+                'is_active' => true,
+                'sort_order' => 4,
+            ]
+        );
     }
 }

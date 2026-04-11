@@ -37,6 +37,15 @@ class GameController extends Controller
             ->limit(10)
             ->get();
 
+        // CubeTac uses a custom "mode select hub" page instead of the generic
+        // Games/Show layout.
+        if ($game->slug === 'cubetac') {
+            return Inertia::render('Games/CubeTacHub', [
+                'game' => $game,
+                'waitingRooms' => $waitingRooms,
+            ]);
+        }
+
         return Inertia::render('Games/Show', [
             'game' => $game,
             'waitingRooms' => $waitingRooms,
