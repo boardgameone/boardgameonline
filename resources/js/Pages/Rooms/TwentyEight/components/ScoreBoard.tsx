@@ -40,7 +40,7 @@ export default function ScoreBoard({
     }
 
     return (
-        <div className="rounded-xl bg-white border border-gray-200 shadow-sm overflow-hidden dark:bg-gray-800 dark:border-gray-700">
+        <div className="rounded-xl bg-white border border-gray-200 shadow-xs overflow-hidden dark:bg-gray-800 dark:border-gray-700">
             <div className="grid grid-cols-2 divide-x divide-gray-200 dark:divide-gray-700">
                 <TeamScore
                     label="Team A"

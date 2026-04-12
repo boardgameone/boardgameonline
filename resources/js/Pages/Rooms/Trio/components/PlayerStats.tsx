@@ -166,7 +166,7 @@ function PlayerStatsCard({
                     compact ? 'p-2' : 'p-4 rounded-xl'
                 } ${
                     player.is_current_turn
-                        ? 'border-yellow-400 bg-gradient-to-r from-yellow-50 to-yellow-100 shadow-lg dark:border-yellow-600 dark:from-yellow-900/30 dark:to-yellow-800/30'
+                        ? 'border-yellow-400 bg-linear-to-r from-yellow-50 to-yellow-100 shadow-lg dark:border-yellow-600 dark:from-yellow-900/30 dark:to-yellow-800/30'
                         : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800'
                 } ${
                     isSpeaking && canShowVoiceControls ? 'ring-2 ring-green-400' : ''
@@ -177,7 +177,7 @@ function PlayerStatsCard({
                     <div className={`flex items-center ${compact ? 'gap-2' : 'gap-3'}`}>
                         {/* Avatar / Video Area */}
                         <div
-                            className={`relative ${compact ? 'h-8 w-8' : 'h-12 w-12'} flex-shrink-0 ${
+                            className={`relative ${compact ? 'h-8 w-8' : 'h-12 w-12'} shrink-0 ${
                                 hasVideo ? 'cursor-pointer group' : ''
                             }`}
                             onClick={handleVideoClick}
@@ -344,7 +344,7 @@ function PlayerStatsCard({
                             <div className={`flex ${compact ? 'gap-1' : 'gap-2'}`}>
                                 <button
                                     onClick={() => onAskHighest(player.id)}
-                                    className={`rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 font-bold text-white shadow hover:from-blue-600 hover:to-blue-700 transition-all duration-200 hover:scale-105 active:scale-95 ${
+                                    className={`rounded-lg bg-linear-to-r from-blue-500 to-blue-600 font-bold text-white shadow hover:from-blue-600 hover:to-blue-700 transition-all duration-200 hover:scale-105 active:scale-95 ${
                                         compact ? 'px-2 py-1 text-xs' : 'px-4 py-2 text-sm'
                                     }`}
                                 >
@@ -352,7 +352,7 @@ function PlayerStatsCard({
                                 </button>
                                 <button
                                     onClick={() => onAskLowest(player.id)}
-                                    className={`rounded-lg bg-gradient-to-r from-purple-500 to-purple-600 font-bold text-white shadow hover:from-purple-600 hover:to-purple-700 transition-all duration-200 hover:scale-105 active:scale-95 ${
+                                    className={`rounded-lg bg-linear-to-r from-purple-500 to-purple-600 font-bold text-white shadow hover:from-purple-600 hover:to-purple-700 transition-all duration-200 hover:scale-105 active:scale-95 ${
                                         compact ? 'px-2 py-1 text-xs' : 'px-4 py-2 text-sm'
                                     }`}
                                 >

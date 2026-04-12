@@ -47,8 +47,8 @@ export default function ResultsPhase({ gameState, roomCode, gameSlug }: ResultsP
             <div className={`
                 w-full rounded-2xl p-8 text-center
                 ${winner === 'mice'
-                    ? 'bg-gradient-to-br from-blue-100 to-green-100'
-                    : 'bg-gradient-to-br from-red-100 to-orange-100'
+                    ? 'bg-linear-to-br from-blue-100 to-green-100'
+                    : 'bg-linear-to-br from-red-100 to-orange-100'
                 }
             `}>
                 <div className="text-5xl mb-4">
@@ -110,7 +110,7 @@ export default function ResultsPhase({ gameState, roomCode, gameSlug }: ResultsP
             </div>
 
             {/* Vote Results */}
-            <div className="w-full rounded-xl bg-white p-6 shadow dark:bg-gray-800">
+            <div className="w-full rounded-xl bg-white p-6 shadow-sm dark:bg-gray-800">
                 <h3 className="text-lg font-semibold text-gray-700 mb-4 text-center dark:text-gray-300">
                     Vote Results
                 </h3>

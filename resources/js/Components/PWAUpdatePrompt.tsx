@@ -37,14 +37,14 @@ export default function PWAUpdatePrompt() {
             <div className="flex gap-2">
                 {needRefresh && (
                     <button
-                        className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700"
+                        className="rounded-sm bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700"
                         onClick={() => updateServiceWorker(true)}
                     >
                         Reload
                     </button>
                 )}
                 <button
-                    className="rounded bg-slate-600 px-3 py-1 text-sm text-white hover:bg-slate-700"
+                    className="rounded-sm bg-slate-600 px-3 py-1 text-sm text-white hover:bg-slate-700"
                     onClick={close}
                 >
                     Close

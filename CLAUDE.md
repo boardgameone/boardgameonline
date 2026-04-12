@@ -83,7 +83,7 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - phpunit/phpunit (PHPUNIT) - v11
 - @inertiajs/react (INERTIA) - v2
 - react (REACT) - v18
-- tailwindcss (TAILWINDCSS) - v3
+- tailwindcss (TAILWINDCSS) - v4
 
 ## Conventions
 - You must follow all existing code conventions used in this application. When creating or editing a file, check sibling files for the correct structure, approach, and naming.
@@ -382,9 +382,13 @@ export default () => (
 ### Dark Mode
 - If existing pages and components support dark mode, new pages and components must support dark mode in a similar way, typically using `dark:`.
 
-=== tailwindcss/v3 rules ===
+=== tailwindcss/v4 rules ===
 
-## Tailwind CSS 3
+## Tailwind CSS 4
 
-- Always use Tailwind CSS v3; verify you're using only classes supported by this version.
+- Always use Tailwind CSS v4; verify you're using only classes supported by this version.
+- Configuration is CSS-first: all theme customization lives in `resources/css/app.css` via `@theme {}`. There is no `tailwind.config.js`.
+- Tailwind is integrated via `@tailwindcss/postcss` in `postcss.config.js` (not the Vite plugin).
+- Dark mode uses `@custom-variant dark (&:is(.dark *))` — class-based strategy; `.dark` class is toggled on `<html>`.
+- Key v4 class name changes from v3: `rounded` → `rounded-sm`, `shadow-sm` → `shadow-xs`, `blur-sm` → `blur-xs`, `bg-gradient-to-*` → `bg-linear-to-*`, `flex-shrink-0` → `shrink-0`, `focus:outline-none` → `focus:outline-hidden`.
 </laravel-boost-guidelines>

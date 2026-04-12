@@ -10,7 +10,7 @@ export default function Guest({ children }: PropsWithChildren) {
             <nav className="flex items-center justify-between p-4 sm:p-6 shrink-0">
                 <Link href="/" className="group">
                     <div className="relative">
-                        <div className="absolute inset-0 bg-white rounded-2xl blur-sm opacity-50 group-hover:opacity-75 transition" />
+                        <div className="absolute inset-0 bg-white rounded-2xl blur-xs opacity-50 group-hover:opacity-75 transition" />
                         <div className="relative bg-white rounded-2xl p-2 sm:p-2.5 shadow-lg group-hover:scale-105 transition">
                             <img
                                 src="/images/logo.png"

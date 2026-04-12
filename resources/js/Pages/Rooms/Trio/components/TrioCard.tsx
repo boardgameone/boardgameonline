@@ -36,11 +36,11 @@ export default function TrioCard({
     className = '',
 }: TrioCardProps) {
     const sizeClasses = {
-        xs: 'w-[2.75rem] h-[3.75rem] text-sm',
-        sm: 'w-[4.5rem] h-[5.5rem] text-xl',
-        md: 'w-[5.5rem] h-[7.5rem] text-2xl',
-        lg: 'w-[6.5rem] h-[8.5rem] text-3xl',
-        responsive: 'w-[4.5rem] h-[5.5rem] sm:w-[5.5rem] sm:h-[7.5rem] text-xl sm:text-2xl',
+        xs: 'w-11 h-15 text-sm',
+        sm: 'w-18 h-22 text-xl',
+        md: 'w-22 h-30 text-2xl',
+        lg: 'w-26 h-34 text-3xl',
+        responsive: 'w-18 h-22 sm:w-22 sm:h-30 text-xl sm:text-2xl',
     };
 
     const cornerNumberClasses = {
@@ -69,12 +69,12 @@ export default function TrioCard({
             >
                 {/* Front face (face down) */}
                 <div
-                    className={`card-face-front rounded-lg bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 text-white font-bold flex items-center justify-center shadow-xl border-4 border-blue-900 overflow-hidden ${interactiveClasses} ${disabledClasses}`}
+                    className={`card-face-front rounded-lg bg-linear-to-br from-blue-500 via-blue-600 to-blue-700 text-white font-bold flex items-center justify-center shadow-xl border-4 border-blue-900 overflow-hidden ${interactiveClasses} ${disabledClasses}`}
                 >
                     {/* Decorative pattern for card back */}
                     <div className="absolute inset-0 opacity-30">
-                        <div className="absolute inset-2 border-2 border-white/50 rounded" />
-                        <div className="absolute inset-3 border border-white/30 rounded" />
+                        <div className="absolute inset-2 border-2 border-white/50 rounded-sm" />
+                        <div className="absolute inset-3 border border-white/30 rounded-sm" />
                         {/* Diamond pattern */}
                         <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
                             <pattern id="cardBackPattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">

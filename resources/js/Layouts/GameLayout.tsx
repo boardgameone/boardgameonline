@@ -22,13 +22,13 @@ export default function GameLayout({
         useState(false);
 
     return (
-        <div className={`bg-gradient-to-b from-yellow-400 to-yellow-500 dark:from-gray-900 dark:to-gray-950 transition-colors duration-200 ${
+        <div className={`bg-linear-to-b from-yellow-400 to-yellow-500 dark:from-gray-900 dark:to-gray-950 transition-colors duration-200 ${
             fullHeight ? 'h-screen flex flex-col overflow-hidden' : 'min-h-screen'
         }`}>
             {/* Nav */}
             <nav className="relative">
                 {/* Gradient Background */}
-                <div className="absolute inset-0 bg-gradient-to-r from-brand-blue to-brand-teal" />
+                <div className="absolute inset-0 bg-linear-to-r from-brand-blue to-brand-teal" />
 
                 {/* Decorative elements */}
                 <div className="absolute inset-0 overflow-hidden">
@@ -44,7 +44,7 @@ export default function GameLayout({
                             {/* Logo */}
                             <Link href="/" className="flex items-center gap-2 sm:gap-3 group">
                                 <div className="relative">
-                                    <div className="absolute inset-0 bg-yellow-400 rounded-2xl blur-sm opacity-50 group-hover:opacity-75 transition" />
+                                    <div className="absolute inset-0 bg-yellow-400 rounded-2xl blur-xs opacity-50 group-hover:opacity-75 transition" />
                                     <div className="relative bg-white rounded-2xl p-1.5 sm:p-2 shadow-lg group-hover:scale-105 transition">
                                         <img
                                             src="/images/logo.png"
@@ -87,11 +87,11 @@ export default function GameLayout({
                                     <Dropdown.Trigger>
                                         <button
                                             type="button"
-                                            className="flex items-center gap-2 sm:gap-3 bg-white/15 backdrop-blur-sm hover:bg-white/25 rounded-full pl-2 pr-3 sm:pl-3 sm:pr-4 py-1.5 sm:py-2 transition group"
+                                            className="flex items-center gap-2 sm:gap-3 bg-white/15 backdrop-blur-xs hover:bg-white/25 rounded-full pl-2 pr-3 sm:pl-3 sm:pr-4 py-1.5 sm:py-2 transition group"
                                         >
                                             <div className="relative">
-                                                <div className="absolute inset-0 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full blur-sm opacity-75" />
-                                                <span className="relative flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 text-white font-bold text-sm sm:text-base shadow-lg">
+                                                <div className="absolute inset-0 bg-linear-to-br from-yellow-400 to-orange-500 rounded-full blur-xs opacity-75" />
+                                                <span className="relative flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full bg-linear-to-br from-yellow-400 to-orange-500 text-white font-bold text-sm sm:text-base shadow-lg">
                                                     {user.name.charAt(0).toUpperCase()}
                                                 </span>
                                             </div>
@@ -121,7 +121,7 @@ export default function GameLayout({
                                         </div>
                                         <ThemeToggle
                                             showLabel
-                                            className="block w-full px-4 py-2 text-start text-sm leading-5 text-gray-700 transition duration-150 ease-in-out hover:bg-gray-100 focus:bg-gray-100 focus:outline-none dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:bg-gray-700"
+                                            className="block w-full px-4 py-2 text-start text-sm leading-5 text-gray-700 transition duration-150 ease-in-out hover:bg-gray-100 focus:bg-gray-100 focus:outline-hidden dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:bg-gray-700"
                                         />
                                         <div className="border-t border-gray-100 dark:border-gray-700" />
                                         <Dropdown.Link href={route('profile.edit')}>
@@ -148,7 +148,7 @@ export default function GameLayout({
                                 </Dropdown>
                             ) : (
                                 <div className="flex items-center gap-2 sm:gap-3">
-                                    <ThemeToggle className="rounded-full bg-white/15 backdrop-blur-sm hover:bg-white/25 p-2 text-white transition" />
+                                    <ThemeToggle className="rounded-full bg-white/15 backdrop-blur-xs hover:bg-white/25 p-2 text-white transition" />
                                     <Link
                                         href={route('login')}
                                         className="text-white/90 hover:text-white font-bold text-sm px-3 sm:px-4 py-2 rounded-full hover:bg-white/10 transition"
@@ -239,7 +239,7 @@ export default function GameLayout({
                         {user ? (
                             <div className="border-t border-white/20 px-4 py-4">
                                 <div className="flex items-center gap-3 mb-4">
-                                    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 text-white font-bold text-lg shadow-lg">
+                                    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-linear-to-br from-yellow-400 to-orange-500 text-white font-bold text-lg shadow-lg">
                                         {user.name.charAt(0).toUpperCase()}
                                     </span>
                                     <div>
@@ -300,11 +300,11 @@ export default function GameLayout({
                 </div>
 
                 {/* Bottom Gradient Border */}
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-yellow-400 via-brand-teal to-brand-cyan" />
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-linear-to-r from-yellow-400 via-brand-teal to-brand-cyan" />
             </nav>
 
             {header && (
-                <header className="bg-white/80 backdrop-blur-sm shadow-sm dark:bg-gray-800/80">
+                <header className="bg-white/80 backdrop-blur-xs shadow-xs dark:bg-gray-800/80">
                     <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
                         {header}
                     </div>

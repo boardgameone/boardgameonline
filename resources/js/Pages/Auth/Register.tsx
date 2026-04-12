@@ -26,7 +26,7 @@ export default function Register() {
 
             {/* Header */}
             <div className="text-center mb-6">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full mb-4 shadow-lg text-white">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-linear-to-br from-blue-500 to-blue-600 rounded-full mb-4 shadow-lg text-white">
                     <GameIcon name="trophy" size="lg" />
                 </div>
                 <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100">

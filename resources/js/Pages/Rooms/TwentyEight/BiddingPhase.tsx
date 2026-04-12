@@ -26,7 +26,7 @@ export default function BiddingPhase({
             {/* Bidding status banner */}
             <div className={`rounded-xl p-4 border-2 ${
                 isMyTurn
-                    ? 'bg-gradient-to-r from-amber-50 to-yellow-100 border-amber-400 dark:from-amber-900/30 dark:to-yellow-900/30 dark:border-amber-600'
+                    ? 'bg-linear-to-r from-amber-50 to-yellow-100 border-amber-400 dark:from-amber-900/30 dark:to-yellow-900/30 dark:border-amber-600'
                     : 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
             }`}>
                 <div className="text-center">
@@ -55,7 +55,7 @@ export default function BiddingPhase({
                             }`}
                         >
                             <div
-                                className="w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0"
+                                className="w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0"
                                 style={{ backgroundColor: player.avatar_color }}
                             >
                                 {player.nickname.charAt(0).toUpperCase()}
@@ -95,7 +95,7 @@ export default function BiddingPhase({
 
             {/* My cards */}
             {myPlayer?.hand && myPlayer.hand.length > 0 && (
-                <div className="rounded-xl bg-gradient-to-br from-sky-50 to-blue-100 p-4 shadow-md border-2 border-sky-300 dark:from-sky-900/30 dark:to-blue-900/30 dark:border-sky-700">
+                <div className="rounded-xl bg-linear-to-br from-sky-50 to-blue-100 p-4 shadow-md border-2 border-sky-300 dark:from-sky-900/30 dark:to-blue-900/30 dark:border-sky-700">
                     <h3 className="font-bold text-sky-900 mb-3 text-center text-sm dark:text-sky-200">
                         Your Cards
                     </h3>

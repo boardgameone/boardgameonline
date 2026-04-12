@@ -90,7 +90,7 @@ export default function BidControls({
                     <button
                         onClick={handleBid}
                         disabled={processing || bidValue > 28}
-                        className="px-8 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold shadow-lg hover:from-amber-600 hover:to-amber-700 disabled:opacity-50 transition-all hover:scale-105 active:scale-95 border-b-4 border-amber-700"
+                        className="px-8 py-2.5 rounded-xl bg-linear-to-r from-amber-500 to-amber-600 text-white font-bold shadow-lg hover:from-amber-600 hover:to-amber-700 disabled:opacity-50 transition-all hover:scale-105 active:scale-95 border-b-4 border-amber-700"
                     >
                         {processing ? 'Bidding...' : `Bid ${bidValue}`}
                     </button>

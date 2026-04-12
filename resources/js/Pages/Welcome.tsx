@@ -17,7 +17,7 @@ export default function Welcome({ auth, featuredGames }: Props) {
                 <nav className="flex items-center justify-between p-4 sm:p-6 shrink-0">
                     <Link href="/" className="group">
                         <div className="relative">
-                            <div className="absolute inset-0 bg-white rounded-2xl blur-sm opacity-50 group-hover:opacity-75 transition" />
+                            <div className="absolute inset-0 bg-white rounded-2xl blur-xs opacity-50 group-hover:opacity-75 transition" />
                             <div className="relative bg-white rounded-2xl p-2 sm:p-2.5 shadow-lg group-hover:scale-105 transition">
                                 <img
                                     src="/images/logo.png"
@@ -115,7 +115,7 @@ function TrioGameVisualSmall() {
             {/* Three overlapping cards showing a trio */}
             <div className="relative flex items-center justify-center">
                 {/* Card 1 - Left */}
-                <div className="absolute -left-6 sm:-left-8 w-12 sm:w-16 h-16 sm:h-20 bg-white rounded-lg shadow-xl border-2 border-white/80 flex flex-col items-center justify-center transform -rotate-12 group-hover:-rotate-[16deg] transition-transform duration-300">
+                <div className="absolute -left-6 sm:-left-8 w-12 sm:w-16 h-16 sm:h-20 bg-white rounded-lg shadow-xl border-2 border-white/80 flex flex-col items-center justify-center transform -rotate-12 group-hover:-rotate-16 transition-transform duration-300">
                     <div className="text-2xl sm:text-3xl font-black text-purple-600">7</div>
                     <div className="text-purple-400 text-[0.4rem] sm:text-[0.5rem] font-bold">★★★</div>
                 </div>
@@ -127,7 +127,7 @@ function TrioGameVisualSmall() {
                 </div>
 
                 {/* Card 3 - Right */}
-                <div className="absolute -right-6 sm:-right-8 w-12 sm:w-16 h-16 sm:h-20 bg-white rounded-lg shadow-xl border-2 border-white/80 flex flex-col items-center justify-center transform rotate-12 group-hover:rotate-[16deg] transition-transform duration-300">
+                <div className="absolute -right-6 sm:-right-8 w-12 sm:w-16 h-16 sm:h-20 bg-white rounded-lg shadow-xl border-2 border-white/80 flex flex-col items-center justify-center transform rotate-12 group-hover:rotate-16 transition-transform duration-300">
                     <div className="text-2xl sm:text-3xl font-black text-pink-600">7</div>
                     <div className="text-pink-400 text-[0.4rem] sm:text-[0.5rem] font-bold">★★★</div>
                 </div>
@@ -141,7 +141,7 @@ function TwentyEightGameVisualSmall() {
         <div className="relative group-hover:scale-110 transition-transform duration-300">
             <div className="relative flex items-center justify-center">
                 {/* Left card - Jack of Hearts (face up) */}
-                <div className="absolute -left-4 sm:-left-6 w-10 sm:w-14 h-14 sm:h-[4.5rem] bg-white rounded-lg shadow-xl border-2 border-white/80 overflow-hidden transform -rotate-12 group-hover:-rotate-[16deg] transition-transform duration-300">
+                <div className="absolute -left-4 sm:-left-6 w-10 sm:w-14 h-14 sm:h-18 bg-white rounded-lg shadow-xl border-2 border-white/80 overflow-hidden transform -rotate-12 group-hover:-rotate-16 transition-transform duration-300">
                     <div className="absolute top-0.5 left-1 text-center">
                         <div className="text-[0.4rem] sm:text-[0.5rem] font-bold text-red-600 leading-tight">J</div>
                         <div className="text-[0.35rem] sm:text-[0.45rem] text-red-600 -mt-0.5">{'\u2665'}</div>
@@ -152,9 +152,9 @@ function TwentyEightGameVisualSmall() {
                 </div>
 
                 {/* Center card - face down (hidden trump) */}
-                <div className="relative z-10 w-10 sm:w-14 h-14 sm:h-[4.5rem] rounded-lg shadow-xl overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 border border-blue-900 group-hover:scale-110 transition-transform duration-300">
+                <div className="relative z-10 w-10 sm:w-14 h-14 sm:h-18 rounded-lg shadow-xl overflow-hidden bg-linear-to-br from-blue-600 via-blue-700 to-blue-800 border border-blue-900 group-hover:scale-110 transition-transform duration-300">
                     <div className="absolute inset-0 opacity-30">
-                        <div className="absolute inset-1 border border-white/40 rounded" />
+                        <div className="absolute inset-1 border border-white/40 rounded-sm" />
                         <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 140" preserveAspectRatio="none">
                             <pattern id="cardBack28Welcome" x="0" y="0" width="14" height="14" patternUnits="userSpaceOnUse">
                                 <path d="M7 0 L14 7 L7 14 L0 7 Z" fill="white" fillOpacity="0.15" />
@@ -170,7 +170,7 @@ function TwentyEightGameVisualSmall() {
                 </div>
 
                 {/* Right card - 9 of Spades (face up) */}
-                <div className="absolute -right-4 sm:-right-6 w-10 sm:w-14 h-14 sm:h-[4.5rem] bg-white rounded-lg shadow-xl border-2 border-white/80 overflow-hidden transform rotate-12 group-hover:rotate-[16deg] transition-transform duration-300">
+                <div className="absolute -right-4 sm:-right-6 w-10 sm:w-14 h-14 sm:h-18 bg-white rounded-lg shadow-xl border-2 border-white/80 overflow-hidden transform rotate-12 group-hover:rotate-16 transition-transform duration-300">
                     <div className="absolute top-0.5 left-1 text-center">
                         <div className="text-[0.4rem] sm:text-[0.5rem] font-bold text-gray-900 leading-tight">9</div>
                         <div className="text-[0.35rem] sm:text-[0.45rem] text-gray-900 -mt-0.5">{'\u2660'}</div>
@@ -198,11 +198,11 @@ function GameCard({ game }: { game: Game }) {
             href={route('games.show', game.slug)}
             className="bg-white rounded-xl shadow-lg overflow-hidden transition hover:scale-105 hover:shadow-xl group dark:bg-gray-800"
         >
-            <div className={`aspect-square bg-gradient-to-br ${gradient} flex items-center justify-center`}>
+            <div className={`aspect-square bg-linear-to-br ${gradient} flex items-center justify-center`}>
                 {game.slug === 'trio' ? (
                     <TrioGameVisualSmall />
                 ) : game.slug === 'cheese-thief' ? (
-                    <span className="text-4xl sm:text-5xl group-hover:scale-125 transition-transform duration-500 drop-shadow-lg -rotate-[100deg]">{'\u{1F9C0}'}</span>
+                    <span className="text-4xl sm:text-5xl group-hover:scale-125 transition-transform duration-500 drop-shadow-lg -rotate-100">{'\u{1F9C0}'}</span>
                 ) : game.slug === 'cubetac' ? (
                     <div className="group-hover:scale-110 transition-transform duration-300 drop-shadow-lg">
                         <LogoCube px={72} animated={false} />

@@ -200,7 +200,7 @@ function GuestJoinForm({ nickname, onChange, onSubmit, processing, error }: Gues
                 <button
                     type="submit"
                     disabled={processing || nickname.length < 2}
-                    className="w-full rounded-full bg-gradient-to-r from-orange-500 via-red-500 to-pink-600 px-6 py-3 text-lg font-black text-white shadow-lg border-b-4 border-red-700 transition hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100"
+                    className="w-full rounded-full bg-linear-to-r from-orange-500 via-red-500 to-pink-600 px-6 py-3 text-lg font-black text-white shadow-lg border-b-4 border-red-700 transition hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100"
                 >
                     {processing ? 'Joining…' : 'Join'}
                 </button>
