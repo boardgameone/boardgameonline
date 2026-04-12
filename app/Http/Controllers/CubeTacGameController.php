@@ -31,7 +31,7 @@ class CubeTacGameController extends Controller
      *
      * @var list<string>
      */
-    private const SLOT_COLORS = ['#ff4d2e', '#3a90ff', '#22d3ee', '#a855f7', '#f59e0b', '#10b981'];
+    private const SLOT_COLORS = ['#ff4d2e', '#3a90ff', '#16a34a', '#a855f7', '#f59e0b', '#c2813a'];
 
     /**
      * Render the online match room.

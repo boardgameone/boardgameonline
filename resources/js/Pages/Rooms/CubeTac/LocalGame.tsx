@@ -31,7 +31,7 @@ const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 6;
 
 /** Palette mirrors the backend SLOT_COLORS in CubeTacGameController.php. */
-const PALETTE = ['#ff4d2e', '#3a90ff', '#22d3ee', '#a855f7', '#f59e0b', '#10b981'];
+const PALETTE = ['#ff4d2e', '#3a90ff', '#16a34a', '#a855f7', '#f59e0b', '#c2813a'];
 
 interface LocalState {
     marks: Marks;
