@@ -55,13 +55,13 @@ const FACE_DISPLAY_NAMES: Record<Face, string> = {
     5: 'BACK',
 };
 
-const FACE_LABEL_COLORS: Record<Face, { bg: string; text: string; ring: string }> = {
-    0: { bg: 'bg-teal-50', text: 'text-teal-800', ring: 'ring-teal-300' },
-    1: { bg: 'bg-purple-50', text: 'text-purple-800', ring: 'ring-purple-300' },
-    2: { bg: 'bg-emerald-50', text: 'text-emerald-800', ring: 'ring-emerald-300' },
-    3: { bg: 'bg-sky-50', text: 'text-sky-800', ring: 'ring-sky-300' },
-    4: { bg: 'bg-pink-50', text: 'text-pink-800', ring: 'ring-pink-300' },
-    5: { bg: 'bg-amber-50', text: 'text-amber-800', ring: 'ring-amber-300' },
+const FACE_LABEL_COLORS: Record<Face, { accent: string }> = {
+    0: { accent: '#2dd4bf' }, // teal
+    1: { accent: '#a78bfa' }, // violet
+    2: { accent: '#34d399' }, // emerald
+    3: { accent: '#38bdf8' }, // sky
+    4: { accent: '#f472b6' }, // pink
+    5: { accent: '#fbbf24' }, // amber
 };
 
 export type StickerClickHandler = (face: number, row: number, col: number) => void;
@@ -387,10 +387,22 @@ function FaceLabel({ face }: FaceLabelProps) {
             occlude
         >
             <div
-                className={`pointer-events-none rounded-full px-2.5 py-0.5 text-[11px] font-black uppercase tracking-[0.12em] shadow-md ring-2 ring-white ${colors.bg} ${colors.text}`}
+                className="pointer-events-none select-none"
                 style={{
                     transform: 'translate(-50%, -50%)',
                     whiteSpace: 'nowrap',
+                    background: 'rgba(255,255,255,0.88)',
+                    backdropFilter: 'blur(6px)',
+                    WebkitBackdropFilter: 'blur(6px)',
+                    borderLeft: `3px solid ${colors.accent}`,
+                    borderRadius: '4px',
+                    padding: '3px 10px 3px 8px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    color: '#1e293b',
                 }}
             >
                 {label}
