@@ -813,7 +813,7 @@ class GameRoomController extends Controller
         $validated = $request->validate([
             'to_player_id' => ['required', 'integer', 'exists:game_players,id'],
             'type' => ['required', 'string', 'in:offer,answer,ice-candidate'],
-            'payload' => ['required', 'array'],
+            'payload' => ['required', 'array', 'max:50'],
         ]);
 
         // Verify target player is in the same room

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class RevealCardRequest extends FormRequest
@@ -17,14 +18,14 @@ class RevealCardRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         return [
             'reveal_type' => 'required|in:ask_highest,ask_lowest,flip_middle',
             'target_player_id' => 'required_if:reveal_type,ask_highest,ask_lowest|exists:game_players,id',
-            'middle_position' => 'required_if:reveal_type,flip_middle|integer|min:0',
+            'middle_position' => 'required_if:reveal_type,flip_middle|integer|min:0|max:8',
             'card_value' => 'nullable|integer|min:0|max:12',
         ];
     }
