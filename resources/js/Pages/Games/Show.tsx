@@ -55,13 +55,13 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                 </Link>
 
                 {/* Game Hero - compact card */}
-                <div className="rounded-xl bg-gradient-to-br from-blue-50 to-indigo-100 p-3 shadow-lg border border-blue-200 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
+                <div className="rounded-xl bg-linear-to-br from-blue-50 to-indigo-100 p-3 shadow-lg border border-blue-200 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
                     <div className="flex items-center gap-3">
-                        <div className={`w-16 h-16 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center flex-shrink-0`}>
+                        <div className={`w-16 h-16 rounded-xl bg-linear-to-br ${gradient} flex items-center justify-center shrink-0`}>
                             {game.slug === 'trio' ? (
                                 <TrioGameVisualMini />
                             ) : game.slug === 'cheese-thief' ? (
-                                <span className="text-3xl -rotate-[100deg]">{'\u{1F9C0}'}</span>
+                                <span className="text-3xl -rotate-100">{'\u{1F9C0}'}</span>
                             ) : (
                                 <div className="text-white">
                                     <GameIcon name={getGameIcon(game.slug)} className="h-8 w-8" />
@@ -88,7 +88,7 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                 </div>
 
                 {/* Create Room */}
-                <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-teal-100 p-4 shadow-lg border border-teal-200 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
+                <div className="rounded-xl bg-linear-to-br from-emerald-50 to-teal-100 p-4 shadow-lg border border-teal-200 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
                     <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 mb-3 dark:text-gray-100">
                         <GameIcon name="gamepad" size="sm" /> Create a Room
                     </h2>
@@ -137,7 +137,7 @@ export default function Show({ auth, game, waitingRooms }: Props) {
 
                 {/* Open Rooms */}
                 {waitingRooms.length > 0 && (
-                    <div className="rounded-xl bg-gradient-to-br from-green-50 to-emerald-100 p-4 shadow-lg border border-green-200 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
+                    <div className="rounded-xl bg-linear-to-br from-green-50 to-emerald-100 p-4 shadow-lg border border-green-200 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
                         <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 mb-3 dark:text-gray-100">
                             <GameIcon name="circle" size="sm" className="text-green-600 dark:text-green-400" /> Open Rooms
                         </h2>
@@ -172,7 +172,7 @@ export default function Show({ auth, game, waitingRooms }: Props) {
 
                 {/* Rules - scrollable */}
                 {game.rules && (
-                    <div className="rounded-xl bg-gradient-to-br from-amber-50 to-yellow-100 p-4 shadow-lg border border-yellow-200 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
+                    <div className="rounded-xl bg-linear-to-br from-amber-50 to-yellow-100 p-4 shadow-lg border border-yellow-200 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
                         <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 mb-3 dark:text-gray-100">
                             <GameIcon name="book" size="sm" /> How to Play
                         </h2>
@@ -203,7 +203,7 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                 )}
 
                 {/* Join with Code */}
-                <div className="rounded-xl bg-gradient-to-br from-purple-50 to-violet-100 p-4 shadow-lg border border-purple-200 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
+                <div className="rounded-xl bg-linear-to-br from-purple-50 to-violet-100 p-4 shadow-lg border border-purple-200 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
                     <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 dark:text-gray-100">
                         <GameIcon name="link" size="sm" /> Have a Room Code?
                     </h2>
@@ -235,13 +235,13 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                     </Link>
 
                     {/* Game Hero - compact */}
-                    <div className={`rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 shadow-lg border border-blue-200 overflow-hidden dark:from-gray-800 dark:to-gray-800 dark:border-gray-700`}>
+                    <div className={`rounded-2xl bg-linear-to-br from-blue-50 to-indigo-100 shadow-lg border border-blue-200 overflow-hidden dark:from-gray-800 dark:to-gray-800 dark:border-gray-700`}>
                         <div className="flex">
-                            <div className={`w-48 aspect-square bg-gradient-to-br ${gradient} flex items-center justify-center flex-shrink-0 relative`}>
+                            <div className={`w-48 aspect-square bg-linear-to-br ${gradient} flex items-center justify-center shrink-0 relative`}>
                                 {game.slug === 'trio' ? (
                                     <TrioGameVisual />
                                 ) : game.slug === 'cheese-thief' ? (
-                                    <span className="text-7xl -rotate-[100deg]">{'\u{1F9C0}'}</span>
+                                    <span className="text-7xl -rotate-100">{'\u{1F9C0}'}</span>
                                 ) : (
                                     <div className="text-white">
                                         <GameIcon name={getGameIcon(game.slug)} className="h-20 w-20" />
@@ -276,7 +276,7 @@ export default function Show({ auth, game, waitingRooms }: Props) {
 
                     {/* Rules - scrollable within container */}
                     {game.rules && (
-                        <div className="flex-1 rounded-2xl bg-gradient-to-br from-amber-50 to-yellow-100 shadow-lg border border-yellow-200 flex flex-col min-h-0 overflow-hidden dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
+                        <div className="flex-1 rounded-2xl bg-linear-to-br from-amber-50 to-yellow-100 shadow-lg border border-yellow-200 flex flex-col min-h-0 overflow-hidden dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
                             <div className="p-4 border-b border-yellow-200/50 dark:border-gray-700">
                                 <h2 className="text-lg font-black text-gray-900 flex items-center gap-2 dark:text-gray-100">
                                     <GameIcon name="book" /> How to Play
@@ -314,8 +314,8 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                 {/* Right Column - Actions */}
                 <div className="col-span-4 flex flex-col gap-4 min-h-0">
                     {/* Create Room */}
-                    <div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-100 shadow-lg border border-teal-200 overflow-hidden dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
-                        <div className="bg-gradient-to-r from-teal-600 to-teal-700 px-4 py-3">
+                    <div className="rounded-2xl bg-linear-to-br from-emerald-50 to-teal-100 shadow-lg border border-teal-200 overflow-hidden dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
+                        <div className="bg-linear-to-r from-teal-600 to-teal-700 px-4 py-3">
                             <h2 className="text-base font-bold text-white flex items-center gap-2">
                                 <GameIcon name="gamepad" size="sm" /> Create a Room
                             </h2>
@@ -367,8 +367,8 @@ export default function Show({ auth, game, waitingRooms }: Props) {
 
                     {/* Open Rooms */}
                     {waitingRooms.length > 0 && (
-                        <div className="rounded-2xl bg-gradient-to-br from-green-50 to-emerald-100 shadow-lg border border-green-200 overflow-hidden flex-1 min-h-0 flex flex-col dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
-                            <div className="bg-gradient-to-r from-green-500 to-green-600 px-4 py-3">
+                        <div className="rounded-2xl bg-linear-to-br from-green-50 to-emerald-100 shadow-lg border border-green-200 overflow-hidden flex-1 min-h-0 flex flex-col dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
+                            <div className="bg-linear-to-r from-green-500 to-green-600 px-4 py-3">
                                 <h2 className="text-base font-bold text-white flex items-center gap-2">
                                     <GameIcon name="circle" size="sm" className="text-green-300" /> Open Rooms
                                 </h2>
@@ -405,7 +405,7 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                     )}
 
                     {/* Join with Code */}
-                    <div className="rounded-2xl bg-gradient-to-br from-purple-50 to-violet-100 shadow-lg border border-purple-200 p-4 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
+                    <div className="rounded-2xl bg-linear-to-br from-purple-50 to-violet-100 shadow-lg border border-purple-200 p-4 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
                         <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 dark:text-gray-100">
                             <GameIcon name="link" size="sm" /> Have a Room Code?
                         </h2>
@@ -455,13 +455,13 @@ function TrioGameVisual() {
 function TrioGameVisualMini() {
     return (
         <div className="relative flex items-center justify-center scale-50">
-            <div className="absolute -left-4 w-8 h-10 bg-white rounded shadow-lg flex items-center justify-center transform -rotate-12">
+            <div className="absolute -left-4 w-8 h-10 bg-white rounded-sm shadow-lg flex items-center justify-center transform -rotate-12">
                 <span className="text-purple-600 font-black text-sm">7</span>
             </div>
-            <div className="relative w-8 h-10 bg-white rounded shadow-lg flex items-center justify-center z-10">
+            <div className="relative w-8 h-10 bg-white rounded-sm shadow-lg flex items-center justify-center z-10">
                 <span className="text-indigo-600 font-black text-sm">7</span>
             </div>
-            <div className="absolute -right-4 w-8 h-10 bg-white rounded shadow-lg flex items-center justify-center transform rotate-12">
+            <div className="absolute -right-4 w-8 h-10 bg-white rounded-sm shadow-lg flex items-center justify-center transform rotate-12">
                 <span className="text-pink-600 font-black text-sm">7</span>
             </div>
         </div>

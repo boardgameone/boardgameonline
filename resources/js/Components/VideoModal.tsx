@@ -46,7 +46,7 @@ export default function VideoModal({
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs"
             onClick={onClose}
         >
             <div
@@ -75,7 +75,7 @@ export default function VideoModal({
                     />
 
                     {/* Player name overlay */}
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+                    <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/70 to-transparent p-4">
                         <div className="flex items-center justify-between">
                             <p className="text-white font-bold text-lg">
                                 {playerName}
@@ -99,7 +99,7 @@ export default function VideoModal({
 
                     {/* Maximize hint */}
                     <div className="absolute top-4 right-4">
-                        <span className="bg-black/50 text-white/70 text-xs px-2 py-1 rounded">
+                        <span className="bg-black/50 text-white/70 text-xs px-2 py-1 rounded-sm">
                             Click outside or press Esc to close
                         </span>
                     </div>

@@ -98,7 +98,7 @@ export default function FinishedPhase({
                         <div className="text-5xl font-black leading-none sm:text-7xl" style={headlineStyle}>
                             {headline}
                         </div>
-                        <div className="mt-3 rounded-full bg-white/80 px-4 py-1 text-xs font-bold uppercase tracking-[0.3em] text-gray-600 shadow-md backdrop-blur-sm sm:text-sm">
+                        <div className="mt-3 rounded-full bg-white/80 px-4 py-1 text-xs font-bold uppercase tracking-[0.3em] text-gray-600 shadow-md backdrop-blur-xs sm:text-sm">
                             {subHeadline}
                         </div>
                     </div>
@@ -106,13 +106,13 @@ export default function FinishedPhase({
             </div>
 
             {/* Actions */}
-            <div className="flex flex-col items-center gap-3 border-t-2 border-yellow-600/30 bg-white/85 px-4 py-6 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-3 border-t-2 border-yellow-600/30 bg-white/85 px-4 py-6 backdrop-blur-xs">
                 <div className="flex gap-3">
                     {canRematch && onRematch && (
                         <button
                             type="button"
                             onClick={onRematch}
-                            className="rounded-full bg-gradient-to-r from-orange-500 via-red-500 to-pink-600 px-8 py-3 text-lg font-black text-white shadow-xl border-b-4 border-red-700 transition hover:scale-[1.03] hover:shadow-2xl"
+                            className="rounded-full bg-linear-to-r from-orange-500 via-red-500 to-pink-600 px-8 py-3 text-lg font-black text-white shadow-xl border-b-4 border-red-700 transition hover:scale-[1.03] hover:shadow-2xl"
                         >
                             Play Again
                         </button>

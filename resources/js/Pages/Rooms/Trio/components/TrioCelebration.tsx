@@ -35,7 +35,7 @@ export default function TrioCelebration({ show, playerName, trioCards, onClose }
 
     return (
         <Modal show={show} onClose={onClose} maxWidth="md">
-            <div className="relative overflow-hidden bg-gradient-to-br from-green-400 via-green-500 to-green-600 p-8 text-center rounded-lg">
+            <div className="relative overflow-hidden bg-linear-to-br from-green-400 via-green-500 to-green-600 p-8 text-center rounded-lg">
                 {/* Confetti */}
                 {confettiPieces.map((piece) => (
                     <div

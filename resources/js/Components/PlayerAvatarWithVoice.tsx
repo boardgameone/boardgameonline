@@ -108,7 +108,7 @@ export default function PlayerAvatarWithVoice({
             <div className="flex flex-col items-center gap-1">
                 {/* Avatar / Video Area */}
                 <div
-                    className={`relative ${sizes.container} flex-shrink-0 ${
+                    className={`relative ${sizes.container} shrink-0 ${
                         hasVideo ? 'cursor-pointer group' : ''
                     }`}
                     onClick={handleVideoClick}

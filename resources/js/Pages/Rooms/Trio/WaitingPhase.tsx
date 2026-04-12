@@ -63,7 +63,7 @@ export default function WaitingPhase({
             </div>
 
             {/* Game rules summary */}
-            <div className="mb-6 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 p-6 border border-blue-200 dark:from-blue-900/20 dark:to-indigo-900/20 dark:border-blue-800">
+            <div className="mb-6 rounded-lg bg-linear-to-r from-blue-50 to-indigo-50 p-6 border border-blue-200 dark:from-blue-900/20 dark:to-indigo-900/20 dark:border-blue-800">
                 <h4 className="font-bold text-blue-900 mb-3 flex items-center gap-2 dark:text-blue-200">
                     <GameIcon name="card" size="lg" className="text-blue-600 dark:text-blue-300" />
                     Game Rules
@@ -114,7 +114,7 @@ export default function WaitingPhase({
                 <button
                     onClick={handleStart}
                     disabled={!canStart}
-                    className="w-full rounded-xl bg-gradient-to-r from-green-500 to-green-600 px-6 py-4 text-lg font-black text-white shadow-lg hover:from-green-600 hover:to-green-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105 active:scale-95 disabled:hover:scale-100 border-b-4 border-green-700 disabled:border-gray-600"
+                    className="w-full rounded-xl bg-linear-to-r from-green-500 to-green-600 px-6 py-4 text-lg font-black text-white shadow-lg hover:from-green-600 hover:to-green-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105 active:scale-95 disabled:hover:scale-100 border-b-4 border-green-700 disabled:border-gray-600"
                 >
                     {canStart ? <><GameIcon name="gamepad" className="inline-block mr-1" /> Start Game!</> : `Need ${minPlayers} players to start`}
                 </button>

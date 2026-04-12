@@ -16,7 +16,7 @@ export default function Index({ games }: Props) {
             {/* Mobile Layout - vertical stacking with scroll */}
             <div className="h-full flex flex-col gap-4 p-3 lg:hidden overflow-auto">
                 {/* Compact Hero Header */}
-                <div className="rounded-2xl bg-gradient-to-r from-brand-blue to-brand-teal p-4 shadow-lg relative overflow-hidden">
+                <div className="rounded-2xl bg-linear-to-r from-brand-blue to-brand-teal p-4 shadow-lg relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
                     <div className="relative z-10">
                         <div className="flex items-center gap-2">
@@ -53,7 +53,7 @@ export default function Index({ games }: Props) {
             {/* Desktop Layout - full viewport */}
             <div className="hidden lg:flex lg:flex-col h-full p-4 gap-4">
                 {/* Compact Hero Header */}
-                <div className="rounded-2xl bg-gradient-to-r from-brand-blue to-brand-teal p-5 shadow-lg relative overflow-hidden flex-shrink-0">
+                <div className="rounded-2xl bg-linear-to-r from-brand-blue to-brand-teal p-5 shadow-lg relative overflow-hidden shrink-0">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
                     <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2" />
 
@@ -97,7 +97,7 @@ export default function Index({ games }: Props) {
 function EmptyState() {
     return (
         <div className="text-center py-12">
-            <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full mb-4 shadow-inner dark:from-gray-800 dark:to-gray-900">
+            <div className="inline-flex items-center justify-center w-24 h-24 bg-linear-to-br from-gray-100 to-gray-200 rounded-full mb-4 shadow-inner dark:from-gray-800 dark:to-gray-900">
                 <GameIcon name="dice" size="xl" className="opacity-40 text-gray-500 dark:text-gray-500" />
             </div>
             <p className="text-gray-600 font-bold text-lg dark:text-gray-300">No games available yet</p>
@@ -110,7 +110,7 @@ function TrioGameVisual() {
     return (
         <div className="relative z-10 group-hover:scale-110 transition-transform duration-500">
             <div className="relative flex items-center justify-center">
-                <div className="absolute -left-10 w-20 h-28 bg-white rounded-xl shadow-xl border-2 border-white/80 flex flex-col items-center justify-center transform -rotate-12 group-hover:-rotate-[16deg] transition-transform duration-300">
+                <div className="absolute -left-10 w-20 h-28 bg-white rounded-xl shadow-xl border-2 border-white/80 flex flex-col items-center justify-center transform -rotate-12 group-hover:-rotate-16 transition-transform duration-300">
                     <div className="text-4xl font-black text-brand-teal">7</div>
                     <div className="text-teal-400 text-xs font-bold">★★★</div>
                 </div>
@@ -118,7 +118,7 @@ function TrioGameVisual() {
                     <div className="text-4xl font-black text-brand-blue">7</div>
                     <div className="text-blue-400 text-xs font-bold">★★★</div>
                 </div>
-                <div className="absolute -right-10 w-20 h-28 bg-white rounded-xl shadow-xl border-2 border-white/80 flex flex-col items-center justify-center transform rotate-12 group-hover:rotate-[16deg] transition-transform duration-300">
+                <div className="absolute -right-10 w-20 h-28 bg-white rounded-xl shadow-xl border-2 border-white/80 flex flex-col items-center justify-center transform rotate-12 group-hover:rotate-16 transition-transform duration-300">
                     <div className="text-4xl font-black text-brand-cyan">7</div>
                     <div className="text-cyan-400 text-xs font-bold">★★★</div>
                 </div>
@@ -158,11 +158,11 @@ function GameCardCompact({ game }: Readonly<{ game: Game }>) {
         >
             <div className="flex">
                 {/* Game Visual - Left */}
-                <div className={`w-24 aspect-square bg-gradient-to-br ${gradient} flex items-center justify-center flex-shrink-0 relative`}>
+                <div className={`w-24 aspect-square bg-linear-to-br ${gradient} flex items-center justify-center shrink-0 relative`}>
                     {game.slug === 'trio' ? (
                         <TrioGameVisualMini />
                     ) : game.slug === 'cheese-thief' ? (
-                        <span className="text-4xl -rotate-[100deg]">{'\u{1F9C0}'}</span>
+                        <span className="text-4xl -rotate-100">{'\u{1F9C0}'}</span>
                     ) : game.slug === 'cubetac' ? (
                         <LogoCube px={64} animated={false} />
                     ) : (
@@ -220,7 +220,7 @@ function GameCard({ game }: Readonly<{ game: Game }>) {
             className="group relative bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-xl dark:bg-gray-800"
         >
             {/* Game Image Area */}
-            <div className={`aspect-[4/3] bg-gradient-to-br ${gradient} flex items-center justify-center relative overflow-hidden`}>
+            <div className={`aspect-4/3 bg-linear-to-br ${gradient} flex items-center justify-center relative overflow-hidden`}>
                 {/* Animated background shapes */}
                 <div className="absolute inset-0 opacity-30">
                     <div className="absolute top-3 left-3 w-12 h-12 bg-white/30 rounded-full animate-pulse" />
@@ -231,7 +231,7 @@ function GameCard({ game }: Readonly<{ game: Game }>) {
                 {game.slug === 'trio' ? (
                     <TrioGameVisual />
                 ) : game.slug === 'cheese-thief' ? (
-                    <span className="text-6xl group-hover:scale-125 transition-transform duration-500 drop-shadow-lg relative z-10 -rotate-[100deg]">{'\u{1F9C0}'}</span>
+                    <span className="text-6xl group-hover:scale-125 transition-transform duration-500 drop-shadow-lg relative z-10 -rotate-100">{'\u{1F9C0}'}</span>
                 ) : game.slug === 'cubetac' ? (
                     <div className="group-hover:scale-110 transition-transform duration-500 drop-shadow-lg relative z-10">
                         <LogoCube px={112} animated={false} />
@@ -287,7 +287,7 @@ function GameCard({ game }: Readonly<{ game: Game }>) {
 
                 {/* Play Button */}
                 <div className="mt-4">
-                    <div className="w-full rounded-full bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2 font-bold text-white text-center text-sm shadow-md group-hover:shadow-lg transition-all group-hover:from-blue-700 group-hover:to-purple-700 flex items-center justify-center gap-2">
+                    <div className="w-full rounded-full bg-linear-to-r from-blue-600 to-purple-600 px-4 py-2 font-bold text-white text-center text-sm shadow-md group-hover:shadow-lg transition-all group-hover:from-blue-700 group-hover:to-purple-700 flex items-center justify-center gap-2">
                         Play Now <GameIcon name="rocket" size="sm" />
                     </div>
                 </div>

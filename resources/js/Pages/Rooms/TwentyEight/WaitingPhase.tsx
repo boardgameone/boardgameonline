@@ -47,7 +47,7 @@ export default function WaitingPhase({
             </div>
 
             {/* Game rules summary */}
-            <div className="mb-6 rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 p-6 border border-amber-200 dark:from-amber-900/20 dark:to-orange-900/20 dark:border-amber-800">
+            <div className="mb-6 rounded-lg bg-linear-to-r from-amber-50 to-orange-50 p-6 border border-amber-200 dark:from-amber-900/20 dark:to-orange-900/20 dark:border-amber-800">
                 <h4 className="font-bold text-amber-900 mb-3 flex items-center gap-2 dark:text-amber-200">
                     <GameIcon name="card" size="lg" className="text-amber-600 dark:text-amber-300" />
                     Twenty-Eight
@@ -121,7 +121,7 @@ export default function WaitingPhase({
                 <button
                     onClick={handleStart}
                     disabled={!canStart}
-                    className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-6 py-4 text-lg font-black text-white shadow-lg hover:from-amber-600 hover:to-amber-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105 active:scale-95 disabled:hover:scale-100 border-b-4 border-amber-700 disabled:border-gray-600"
+                    className="w-full rounded-xl bg-linear-to-r from-amber-500 to-amber-600 px-6 py-4 text-lg font-black text-white shadow-lg hover:from-amber-600 hover:to-amber-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105 active:scale-95 disabled:hover:scale-100 border-b-4 border-amber-700 disabled:border-gray-600"
                 >
                     {canStart ? <><GameIcon name="gamepad" className="inline-block mr-1" /> Start Game!</> : 'Need 4 players to start'}
                 </button>

@@ -107,7 +107,7 @@ export default function PlayerCard({
             >
                 {/* Avatar / Video Area */}
                 <div
-                    className={`relative ${compact ? 'h-10 w-10' : 'h-12 w-12'} flex-shrink-0 ${
+                    className={`relative ${compact ? 'h-10 w-10' : 'h-12 w-12'} shrink-0 ${
                         hasVideo ? 'cursor-pointer group' : ''
                     }`}
                     onClick={handleVideoClick}

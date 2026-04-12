@@ -385,7 +385,7 @@ const icons: Record<IconName, React.JSX.Element> = {
 export default function GameIcon({ name, size = 'md', className = '' }: GameIconProps) {
     return (
         <svg
-            className={`${sizeClasses[size]} ${className} flex-shrink-0`}
+            className={`${sizeClasses[size]} ${className} shrink-0`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

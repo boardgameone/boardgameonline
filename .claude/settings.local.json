@@ -70,7 +70,9 @@
       "Bash(ls:*)",
       "Bash(git config:*)",
       "Bash(git rev-list:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npx:*)",
+      "Bash(npm list:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

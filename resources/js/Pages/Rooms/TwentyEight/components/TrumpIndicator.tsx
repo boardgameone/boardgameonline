@@ -41,8 +41,8 @@ export default function TrumpIndicator({ revealed, suit, compact = false }: Trum
     return (
         <div className={`rounded-xl p-3 text-center ${
             revealed
-                ? 'bg-gradient-to-br from-amber-50 to-yellow-100 border-2 border-amber-300'
-                : 'bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-300'
+                ? 'bg-linear-to-br from-amber-50 to-yellow-100 border-2 border-amber-300'
+                : 'bg-linear-to-br from-gray-50 to-gray-100 border-2 border-gray-300'
         }`}>
             <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
                 Trump
@@ -53,7 +53,7 @@ export default function TrumpIndicator({ revealed, suit, compact = false }: Trum
                 </div>
             ) : (
                 <div className="flex justify-center">
-                    <div className="w-10 h-14 rounded-md bg-gradient-to-br from-blue-600 to-blue-800 border border-blue-900 flex items-center justify-center">
+                    <div className="w-10 h-14 rounded-md bg-linear-to-br from-blue-600 to-blue-800 border border-blue-900 flex items-center justify-center">
                         <span className="text-white/60 text-lg">?</span>
                     </div>
                 </div>

@@ -83,7 +83,7 @@ export default function PlayingPhase({
                     <button
                         type="button"
                         onClick={onLeave}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1.5 text-sm font-bold text-yellow-900 shadow-md backdrop-blur-sm transition hover:bg-white hover:text-yellow-700"
+                        className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1.5 text-sm font-bold text-yellow-900 shadow-md backdrop-blur-xs transition hover:bg-white hover:text-yellow-700"
                         aria-label="Leave game"
                     >
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -95,7 +95,7 @@ export default function PlayingPhase({
                     <span className="h-9 w-9" />
                 )}
 
-                <div className="rounded-full bg-white/80 px-3 py-1 text-xs font-bold uppercase tracking-widest text-gray-700 shadow-md backdrop-blur-sm">
+                <div className="rounded-full bg-white/80 px-3 py-1 text-xs font-bold uppercase tracking-widest text-gray-700 shadow-md backdrop-blur-xs">
                     Move {moveCount} / {moveLimit}
                 </div>
 
@@ -105,7 +105,7 @@ export default function PlayingPhase({
             {/* Turn banner */}
             <div className="mt-3 flex flex-col items-center">
                 <div
-                    className="text-3xl font-black leading-none sm:text-4xl drop-shadow-sm"
+                    className="text-3xl font-black leading-none sm:text-4xl drop-shadow-xs"
                     style={{ color: currentColor }}
                 >
                     {turnLabel}
@@ -137,7 +137,7 @@ export default function PlayingPhase({
 
                 {!isMyTurn && !turnLabelOverride && (
                     <div className="pointer-events-none absolute inset-x-0 top-4 flex justify-center">
-                        <div className="rounded-full bg-white/80 px-4 py-1 text-[10px] font-bold uppercase tracking-[0.3em] text-gray-600 shadow-md backdrop-blur-sm">
+                        <div className="rounded-full bg-white/80 px-4 py-1 text-[10px] font-bold uppercase tracking-[0.3em] text-gray-600 shadow-md backdrop-blur-xs">
                             waiting for opponent
                         </div>
                     </div>
@@ -145,7 +145,7 @@ export default function PlayingPhase({
             </div>
 
             {/* Player HUD + rotate controls */}
-            <div className="flex flex-col gap-3 border-t-2 border-yellow-600/30 bg-white/80 px-4 py-4 backdrop-blur-sm sm:px-6">
+            <div className="flex flex-col gap-3 border-t-2 border-yellow-600/30 bg-white/80 px-4 py-4 backdrop-blur-xs sm:px-6">
                 <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
                     {players.map((p, slot) => (
                         <PlayerBadge
@@ -188,7 +188,7 @@ function PlayerBadge({ player, slot, isActive, markCount }: PlayerBadgeProps) {
 
     return (
         <div
-            className="flex items-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-2.5 py-1.5 shadow-sm transition"
+            className="flex items-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-2.5 py-1.5 shadow-xs transition"
             style={activeStyle}
         >
             <div
