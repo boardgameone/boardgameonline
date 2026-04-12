@@ -416,9 +416,9 @@ function Cubie({ position }: CubieProps) {
         <mesh position={position} castShadow receiveShadow>
             <boxGeometry args={[CUBIE_SIZE, CUBIE_SIZE, CUBIE_SIZE]} />
             <meshStandardMaterial
-                color="#1e2a44"
-                metalness={0.15}
-                roughness={0.35}
+                color="#1a3a8a"
+                metalness={0.0}
+                roughness={0.85}
             />
             {/* Edge outline */}
             <lineSegments>
@@ -476,7 +476,7 @@ function Sticker({ face, row, col, mark, glyphColor, isWinning, onClick }: Stick
     // with more contrast. On a winning sticker we glow the owner's color
     // via the emissive channel so the winning line pops on any of the
     // six palettes without having to pre-compute tinted backdrops.
-    const stickerColor = mark === null ? '#16233f' : '#1f2e4d';
+    const stickerColor = mark === null ? '#0f2a7a' : '#1a3585';
     const emissive = isWinning && glyphColor ? glyphColor : '#000000';
     const emissiveIntensity = isWinning ? 0.9 : 0;
 
@@ -488,8 +488,8 @@ function Sticker({ face, row, col, mark, glyphColor, isWinning, onClick }: Stick
                     color={stickerColor}
                     emissive={emissive}
                     emissiveIntensity={emissiveIntensity}
-                    metalness={0.25}
-                    roughness={0.35}
+                    metalness={0.0}
+                    roughness={0.85}
                 />
             </mesh>
 
@@ -568,23 +568,58 @@ function OGlyph({ color }: { color: string }) {
 }
 
 function TriangleGlyph({ color }: { color: string }) {
-    // Cylinder with 3 radial segments = flat triangular prism. We tilt it
-    // onto its face so the triangle reads head-on to the viewer and shift
-    // it down slightly so the visual weight looks centered on the sticker.
+    const shape = useMemo(() => {
+        const outerR = 0.36;
+        const innerR = 0.20;
+        const s = new THREE.Shape();
+        for (let i = 0; i < 3; i++) {
+            const a = Math.PI / 2 + (i * 2 * Math.PI) / 3;
+            const x = outerR * Math.cos(a);
+            const y = outerR * Math.sin(a);
+            if (i === 0) { s.moveTo(x, y); } else { s.lineTo(x, y); }
+        }
+        s.closePath();
+        const hole = new THREE.Path();
+        for (let i = 2; i >= 0; i--) {
+            const a = Math.PI / 2 + (i * 2 * Math.PI) / 3;
+            const x = innerR * Math.cos(a);
+            const y = innerR * Math.sin(a);
+            if (i === 2) { hole.moveTo(x, y); } else { hole.lineTo(x, y); }
+        }
+        hole.closePath();
+        s.holes.push(hole);
+        return s;
+    }, []);
     return (
-        <mesh position={[0, -0.02, GLYPH_OFFSET]} rotation={[-Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.38, 0.38, 0.1, 3]} />
+        <mesh position={[0, -0.02, GLYPH_OFFSET - 0.05]}>
+            <extrudeGeometry args={[shape, { depth: 0.1, bevelEnabled: false }]} />
             {glyphMaterial(color)}
         </mesh>
     );
 }
 
 function SquareGlyph({ color }: { color: string }) {
-    // Thin flat box, a few mm smaller than the sticker so the frame still
-    // reads. Rotated 0° (not a diamond — that's too close to the plus).
+    const shape = useMemo(() => {
+        const outer = 0.28;
+        const inner = 0.18;
+        const s = new THREE.Shape();
+        s.moveTo(-outer, -outer);
+        s.lineTo( outer, -outer);
+        s.lineTo( outer,  outer);
+        s.lineTo(-outer,  outer);
+        s.closePath();
+        const hole = new THREE.Path();
+        hole.moveTo(-inner, -inner);
+        hole.lineTo(-inner,  inner);
+        hole.lineTo( inner,  inner);
+        hole.lineTo( inner, -inner);
+        hole.closePath();
+        s.holes.push(hole);
+        return s;
+    }, []);
     return (
-        <mesh position={[0, 0, GLYPH_OFFSET]}>
-            <boxGeometry args={[0.58, 0.58, 0.1]} />
+        <mesh position={[0, 0, GLYPH_OFFSET - 0.05]}>
+            <extrudeGeometry args={[shape, { depth: 0.1, bevelEnabled: false }]} />
             {glyphMaterial(color)}
         </mesh>
     );
@@ -608,11 +643,31 @@ function PlusGlyph({ color }: { color: string }) {
 }
 
 function HexagonGlyph({ color }: { color: string }) {
-    // Cylinder with 6 radial segments = flat hexagonal prism, same
-    // orientation trick as the triangle so it faces the viewer.
+    const shape = useMemo(() => {
+        const outerR = 0.34;
+        const innerR = 0.22;
+        const s = new THREE.Shape();
+        for (let i = 0; i < 6; i++) {
+            const a = (i * Math.PI) / 3;
+            const x = outerR * Math.cos(a);
+            const y = outerR * Math.sin(a);
+            if (i === 0) { s.moveTo(x, y); } else { s.lineTo(x, y); }
+        }
+        s.closePath();
+        const hole = new THREE.Path();
+        for (let i = 5; i >= 0; i--) {
+            const a = (i * Math.PI) / 3;
+            const x = innerR * Math.cos(a);
+            const y = innerR * Math.sin(a);
+            if (i === 5) { hole.moveTo(x, y); } else { hole.lineTo(x, y); }
+        }
+        hole.closePath();
+        s.holes.push(hole);
+        return s;
+    }, []);
     return (
-        <mesh position={[0, 0, GLYPH_OFFSET]} rotation={[-Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.36, 0.36, 0.1, 6]} />
+        <mesh position={[0, 0, GLYPH_OFFSET - 0.05]}>
+            <extrudeGeometry args={[shape, { depth: 0.1, bevelEnabled: false }]} />
             {glyphMaterial(color)}
         </mesh>
     );
