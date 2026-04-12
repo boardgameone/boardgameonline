@@ -47,8 +47,8 @@ export default function Join({ auth }: PageProps) {
             <div className="max-w-md mx-auto">
                 <div className="bg-white rounded-3xl shadow-xl overflow-hidden border-b-8 border-blue-500 dark:bg-gray-800 dark:border-blue-700">
                     {/* Header */}
-                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-8 text-center">
-                        <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full mb-4 text-white">
+                    <div className="bg-linear-to-r from-blue-600 to-blue-700 px-6 py-8 text-center">
+                        <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 backdrop-blur-xs rounded-full mb-4 text-white">
                             <GameIcon name="link" size="xl" />
                         </div>
                         <h1 className="text-2xl font-black text-white">
@@ -171,7 +171,7 @@ export default function Join({ auth }: PageProps) {
                 </div>
 
                 {/* Tips */}
-                <div className="mt-6 bg-white/60 backdrop-blur-sm rounded-2xl p-5 dark:bg-gray-800/60">
+                <div className="mt-6 bg-white/60 backdrop-blur-xs rounded-2xl p-5 dark:bg-gray-800/60">
                     <h3 className="font-bold text-yellow-900 flex items-center gap-2 dark:text-yellow-300">
                         <GameIcon name="lightbulb" size="sm" /> Tips
                     </h3>

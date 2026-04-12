@@ -37,8 +37,8 @@ export default function GameOverPhase({
             {/* Winner banner */}
             <div className={`rounded-2xl p-8 text-center shadow-xl ${
                 didWin
-                    ? 'bg-gradient-to-br from-amber-100 via-yellow-100 to-amber-200 border-2 border-amber-400 dark:from-amber-900/30 dark:via-yellow-900/30 dark:to-amber-800/30 dark:border-amber-600'
-                    : 'bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-gray-300 dark:from-gray-800 dark:to-gray-900 dark:border-gray-700'
+                    ? 'bg-linear-to-br from-amber-100 via-yellow-100 to-amber-200 border-2 border-amber-400 dark:from-amber-900/30 dark:via-yellow-900/30 dark:to-amber-800/30 dark:border-amber-600'
+                    : 'bg-linear-to-br from-gray-100 to-gray-200 border-2 border-gray-300 dark:from-gray-800 dark:to-gray-900 dark:border-gray-700'
             }`}>
                 <div className="text-5xl mb-3">
                     {didWin ? '\uD83C\uDFC6' : '\uD83D\uDC4F'}
@@ -55,7 +55,7 @@ export default function GameOverPhase({
             </div>
 
             {/* Winning team */}
-            <div className="rounded-xl bg-gradient-to-br from-amber-50 to-yellow-50 shadow-md border border-amber-200 p-5 dark:from-amber-900/20 dark:to-yellow-900/20 dark:border-amber-800">
+            <div className="rounded-xl bg-linear-to-br from-amber-50 to-yellow-50 shadow-md border border-amber-200 p-5 dark:from-amber-900/20 dark:to-yellow-900/20 dark:border-amber-800">
                 <h4 className="text-sm font-bold text-amber-700 mb-3 text-center dark:text-amber-300">Winners</h4>
                 <div className="flex justify-center gap-4">
                     {winningPlayers.map(player => (
@@ -97,7 +97,7 @@ export default function GameOverPhase({
             {isHost && (
                 <button
                     onClick={handlePlayAgain}
-                    className="w-full py-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-black text-lg shadow-lg hover:from-amber-600 hover:to-amber-700 transition-all hover:scale-105 active:scale-95 border-b-4 border-amber-700"
+                    className="w-full py-4 rounded-xl bg-linear-to-r from-amber-500 to-amber-600 text-white font-black text-lg shadow-lg hover:from-amber-600 hover:to-amber-700 transition-all hover:scale-105 active:scale-95 border-b-4 border-amber-700"
                 >
                     <GameIcon name="gamepad" className="inline-block mr-1" /> Play Again
                 </button>

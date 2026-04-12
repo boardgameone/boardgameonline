@@ -123,7 +123,7 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                     <div>
                         <div className="bg-white rounded-2xl shadow-xl overflow-hidden dark:bg-gray-800">
                             {/* Room Header */}
-                            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5">
+                            <div className="bg-linear-to-r from-blue-600 to-blue-700 px-6 py-5">
                                 <div className="flex items-center gap-4">
                                     <div className="text-white">
                                         {room.game?.slug === 'cheese-thief' ? (
@@ -147,7 +147,7 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                                 {/* Show join form for guests who need to enter nickname */}
                                 {needsToJoin && isGuest && (
                                     <div className="text-center py-8">
-                                        <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-400 to-green-500 rounded-full mb-4 shadow-lg text-white">
+                                        <div className="inline-flex items-center justify-center w-20 h-20 bg-linear-to-br from-green-400 to-green-500 rounded-full mb-4 shadow-lg text-white">
                                             <GameIcon name="wave" size="xl" />
                                         </div>
                                         <h3 className="text-xl font-black text-gray-900 mb-2 dark:text-gray-100">
@@ -224,7 +224,7 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                     <div className="space-y-6">
                         {/* Room Code & Link */}
                         <div className="bg-white rounded-2xl shadow-lg overflow-hidden dark:bg-gray-800">
-                            <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 px-6 py-4">
+                            <div className="bg-linear-to-r from-yellow-400 to-yellow-500 px-6 py-4">
                                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
                                     <GameIcon name="key" className="inline-block mr-1" /> Invite Friends
                                 </h3>
@@ -340,9 +340,9 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
 
                         {/* Game Info */}
                         {room.game && (
-                            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 dark:bg-gray-800/80">
+                            <div className="bg-white/80 backdrop-blur-xs rounded-2xl shadow-lg p-6 dark:bg-gray-800/80">
                                 <div className="flex items-center gap-4">
-                                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 shadow-md text-white">
+                                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-linear-to-br from-yellow-400 to-yellow-500 shadow-md text-white">
                                         {room.game.slug === 'cheese-thief' ? (
                                             <span className="text-3xl">{'\u{1F9C0}'}</span>
                                         ) : (

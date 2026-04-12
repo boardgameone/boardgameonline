@@ -36,7 +36,7 @@ export default function RollingPhase({ gameState, roomCode, gameSlug }: RollingP
             </div>
 
             {/* Your Die */}
-            <div className="flex flex-col items-center gap-4 rounded-2xl bg-gradient-to-br from-teal-50 to-cyan-50 p-8 shadow-lg">
+            <div className="flex flex-col items-center gap-4 rounded-2xl bg-linear-to-br from-teal-50 to-cyan-50 p-8 shadow-lg">
                 <DieDisplay value={currentPlayer?.die_value ?? null} size="lg" />
                 <p className="text-lg font-medium text-gray-700">
                     You wake up at{' '}

@@ -118,7 +118,7 @@ export default function TutorialModal({ show, onClose }: TutorialModalProps) {
                             type="checkbox"
                             checked={dontShowAgain}
                             onChange={(e) => setDontShowAgain(e.target.checked)}
-                            className="rounded border-gray-300 text-blue-500 focus:ring-blue-500"
+                            className="rounded-sm border-gray-300 text-blue-500 focus:ring-blue-500"
                         />
                         <span>Don't show this again</span>
                     </label>

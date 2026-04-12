@@ -169,7 +169,7 @@ function PlayerCountPicker({ onPick, onLeave }: PlayerCountPickerProps) {
             </div>
 
             <div className="mt-8 flex flex-1 flex-col items-center justify-center gap-6">
-                <h2 className="text-3xl font-black text-yellow-900 drop-shadow-sm sm:text-4xl">
+                <h2 className="text-3xl font-black text-yellow-900 drop-shadow-xs sm:text-4xl">
                     How many players?
                 </h2>
                 <p className="text-center text-xs font-bold uppercase tracking-[0.3em] text-yellow-900/60">
@@ -265,7 +265,7 @@ function LocalGameBoard({ playerCount, onLeave, onChangeCount }: LocalGameBoardP
                         <button
                             type="button"
                             onClick={onChangeCount}
-                            className="absolute right-4 top-16 rounded-full bg-white/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-yellow-900 shadow-md backdrop-blur-sm transition hover:bg-white"
+                            className="absolute right-4 top-16 rounded-full bg-white/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-yellow-900 shadow-md backdrop-blur-xs transition hover:bg-white"
                             style={changeCountStyle}
                         >
                             {playerCount} players — change

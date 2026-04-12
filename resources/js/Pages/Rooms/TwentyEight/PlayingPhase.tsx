@@ -65,7 +65,7 @@ export default function PlayingPhase({
     return (
         <div className="h-full flex flex-col gap-2">
             {/* Top status bar */}
-            <div className="flex items-center justify-between rounded-lg bg-white/90 backdrop-blur px-3 py-2 shadow-sm border border-gray-200 flex-shrink-0 dark:bg-gray-800/90 dark:border-gray-700">
+            <div className="flex items-center justify-between rounded-lg bg-white/90 backdrop-blur-sm px-3 py-2 shadow-xs border border-gray-200 shrink-0 dark:bg-gray-800/90 dark:border-gray-700">
                 <div className="flex items-center gap-3">
                     <span className={`text-sm font-bold ${
                         currentTurnPlayer?.id === currentPlayerId ? 'text-amber-700 dark:text-amber-300' : 'text-gray-700 dark:text-gray-300'
@@ -101,7 +101,7 @@ export default function PlayingPhase({
                 {/* Game table */}
                 <div className="flex-1 flex flex-col items-center justify-center min-h-0">
                     {/* Top player (partner) */}
-                    <div className="flex-shrink-0 mb-2">
+                    <div className="shrink-0 mb-2">
                         {topPlayer && (
                             <PlayerSeat
                                 player={topPlayer}
@@ -115,7 +115,7 @@ export default function PlayingPhase({
 
                     {/* Middle row: Left player - Trick Area - Right player */}
                     <div className="flex items-center justify-center gap-4 sm:gap-8">
-                        <div className="flex-shrink-0">
+                        <div className="shrink-0">
                             {leftPlayer && (
                                 <PlayerSeat
                                     player={leftPlayer}
@@ -134,7 +134,7 @@ export default function PlayingPhase({
                             trickNumber={gameState.current_trick.number}
                         />
 
-                        <div className="flex-shrink-0">
+                        <div className="shrink-0">
                             {rightPlayer && (
                                 <PlayerSeat
                                     player={rightPlayer}
@@ -148,7 +148,7 @@ export default function PlayingPhase({
                     </div>
 
                     {/* Bottom player (me) info */}
-                    <div className="flex-shrink-0 mt-2">
+                    <div className="shrink-0 mt-2">
                         {bottomPlayer && (
                             <div className="flex items-center gap-2">
                                 <div
@@ -166,7 +166,7 @@ export default function PlayingPhase({
                 </div>
 
                 {/* Sidebar: Scoreboard */}
-                <div className="flex-shrink-0 lg:w-56">
+                <div className="shrink-0 lg:w-56">
                     <ScoreBoard
                         points={gameState.points}
                         gameScores={gameState.game_scores}
@@ -179,10 +179,10 @@ export default function PlayingPhase({
 
             {/* Call Trump button */}
             {gameState.permissions.can_call_trump && (
-                <div className="flex-shrink-0 text-center py-2">
+                <div className="shrink-0 text-center py-2">
                     <button
                         onClick={handleCallTrump}
-                        className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 text-white font-bold shadow-lg hover:from-purple-600 hover:to-purple-700 transition-all hover:scale-105 active:scale-95 border-b-4 border-purple-700"
+                        className="px-6 py-2.5 rounded-xl bg-linear-to-r from-purple-500 to-purple-600 text-white font-bold shadow-lg hover:from-purple-600 hover:to-purple-700 transition-all hover:scale-105 active:scale-95 border-b-4 border-purple-700"
                     >
                         Call Trump (Reveal Hidden Trump)
                     </button>
@@ -195,7 +195,7 @@ export default function PlayingPhase({
             )}
 
             {/* Player's hand */}
-            <div className="flex-shrink-0 rounded-xl bg-gradient-to-br from-sky-50 to-blue-100 p-3 shadow-lg border-2 border-sky-300">
+            <div className="shrink-0 rounded-xl bg-linear-to-br from-sky-50 to-blue-100 p-3 shadow-lg border-2 border-sky-300">
                 <div className="flex items-center justify-between mb-2">
                     <h3 className="font-bold text-sky-900 text-sm">Your Hand</h3>
                     <ScoreBoard

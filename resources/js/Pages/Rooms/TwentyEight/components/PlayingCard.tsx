@@ -50,7 +50,7 @@ export default function PlayingCard({
         xs: 'w-10 h-14 text-xs',
         sm: 'w-14 h-20 text-sm',
         md: 'w-20 h-28 text-lg',
-        lg: 'w-24 h-[8.5rem] text-xl',
+        lg: 'w-24 h-34 text-xl',
     };
 
     const cornerTextClasses = {
@@ -79,11 +79,11 @@ export default function PlayingCard({
     if (!faceUp || !card) {
         return (
             <div
-                className={`${sizeClasses[size]} rounded-lg bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 shadow-md border border-blue-900 relative overflow-hidden ${interactiveClasses} ${disabledClasses} ${className}`}
+                className={`${sizeClasses[size]} rounded-lg bg-linear-to-br from-blue-600 via-blue-700 to-blue-800 shadow-md border border-blue-900 relative overflow-hidden ${interactiveClasses} ${disabledClasses} ${className}`}
                 onClick={!disabled && onClick ? onClick : undefined}
             >
                 <div className="absolute inset-0 opacity-30">
-                    <div className="absolute inset-1.5 border border-white/40 rounded" />
+                    <div className="absolute inset-1.5 border border-white/40 rounded-sm" />
                     <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 140" preserveAspectRatio="none">
                         <pattern id="cardBack28" x="0" y="0" width="14" height="14" patternUnits="userSpaceOnUse">
                             <path d="M7 0 L14 7 L7 14 L0 7 Z" fill="white" fillOpacity="0.15" />

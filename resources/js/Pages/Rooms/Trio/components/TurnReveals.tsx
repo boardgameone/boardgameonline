@@ -97,7 +97,7 @@ export default function TurnReveals({
 
     if (compact) {
         return (
-            <div className={`rounded-lg bg-gradient-to-br from-amber-50 to-orange-50 shadow-lg border-2 ${isTrioValid && canClaim ? 'border-green-500' : 'border-amber-300'} animate-slideIn`}>
+            <div className={`rounded-lg bg-linear-to-br from-amber-50 to-orange-50 shadow-lg border-2 ${isTrioValid && canClaim ? 'border-green-500' : 'border-amber-300'} animate-slideIn`}>
                 <div className="p-3">
                     {/* Title */}
                     <h3 className="font-bold text-amber-900 text-sm mb-2 flex items-center gap-2">
@@ -156,7 +156,7 @@ export default function TurnReveals({
     }
 
     return (
-        <div className={`rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-lg border-2 ${isTrioValid && canClaim ? 'border-green-500' : 'border-amber-300'} animate-slideIn`}>
+        <div className={`rounded-xl bg-linear-to-br from-amber-50 to-orange-50 p-6 shadow-lg border-2 ${isTrioValid && canClaim ? 'border-green-500' : 'border-amber-300'} animate-slideIn`}>
             <h3 className="font-bold text-amber-900 mb-4 flex items-center gap-2">
                 <span>Current Turn Reveals</span>
                 {isTrioValid && canClaim && (
@@ -169,7 +169,7 @@ export default function TurnReveals({
                 {reveals.map((reveal, idx) => (
                     <div
                         key={idx}
-                        className="flex flex-col items-center flex-shrink-0 animate-slideIn"
+                        className="flex flex-col items-center shrink-0 animate-slideIn"
                         style={{ animationDelay: `${idx * 100}ms` }}
                     >
                         <TrioCard

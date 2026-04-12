@@ -44,7 +44,7 @@ export default function TwentyEightTutorial({ show, onClose }: TwentyEightTutori
                                 { rank: '8', pts: 0, str: '' },
                                 { rank: '7', pts: 0, str: 'Lowest' },
                             ].map(c => (
-                                <div key={c.rank} className="bg-gray-50 rounded p-1.5 dark:bg-gray-900/40">
+                                <div key={c.rank} className="bg-gray-50 rounded-sm p-1.5 dark:bg-gray-900/40">
                                     <div className="font-bold text-gray-900 dark:text-gray-100">{c.rank}</div>
                                     <div className="text-amber-600 font-bold dark:text-amber-400">{c.pts}pt{c.pts !== 1 ? 's' : ''}</div>
                                 </div>

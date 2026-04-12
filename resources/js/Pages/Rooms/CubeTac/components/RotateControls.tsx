@@ -173,7 +173,7 @@ function RotateButton({ face, move, direction, onClick, disabled }: RotateButton
             className={`group grid h-11 w-11 place-items-center rounded-lg border-2 bg-white transition-all duration-150 sm:h-12 sm:w-12 ${
                 disabled
                     ? 'cursor-not-allowed border-gray-200 bg-gray-100/60 text-gray-300'
-                    : `${face.tint.border} ${face.tint.activeBorder} ${face.tint.hoverBg} ${face.tint.text} shadow-sm hover:shadow-md active:scale-95`
+                    : `${face.tint.border} ${face.tint.activeBorder} ${face.tint.hoverBg} ${face.tint.text} shadow-xs hover:shadow-md active:scale-95`
             }`}
         >
             {direction === 'cw' ? (

@@ -30,7 +30,7 @@ export default function PlayerSeat({
         }`}>
             {/* Player info */}
             <div className={`flex items-center gap-1.5 ${compact ? 'max-w-[100px]' : 'max-w-[140px]'}`}>
-                <div className="relative flex-shrink-0">
+                <div className="relative shrink-0">
                     <div
                         className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md ${
                             player.is_current_turn ? 'ring-2 ring-amber-400 ring-offset-1' : ''
@@ -52,7 +52,7 @@ export default function PlayerSeat({
                     <div className="flex items-center gap-1">
                         <TeamBadge team={player.team} size="sm" />
                         {isBidWinner && (
-                            <span className="text-[0.5rem] px-1 py-0.5 rounded bg-amber-100 text-amber-700 font-bold">
+                            <span className="text-[0.5rem] px-1 py-0.5 rounded-sm bg-amber-100 text-amber-700 font-bold">
                                 Bid
                             </span>
                         )}
@@ -61,7 +61,7 @@ export default function PlayerSeat({
             </div>
 
             {/* Played card or card count */}
-            <div className="flex-shrink-0">
+            <div className="shrink-0">
                 {playedCard ? (
                     <PlayingCard card={playedCard.card} faceUp size="sm" />
                 ) : (
@@ -69,7 +69,7 @@ export default function PlayerSeat({
                         {Array.from({ length: Math.min(player.hand_count, 4) }).map((_, i) => (
                             <div
                                 key={i}
-                                className="w-3 h-5 rounded-sm bg-gradient-to-br from-blue-600 to-blue-800 border border-blue-900 shadow-sm"
+                                className="w-3 h-5 rounded-xs bg-linear-to-br from-blue-600 to-blue-800 border border-blue-900 shadow-xs"
                                 style={{ marginLeft: i > 0 ? '-4px' : '0' }}
                             />
                         ))}

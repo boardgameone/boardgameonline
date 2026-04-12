@@ -114,7 +114,7 @@ export default function RoomChat({ gameSlug, roomCode, currentPlayerId }: Readon
         return (
             <button
                 onClick={() => setIsMinimized(false)}
-                className="fixed bottom-4 right-4 z-40 bg-gradient-to-r from-brand-teal to-brand-cyan text-white rounded-full p-4 shadow-2xl hover:scale-110 transition-transform group"
+                className="fixed bottom-4 right-4 z-40 bg-linear-to-r from-brand-teal to-brand-cyan text-white rounded-full p-4 shadow-2xl hover:scale-110 transition-transform group"
                 title="Open Chat"
             >
                 <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -132,7 +132,7 @@ export default function RoomChat({ gameSlug, roomCode, currentPlayerId }: Readon
     return (
         <div className="fixed inset-x-4 bottom-4 sm:right-4 sm:left-auto sm:w-80 z-40 bg-white rounded-2xl shadow-2xl overflow-hidden">
             {/* Header */}
-            <div className="bg-gradient-to-r from-brand-teal to-brand-cyan px-4 py-3 flex items-center justify-between">
+            <div className="bg-linear-to-r from-brand-teal to-brand-cyan px-4 py-3 flex items-center justify-between">
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
                     <GameIcon name="chat" /> Chat
                 </h3>
@@ -167,7 +167,7 @@ export default function RoomChat({ gameSlug, roomCode, currentPlayerId }: Readon
                                     }`}
                                 >
                                     <div
-                                        className="flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                                        className="shrink-0 h-8 w-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
                                         style={{ backgroundColor: msg.player.avatar_color }}
                                     >
                                         {msg.player.nickname.charAt(0).toUpperCase()}
@@ -184,7 +184,7 @@ export default function RoomChat({ gameSlug, roomCode, currentPlayerId }: Readon
                                                 {msg.player.nickname}
                                             </p>
                                         )}
-                                        <p className="text-sm break-words">{msg.message}</p>
+                                        <p className="text-sm wrap-break-word">{msg.message}</p>
                                     </div>
                                 </div>
                             ))
@@ -195,7 +195,7 @@ export default function RoomChat({ gameSlug, roomCode, currentPlayerId }: Readon
                     {/* Input */}
                     <form onSubmit={handleSubmit} className="p-3 border-t border-gray-100">
                         {error && (
-                            <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded text-red-600 text-sm">
+                            <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded-sm text-red-600 text-sm">
                                 {error}
                             </div>
                         )}

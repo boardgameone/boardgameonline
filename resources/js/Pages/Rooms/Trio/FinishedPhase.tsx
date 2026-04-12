@@ -85,12 +85,12 @@ export default function FinishedPhase({ roomCode, gameSlug, players, winner, isH
             </div>
 
             {/* Sound toggle */}
-            <div className="relative z-20 flex justify-end flex-shrink-0">
+            <div className="relative z-20 flex justify-end shrink-0">
                 <SoundToggle />
             </div>
 
             {/* Winner celebration - compact */}
-            <div className="relative z-10 flex-shrink-0 rounded-2xl bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-500 p-4 sm:p-6 text-center shadow-2xl border-4 border-yellow-600 animate-slideIn">
+            <div className="relative z-10 shrink-0 rounded-2xl bg-linear-to-br from-yellow-300 via-yellow-400 to-yellow-500 p-4 sm:p-6 text-center shadow-2xl border-4 border-yellow-600 animate-slideIn">
                 <div className="flex items-center justify-center gap-4">
                     <div className="text-yellow-700 animate-bounce">
                         <GameIcon name="trophy" className="h-12 w-12" />
@@ -126,7 +126,7 @@ export default function FinishedPhase({ roomCode, gameSlug, players, winner, isH
                             key={player.id}
                             className={`rounded-lg p-3 border-2 transition-all animate-slideIn ${
                                 index === 0
-                                    ? 'bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-400 dark:from-yellow-900/30 dark:to-yellow-800/30 dark:border-yellow-600'
+                                    ? 'bg-linear-to-r from-yellow-50 to-yellow-100 border-yellow-400 dark:from-yellow-900/30 dark:to-yellow-800/30 dark:border-yellow-600'
                                     : 'bg-gray-50 border-gray-200 dark:bg-gray-900/40 dark:border-gray-700'
                             }`}
                             style={{ animationDelay: `${index * 100}ms` }}
@@ -182,11 +182,11 @@ export default function FinishedPhase({ roomCode, gameSlug, players, winner, isH
             </div>
 
             {/* Actions - fixed at bottom */}
-            <div className="relative z-10 flex-shrink-0 grid gap-3 sm:grid-cols-2 py-2">
+            <div className="relative z-10 shrink-0 grid gap-3 sm:grid-cols-2 py-2">
                 <button
                     onClick={handlePlayAgain}
                     disabled={!isHost}
-                    className={`rounded-xl bg-gradient-to-r px-6 py-3 text-lg font-black text-white shadow-lg transition-all duration-200 border-b-4 ${
+                    className={`rounded-xl bg-linear-to-r px-6 py-3 text-lg font-black text-white shadow-lg transition-all duration-200 border-b-4 ${
                         isHost
                             ? 'from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 hover:scale-105 active:scale-95 border-green-700 cursor-pointer'
                             : 'from-gray-400 to-gray-500 border-gray-600 cursor-not-allowed opacity-50'
@@ -196,7 +196,7 @@ export default function FinishedPhase({ roomCode, gameSlug, players, winner, isH
                 </button>
                 <button
                     onClick={handleNewRoom}
-                    className="rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-3 text-lg font-black text-white shadow-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 hover:scale-105 active:scale-95 border-b-4 border-blue-700"
+                    className="rounded-xl bg-linear-to-r from-blue-500 to-blue-600 px-6 py-3 text-lg font-black text-white shadow-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 hover:scale-105 active:scale-95 border-b-4 border-blue-700"
                 >
                     <GameIcon name="home" className="inline-block mr-1" /> New Room
                 </button>

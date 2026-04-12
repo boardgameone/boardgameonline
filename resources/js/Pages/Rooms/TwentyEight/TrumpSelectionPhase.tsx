@@ -38,7 +38,7 @@ export default function TrumpSelectionPhase({
             {/* Status banner */}
             <div className={`rounded-xl p-4 border-2 ${
                 isBidWinner
-                    ? 'bg-gradient-to-r from-amber-50 to-yellow-100 border-amber-400 dark:from-amber-900/30 dark:to-yellow-900/30 dark:border-amber-600'
+                    ? 'bg-linear-to-r from-amber-50 to-yellow-100 border-amber-400 dark:from-amber-900/30 dark:to-yellow-900/30 dark:border-amber-600'
                     : 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
             }`}>
                 <div className="text-center">
@@ -93,7 +93,7 @@ export default function TrumpSelectionPhase({
                     <button
                         onClick={handleSelectTrump}
                         disabled={selectedIndex === null || processing}
-                        className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold shadow-lg hover:from-amber-600 hover:to-amber-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all hover:scale-105 active:scale-95 disabled:hover:scale-100 border-b-4 border-amber-700 disabled:border-gray-600"
+                        className="w-full py-3 rounded-xl bg-linear-to-r from-amber-500 to-amber-600 text-white font-bold shadow-lg hover:from-amber-600 hover:to-amber-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all hover:scale-105 active:scale-95 disabled:hover:scale-100 border-b-4 border-amber-700 disabled:border-gray-600"
                     >
                         {processing ? 'Setting trump...' : 'Confirm Trump'}
                     </button>

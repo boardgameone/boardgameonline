@@ -21,9 +21,9 @@ export default function Dashboard({ auth, recentGames = [], activeRooms = [], st
             {/* Welcome Section */}
             <div className="mb-8">
                 <div className="bg-white rounded-3xl shadow-xl overflow-hidden border-b-8 border-yellow-500 dark:bg-gray-800 dark:border-yellow-600">
-                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-8 sm:px-8">
+                    <div className="bg-linear-to-r from-blue-600 to-blue-700 px-6 py-8 sm:px-8">
                         <div className="flex flex-col sm:flex-row items-center gap-6">
-                            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm shadow-lg text-white">
+                            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/20 backdrop-blur-xs shadow-lg text-white">
                                 <GameIcon name="gamepad" size="xl" />
                             </div>
                             <div className="text-center sm:text-left">
@@ -68,7 +68,7 @@ export default function Dashboard({ auth, recentGames = [], activeRooms = [], st
                     className="group bg-white rounded-2xl shadow-lg p-6 transition hover:scale-105 hover:shadow-xl border-b-4 border-yellow-400 dark:bg-gray-800 dark:border-yellow-600"
                 >
                     <div className="flex items-center gap-4">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 shadow-md group-hover:scale-110 transition text-white">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-linear-to-br from-yellow-400 to-yellow-500 shadow-md group-hover:scale-110 transition text-white">
                             <GameIcon name="dice" size="lg" />
                         </div>
                         <div>
@@ -83,7 +83,7 @@ export default function Dashboard({ auth, recentGames = [], activeRooms = [], st
                     className="group bg-white rounded-2xl shadow-lg p-6 transition hover:scale-105 hover:shadow-xl border-b-4 border-blue-400 dark:bg-gray-800 dark:border-blue-600"
                 >
                     <div className="flex items-center gap-4">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-md group-hover:scale-110 transition text-white">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-linear-to-br from-blue-500 to-blue-600 shadow-md group-hover:scale-110 transition text-white">
                             <GameIcon name="link" size="lg" />
                         </div>
                         <div>
@@ -98,7 +98,7 @@ export default function Dashboard({ auth, recentGames = [], activeRooms = [], st
                     className="group bg-white rounded-2xl shadow-lg p-6 transition hover:scale-105 hover:shadow-xl border-b-4 border-purple-400 sm:col-span-2 lg:col-span-1 dark:bg-gray-800 dark:border-purple-600"
                 >
                     <div className="flex items-center gap-4">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-md group-hover:scale-110 transition text-white">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-linear-to-br from-purple-500 to-purple-600 shadow-md group-hover:scale-110 transition text-white">
                             <GameIcon name="user" size="lg" />
                         </div>
                         <div>
@@ -112,7 +112,7 @@ export default function Dashboard({ auth, recentGames = [], activeRooms = [], st
             <div className="grid gap-6 lg:grid-cols-2">
                 {/* Active Rooms */}
                 <div className="bg-white rounded-2xl shadow-lg overflow-hidden dark:bg-gray-800">
-                    <div className="px-6 py-4 bg-gradient-to-r from-green-500 to-green-600">
+                    <div className="px-6 py-4 bg-linear-to-r from-green-500 to-green-600">
                         <h2 className="text-lg font-bold text-white flex items-center gap-2">
                             <GameIcon name="gamepad" /> Your Active Rooms
                         </h2>
@@ -174,7 +174,7 @@ export default function Dashboard({ auth, recentGames = [], activeRooms = [], st
 
                 {/* Recent Games */}
                 <div className="bg-white rounded-2xl shadow-lg overflow-hidden dark:bg-gray-800">
-                    <div className="px-6 py-4 bg-gradient-to-r from-purple-500 to-purple-600">
+                    <div className="px-6 py-4 bg-linear-to-r from-purple-500 to-purple-600">
                         <h2 className="text-lg font-bold text-white flex items-center gap-2">
                             <GameIcon name="trophy" /> Featured Games
                         </h2>
@@ -188,7 +188,7 @@ export default function Dashboard({ auth, recentGames = [], activeRooms = [], st
                                         href={route('games.show', game.slug)}
                                         className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 hover:bg-purple-50 transition border-2 border-transparent hover:border-purple-300 dark:bg-gray-700/40 dark:hover:bg-purple-900/20 dark:hover:border-purple-700"
                                     >
-                                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 shadow-sm text-white">
+                                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-linear-to-br from-yellow-400 to-yellow-500 shadow-xs text-white">
                                             {game.slug === 'cheese-thief' ? (
                                                 <span className="text-2xl">{'\u{1F9C0}'}</span>
                                             ) : (

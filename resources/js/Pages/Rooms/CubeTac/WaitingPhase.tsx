@@ -65,7 +65,7 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
             </div>
 
             <div className="mt-8 flex flex-1 flex-col items-center justify-center gap-6">
-                <h2 className="text-3xl font-black text-yellow-900 drop-shadow-sm sm:text-4xl dark:text-yellow-300">
+                <h2 className="text-3xl font-black text-yellow-900 drop-shadow-xs sm:text-4xl dark:text-yellow-300">
                     Share this code
                 </h2>
 
@@ -73,7 +73,7 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
                 <button
                     type="button"
                     onClick={handleCopyCode}
-                    className="group relative rounded-3xl bg-gradient-to-br from-white to-yellow-50 px-10 py-6 shadow-xl border-2 border-yellow-400 hover:border-yellow-500 hover:scale-[1.02] transition dark:from-gray-800 dark:to-gray-900 dark:border-yellow-600/60 dark:hover:border-yellow-500/80"
+                    className="group relative rounded-3xl bg-linear-to-br from-white to-yellow-50 px-10 py-6 shadow-xl border-2 border-yellow-400 hover:border-yellow-500 hover:scale-[1.02] transition dark:from-gray-800 dark:to-gray-900 dark:border-yellow-600/60 dark:hover:border-yellow-500/80"
                 >
                     <div className="text-5xl font-black tracking-[0.18em] text-yellow-900 sm:text-6xl dark:text-yellow-300">
                         {room.room_code}
@@ -102,7 +102,7 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
                     <button
                         type="button"
                         onClick={handleStart}
-                        className="mt-4 rounded-full bg-gradient-to-r from-orange-500 via-red-500 to-pink-600 px-10 py-4 text-xl font-black text-white shadow-xl border-b-4 border-red-700 transition hover:scale-[1.03] hover:shadow-2xl"
+                        className="mt-4 rounded-full bg-linear-to-r from-orange-500 via-red-500 to-pink-600 px-10 py-4 text-xl font-black text-white shadow-xl border-b-4 border-red-700 transition hover:scale-[1.03] hover:shadow-2xl"
                     >
                         Start Match
                     </button>

@@ -79,7 +79,7 @@ function Wordmark({ sizeClass }: { sizeClass: string }) {
             aria-label="CubeTac"
         >
             <span
-                className="bg-gradient-to-br from-orange-400 via-red-500 to-rose-600 bg-clip-text text-transparent drop-shadow-[0_2px_0_rgba(120,20,20,0.25)]"
+                className="bg-linear-to-br from-orange-400 via-red-500 to-rose-600 bg-clip-text text-transparent drop-shadow-[0_2px_0_rgba(120,20,20,0.25)]"
                 style={{
                     WebkitTextStroke: '1.5px rgba(120, 20, 20, 0.18)',
                 }}
@@ -87,7 +87,7 @@ function Wordmark({ sizeClass }: { sizeClass: string }) {
                 Cube
             </span>
             <span
-                className="bg-gradient-to-br from-sky-400 via-blue-600 to-indigo-700 bg-clip-text text-transparent drop-shadow-[0_2px_0_rgba(30,58,138,0.25)]"
+                className="bg-linear-to-br from-sky-400 via-blue-600 to-indigo-700 bg-clip-text text-transparent drop-shadow-[0_2px_0_rgba(30,58,138,0.25)]"
                 style={{
                     WebkitTextStroke: '1.5px rgba(30, 58, 138, 0.18)',
                 }}
@@ -179,12 +179,12 @@ function LogoFace({ side, marks, half }: LogoFaceProps) {
 
     const faceGradient: Record<Side, string> = {
         // Slight shade variation per face for depth
-        front: 'bg-gradient-to-br from-slate-50 to-slate-200',
-        back: 'bg-gradient-to-br from-slate-200 to-slate-300',
-        right: 'bg-gradient-to-br from-slate-100 to-slate-300',
-        left: 'bg-gradient-to-br from-slate-100 to-slate-300',
-        top: 'bg-gradient-to-br from-white to-slate-100',
-        bottom: 'bg-gradient-to-br from-slate-200 to-slate-400',
+        front: 'bg-linear-to-br from-slate-50 to-slate-200',
+        back: 'bg-linear-to-br from-slate-200 to-slate-300',
+        right: 'bg-linear-to-br from-slate-100 to-slate-300',
+        left: 'bg-linear-to-br from-slate-100 to-slate-300',
+        top: 'bg-linear-to-br from-white to-slate-100',
+        bottom: 'bg-linear-to-br from-slate-200 to-slate-400',
     };
 
     return (

@@ -34,8 +34,8 @@ export default function RoundEndPhase({
             {/* Result banner */}
             <div className={`rounded-2xl p-6 text-center shadow-lg ${
                 bidTeamWon
-                    ? 'bg-gradient-to-br from-green-50 to-emerald-100 border-2 border-green-300 dark:from-green-900/30 dark:to-emerald-900/30 dark:border-green-700'
-                    : 'bg-gradient-to-br from-red-50 to-rose-100 border-2 border-red-300 dark:from-red-900/30 dark:to-rose-900/30 dark:border-red-700'
+                    ? 'bg-linear-to-br from-green-50 to-emerald-100 border-2 border-green-300 dark:from-green-900/30 dark:to-emerald-900/30 dark:border-green-700'
+                    : 'bg-linear-to-br from-red-50 to-rose-100 border-2 border-red-300 dark:from-red-900/30 dark:to-rose-900/30 dark:border-red-700'
             }`}>
                 <div className="text-4xl mb-2">
                     {bidTeamWon ? '\uD83C\uDF89' : '\uD83D\uDE14'}
@@ -90,7 +90,7 @@ export default function RoundEndPhase({
             {isHost && (
                 <button
                     onClick={handleNextRound}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold text-lg shadow-lg hover:from-amber-600 hover:to-amber-700 transition-all hover:scale-105 active:scale-95 border-b-4 border-amber-700"
+                    className="w-full py-3 rounded-xl bg-linear-to-r from-amber-500 to-amber-600 text-white font-bold text-lg shadow-lg hover:from-amber-600 hover:to-amber-700 transition-all hover:scale-105 active:scale-95 border-b-4 border-amber-700"
                 >
                     <GameIcon name="gamepad" className="inline-block mr-1" /> Next Round
                 </button>
