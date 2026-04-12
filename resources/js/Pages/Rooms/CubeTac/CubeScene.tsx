@@ -303,7 +303,7 @@ const CubeRoot = memo(function CubeRoot({
             {stickersStatic.map(renderSticker)}
 
             {animation && (
-                <RotatingLayer animation={animation} onComplete={onAnimationComplete}>
+                <RotatingLayer key={animation.startTime} animation={animation} onComplete={onAnimationComplete}>
                     {cubiesInLayer.map(([x, y, z]) => (
                         <Cubie key={`rcubie-${x}-${y}-${z}`} position={[x, y, z]} />
                     ))}
