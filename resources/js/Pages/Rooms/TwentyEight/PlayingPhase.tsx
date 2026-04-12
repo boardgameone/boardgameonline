@@ -65,17 +65,17 @@ export default function PlayingPhase({
     return (
         <div className="h-full flex flex-col gap-2">
             {/* Top status bar */}
-            <div className="flex items-center justify-between rounded-lg bg-white/90 backdrop-blur px-3 py-2 shadow-sm border border-gray-200 flex-shrink-0">
+            <div className="flex items-center justify-between rounded-lg bg-white/90 backdrop-blur px-3 py-2 shadow-sm border border-gray-200 flex-shrink-0 dark:bg-gray-800/90 dark:border-gray-700">
                 <div className="flex items-center gap-3">
                     <span className={`text-sm font-bold ${
-                        currentTurnPlayer?.id === currentPlayerId ? 'text-amber-700' : 'text-gray-700'
+                        currentTurnPlayer?.id === currentPlayerId ? 'text-amber-700 dark:text-amber-300' : 'text-gray-700 dark:text-gray-300'
                     }`}>
                         {currentTurnPlayer?.id === currentPlayerId
                             ? "Your turn!"
                             : `${currentTurnPlayer?.nickname}'s turn`
                         }
                     </span>
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-gray-400 dark:text-gray-500">
                         Trick {gameState.current_trick.number}/8 &middot; Round {gameState.round_number}
                     </span>
                 </div>

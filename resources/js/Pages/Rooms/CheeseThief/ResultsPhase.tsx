@@ -110,8 +110,8 @@ export default function ResultsPhase({ gameState, roomCode, gameSlug }: ResultsP
             </div>
 
             {/* Vote Results */}
-            <div className="w-full rounded-xl bg-white p-6 shadow">
-                <h3 className="text-lg font-semibold text-gray-700 mb-4 text-center">
+            <div className="w-full rounded-xl bg-white p-6 shadow dark:bg-gray-800">
+                <h3 className="text-lg font-semibold text-gray-700 mb-4 text-center dark:text-gray-300">
                     Vote Results
                 </h3>
                 <div className="space-y-3">
@@ -132,17 +132,17 @@ export default function ResultsPhase({ gameState, roomCode, gameSlug }: ResultsP
                                 </div>
                                 <div className="flex-1">
                                     <div className="flex justify-between items-center mb-1">
-                                        <span className="font-medium">
+                                        <span className="font-medium dark:text-gray-200">
                                             {player.nickname}
                                             {isThiefPlayer && ' \u{1F977}'}
                                             {player.is_accomplice && ' \u{1F91D}'}
                                         </span>
-                                        <span className="text-sm text-gray-500">
+                                        <span className="text-sm text-gray-500 dark:text-gray-400">
                                             {votes} vote{votes !== 1 ? 's' : ''}
                                             {wasCaught && ' \u2190 CAUGHT!'}
                                         </span>
                                     </div>
-                                    <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
+                                    <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
                                         <div
                                             className={`h-full transition-all duration-500 ${
                                                 wasCaught ? 'bg-green-500' : isThiefPlayer ? 'bg-red-400' : 'bg-indigo-400'
@@ -159,7 +159,7 @@ export default function ResultsPhase({ gameState, roomCode, gameSlug }: ResultsP
 
             {/* All Players with Dice */}
             <div className="w-full">
-                <h3 className="mb-4 text-center text-lg font-semibold text-gray-700">
+                <h3 className="mb-4 text-center text-lg font-semibold text-gray-700 dark:text-gray-300">
                     All Players & Dice
                 </h3>
                 <PlayerCircle

@@ -9,16 +9,16 @@ export default function TwentyEightTutorial({ show, onClose }: TwentyEightTutori
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
             <div
-                className="bg-white rounded-2xl p-6 shadow-2xl max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto"
+                className="bg-white rounded-2xl p-6 shadow-2xl max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto dark:bg-gray-800"
                 onClick={e => e.stopPropagation()}
             >
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xl font-black text-gray-900">
+                    <h3 className="text-xl font-black text-gray-900 dark:text-gray-100">
                         How to Play Twenty-Eight
                     </h3>
                     <button
                         onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600 transition"
+                        className="text-gray-400 hover:text-gray-600 transition dark:hover:text-gray-200"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -26,7 +26,7 @@ export default function TwentyEightTutorial({ show, onClose }: TwentyEightTutori
                     </button>
                 </div>
 
-                <div className="space-y-4 text-sm text-gray-700">
+                <div className="space-y-4 text-sm text-gray-700 dark:text-gray-300">
                     <Section title="Overview">
                         <p>Twenty-Eight is a 4-player trick-taking card game played in teams of 2. Partners sit opposite each other.</p>
                     </Section>
@@ -44,9 +44,9 @@ export default function TwentyEightTutorial({ show, onClose }: TwentyEightTutori
                                 { rank: '8', pts: 0, str: '' },
                                 { rank: '7', pts: 0, str: 'Lowest' },
                             ].map(c => (
-                                <div key={c.rank} className="bg-gray-50 rounded p-1.5">
-                                    <div className="font-bold text-gray-900">{c.rank}</div>
-                                    <div className="text-amber-600 font-bold">{c.pts}pt{c.pts !== 1 ? 's' : ''}</div>
+                                <div key={c.rank} className="bg-gray-50 rounded p-1.5 dark:bg-gray-900/40">
+                                    <div className="font-bold text-gray-900 dark:text-gray-100">{c.rank}</div>
+                                    <div className="text-amber-600 font-bold dark:text-amber-400">{c.pts}pt{c.pts !== 1 ? 's' : ''}</div>
                                 </div>
                             ))}
                         </div>
@@ -95,7 +95,7 @@ export default function TwentyEightTutorial({ show, onClose }: TwentyEightTutori
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
     return (
         <div>
-            <h4 className="font-bold text-gray-900 mb-1">{title}</h4>
+            <h4 className="font-bold text-gray-900 mb-1 dark:text-gray-100">{title}</h4>
             {children}
         </div>
     );

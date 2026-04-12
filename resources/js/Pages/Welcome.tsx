@@ -136,11 +136,60 @@ function TrioGameVisualSmall() {
     );
 }
 
+function TwentyEightGameVisualSmall() {
+    return (
+        <div className="relative group-hover:scale-110 transition-transform duration-300">
+            <div className="relative flex items-center justify-center">
+                {/* Left card - Jack of Hearts (face up) */}
+                <div className="absolute -left-4 sm:-left-6 w-10 sm:w-14 h-14 sm:h-[4.5rem] bg-white rounded-lg shadow-xl border-2 border-white/80 overflow-hidden transform -rotate-12 group-hover:-rotate-[16deg] transition-transform duration-300">
+                    <div className="absolute top-0.5 left-1 text-center">
+                        <div className="text-[0.4rem] sm:text-[0.5rem] font-bold text-red-600 leading-tight">J</div>
+                        <div className="text-[0.35rem] sm:text-[0.45rem] text-red-600 -mt-0.5">{'\u2665'}</div>
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center text-lg sm:text-2xl text-red-600">
+                        {'\u2665'}
+                    </div>
+                </div>
+
+                {/* Center card - face down (hidden trump) */}
+                <div className="relative z-10 w-10 sm:w-14 h-14 sm:h-[4.5rem] rounded-lg shadow-xl overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 border border-blue-900 group-hover:scale-110 transition-transform duration-300">
+                    <div className="absolute inset-0 opacity-30">
+                        <div className="absolute inset-1 border border-white/40 rounded" />
+                        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 140" preserveAspectRatio="none">
+                            <pattern id="cardBack28Welcome" x="0" y="0" width="14" height="14" patternUnits="userSpaceOnUse">
+                                <path d="M7 0 L14 7 L7 14 L0 7 Z" fill="white" fillOpacity="0.15" />
+                            </pattern>
+                            <rect x="0" y="0" width="100" height="140" fill="url(#cardBack28Welcome)" />
+                        </svg>
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-5 h-5 sm:w-7 sm:h-7 rounded-full bg-white/15 flex items-center justify-center border border-white/30">
+                            <span className="text-white/80 font-black text-[0.45rem] sm:text-xs">28</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right card - 9 of Spades (face up) */}
+                <div className="absolute -right-4 sm:-right-6 w-10 sm:w-14 h-14 sm:h-[4.5rem] bg-white rounded-lg shadow-xl border-2 border-white/80 overflow-hidden transform rotate-12 group-hover:rotate-[16deg] transition-transform duration-300">
+                    <div className="absolute top-0.5 left-1 text-center">
+                        <div className="text-[0.4rem] sm:text-[0.5rem] font-bold text-gray-900 leading-tight">9</div>
+                        <div className="text-[0.35rem] sm:text-[0.45rem] text-gray-900 -mt-0.5">{'\u2660'}</div>
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center text-lg sm:text-2xl text-gray-900">
+                        {'\u2660'}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function GameCard({ game }: { game: Game }) {
     const gradients: Record<string, string> = {
         'cheese-thief': 'from-amber-600 to-amber-800',
         'trio': 'from-blue-500 via-cyan-500 to-teal-500',
         'cubetac': 'from-orange-500 via-rose-500 to-indigo-700',
+        'twenty-eight': 'from-emerald-600 via-emerald-700 to-teal-900',
     };
     const gradient = gradients[game.slug] || 'from-amber-600 to-amber-800';
 
@@ -158,6 +207,8 @@ function GameCard({ game }: { game: Game }) {
                     <div className="group-hover:scale-110 transition-transform duration-300 drop-shadow-lg">
                         <LogoCube px={72} animated={false} />
                     </div>
+                ) : game.slug === 'twenty-eight' ? (
+                    <TwentyEightGameVisualSmall />
                 ) : (
                     <div className="text-4xl sm:text-5xl group-hover:scale-125 transition-transform duration-500 drop-shadow-lg text-white">
                         <GameIcon name="dice" size="xl" />
