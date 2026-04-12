@@ -15,16 +15,16 @@ export default function LastTrickModal({ trick, players, onClose }: LastTrickMod
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
             <div
-                className="bg-white rounded-2xl p-6 shadow-2xl max-w-sm w-full mx-4"
+                className="bg-white rounded-2xl p-6 shadow-2xl max-w-sm w-full mx-4 dark:bg-gray-800"
                 onClick={e => e.stopPropagation()}
             >
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold text-gray-900">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
                         Last Trick ({trick.points} pts)
                     </h3>
                     <button
                         onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600 transition"
+                        className="text-gray-400 hover:text-gray-600 transition dark:hover:text-gray-200"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -38,11 +38,11 @@ export default function LastTrickModal({ trick, players, onClose }: LastTrickMod
                             key={play.player_id}
                             className={`flex flex-col items-center gap-1 p-2 rounded-lg ${
                                 play.player_id === trick.winner_id
-                                    ? 'bg-amber-50 border-2 border-amber-300'
-                                    : 'bg-gray-50 border border-gray-200'
+                                    ? 'bg-amber-50 border-2 border-amber-300 dark:bg-amber-900/30 dark:border-amber-700'
+                                    : 'bg-gray-50 border border-gray-200 dark:bg-gray-900/40 dark:border-gray-700'
                             }`}
                         >
-                            <span className="text-xs font-bold text-gray-600">
+                            <span className="text-xs font-bold text-gray-600 dark:text-gray-400">
                                 {getPlayerName(play.player_id)}
                                 {play.player_id === trick.winner_id && ' \u2B50'}
                             </span>
@@ -51,8 +51,8 @@ export default function LastTrickModal({ trick, players, onClose }: LastTrickMod
                     ))}
                 </div>
 
-                <div className="mt-4 text-center text-sm text-gray-500">
-                    Won by <span className="font-bold text-amber-600">{getPlayerName(trick.winner_id)}</span>
+                <div className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                    Won by <span className="font-bold text-amber-600 dark:text-amber-400">{getPlayerName(trick.winner_id)}</span>
                 </div>
             </div>
         </div>

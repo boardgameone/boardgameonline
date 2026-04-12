@@ -38,25 +38,25 @@ export default function TrumpSelectionPhase({
             {/* Status banner */}
             <div className={`rounded-xl p-4 border-2 ${
                 isBidWinner
-                    ? 'bg-gradient-to-r from-amber-50 to-yellow-100 border-amber-400'
-                    : 'bg-blue-50 border-blue-200'
+                    ? 'bg-gradient-to-r from-amber-50 to-yellow-100 border-amber-400 dark:from-amber-900/30 dark:to-yellow-900/30 dark:border-amber-600'
+                    : 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
             }`}>
                 <div className="text-center">
-                    <h3 className="text-lg font-black text-gray-900 mb-1">
+                    <h3 className="text-lg font-black text-gray-900 mb-1 dark:text-gray-100">
                         Trump Selection
                     </h3>
-                    <p className="text-sm text-gray-600">
-                        {bidWinner?.nickname} won the bid with <span className="font-bold text-amber-600">{gameState.bid_value}</span>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {bidWinner?.nickname} won the bid with <span className="font-bold text-amber-600 dark:text-amber-400">{gameState.bid_value}</span>
                     </p>
                 </div>
             </div>
 
             {isBidWinner && myPlayer?.hand ? (
-                <div className="rounded-xl bg-white shadow-lg border-2 border-amber-300 p-6">
-                    <h4 className="text-center font-bold text-gray-800 mb-1">
+                <div className="rounded-xl bg-white shadow-lg border-2 border-amber-300 p-6 dark:bg-gray-800 dark:border-amber-700">
+                    <h4 className="text-center font-bold text-gray-800 mb-1 dark:text-gray-200">
                         Select your trump card
                     </h4>
-                    <p className="text-center text-sm text-gray-500 mb-4">
+                    <p className="text-center text-sm text-gray-500 mb-4 dark:text-gray-400">
                         The suit of this card becomes the hidden trump. This card will be set aside until trump is revealed.
                     </p>
 
@@ -82,8 +82,8 @@ export default function TrumpSelectionPhase({
 
                     {selectedIndex !== null && myPlayer.hand[selectedIndex] && (
                         <div className="text-center mb-4">
-                            <span className="text-sm text-gray-600">
-                                Trump suit will be: <span className="font-bold text-amber-600">
+                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                                Trump suit will be: <span className="font-bold text-amber-600 dark:text-amber-400">
                                     {myPlayer.hand[selectedIndex].suit.charAt(0).toUpperCase() + myPlayer.hand[selectedIndex].suit.slice(1)}
                                 </span>
                             </span>
@@ -100,7 +100,7 @@ export default function TrumpSelectionPhase({
                 </div>
             ) : (
                 <div className="text-center py-8">
-                    <div className="inline-flex items-center gap-2 text-gray-500">
+                    <div className="inline-flex items-center gap-2 text-gray-500 dark:text-gray-400">
                         <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                         <span className="font-medium">
                             Waiting for {bidWinner?.nickname} to select trump...

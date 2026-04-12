@@ -44,15 +44,15 @@ export default function TwentyEightGamePage({ auth, room, currentPlayer, isHost,
                 useFullHeight ? 'max-w-full h-full' : 'max-w-5xl'
             }`}>
                 {needsToJoin && isGuest && (
-                    <div className="rounded-xl bg-white p-8 shadow-lg">
+                    <div className="rounded-xl bg-white p-8 shadow-lg dark:bg-gray-800">
                         <div className="text-center py-8">
                             <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-amber-400 to-amber-500 rounded-full mb-4 shadow-lg text-white">
                                 <GameIcon name="wave" size="xl" />
                             </div>
-                            <h3 className="text-xl font-black text-gray-900 mb-2">
+                            <h3 className="text-xl font-black text-gray-900 mb-2 dark:text-gray-100">
                                 Join Twenty-Eight!
                             </h3>
-                            <p className="text-gray-500 mb-6">
+                            <p className="text-gray-500 mb-6 dark:text-gray-400">
                                 Enter your nickname to join the room
                             </p>
                             <form onSubmit={handleJoin} className="max-w-xs mx-auto space-y-4">
@@ -63,12 +63,12 @@ export default function TwentyEightGamePage({ auth, room, currentPlayer, isHost,
                                         onChange={(e) => setData('nickname', e.target.value)}
                                         placeholder="Your nickname"
                                         maxLength={20}
-                                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-400 focus:ring-amber-400 transition-colors font-medium text-center"
+                                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-400 focus:ring-amber-400 transition-colors font-medium text-center dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
                                         autoFocus
                                         required
                                     />
                                     {errors.nickname && (
-                                        <p className="mt-2 text-sm text-red-600 font-medium">
+                                        <p className="mt-2 text-sm text-red-600 font-medium dark:text-red-400">
                                             {errors.nickname}
                                         </p>
                                     )}

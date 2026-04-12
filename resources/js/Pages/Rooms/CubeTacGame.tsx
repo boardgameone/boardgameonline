@@ -180,10 +180,10 @@ function GuestJoinForm({ nickname, onChange, onSubmit, processing, error }: Gues
         <div className="flex h-full items-center justify-center px-6">
             <form
                 onSubmit={onSubmit}
-                className="flex w-full max-w-sm flex-col items-center gap-4 rounded-3xl bg-white p-8 shadow-xl border-2 border-yellow-300"
+                className="flex w-full max-w-sm flex-col items-center gap-4 rounded-3xl bg-white p-8 shadow-xl border-2 border-yellow-300 dark:bg-gray-800 dark:border-yellow-600/60"
             >
-                <h3 className="text-3xl font-black text-yellow-900">Join Match</h3>
-                <p className="text-center text-xs font-bold uppercase tracking-[0.25em] text-gray-500">
+                <h3 className="text-3xl font-black text-yellow-900 dark:text-yellow-300">Join Match</h3>
+                <p className="text-center text-xs font-bold uppercase tracking-[0.25em] text-gray-500 dark:text-gray-400">
                     Pick a nickname to sit down
                 </p>
                 <input
@@ -194,9 +194,9 @@ function GuestJoinForm({ nickname, onChange, onSubmit, processing, error }: Gues
                     maxLength={20}
                     autoFocus
                     required
-                    className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-center text-lg font-bold text-gray-900 focus:border-teal-400 focus:ring-teal-400 transition"
+                    className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-center text-lg font-bold text-gray-900 focus:border-teal-400 focus:ring-teal-400 transition dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
                 />
-                {error && <p className="text-xs font-bold text-red-600">{error}</p>}
+                {error && <p className="text-xs font-bold text-red-600 dark:text-red-400">{error}</p>}
                 <button
                     type="submit"
                     disabled={processing || nickname.length < 2}
