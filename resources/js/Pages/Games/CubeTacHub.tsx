@@ -412,9 +412,6 @@ function Credit() {
             className="inline-flex items-center gap-2 rounded-full bg-white/70 backdrop-blur-sm px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-gray-600 shadow-sm ring-1 ring-white/80 dark:bg-gray-700/60 dark:text-gray-300 dark:ring-gray-600"
             aria-label="Designed and ideated by Nitin Joseph"
         >
-            <svg viewBox="0 0 24 24" className="h-3 w-3 text-rose-500" fill="currentColor">
-                <path d="M12 21s-7-4.35-7-10a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 5.65-7 10-7 10-.85.5-3.15.5-4 0z" />
-            </svg>
             <span>
                 Designed &amp; ideated by{' '}
                 <span className="text-gray-900 tracking-normal normal-case italic font-black dark:text-gray-100">
