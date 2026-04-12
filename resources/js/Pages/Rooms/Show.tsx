@@ -164,7 +164,7 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                                                     onChange={(e) => setData('nickname', e.target.value)}
                                                     placeholder="Your nickname"
                                                     maxLength={20}
-                                                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-400 focus:ring-green-400 transition-colors font-medium text-center dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
+                                                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-400 focus:ring-green-400 transition-colors font-medium text-center dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
                                                     autoFocus
                                                     required
                                                 />
@@ -223,7 +223,7 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                     {/* Sidebar */}
                     <div className="space-y-6">
                         {/* Room Code & Link */}
-                        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                        <div className="bg-white rounded-2xl shadow-lg overflow-hidden dark:bg-gray-800">
                             <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 px-6 py-4">
                                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
                                     <GameIcon name="key" className="inline-block mr-1" /> Invite Friends

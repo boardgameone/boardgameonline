@@ -166,8 +166,8 @@ function PlayerStatsCard({
                     compact ? 'p-2' : 'p-4 rounded-xl'
                 } ${
                     player.is_current_turn
-                        ? 'border-yellow-400 bg-gradient-to-r from-yellow-50 to-yellow-100 shadow-lg'
-                        : 'border-gray-200 bg-white'
+                        ? 'border-yellow-400 bg-gradient-to-r from-yellow-50 to-yellow-100 shadow-lg dark:border-yellow-600 dark:from-yellow-900/30 dark:to-yellow-800/30'
+                        : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800'
                 } ${
                     isSpeaking && canShowVoiceControls ? 'ring-2 ring-green-400' : ''
                 }`}
@@ -247,24 +247,24 @@ function PlayerStatsCard({
 
                         {/* Player info */}
                         <div>
-                            <p className={`font-bold text-gray-900 flex items-center gap-1 ${compact ? 'text-sm' : ''}`}>
+                            <p className={`font-bold text-gray-900 flex items-center gap-1 dark:text-gray-100 ${compact ? 'text-sm' : ''}`}>
                                 <span className={compact ? 'truncate max-w-[80px]' : ''}>{player.nickname}</span>
                                 {player.id === currentPlayerId && (
-                                    <span className={`bg-blue-100 text-blue-700 rounded-full font-semibold ${
+                                    <span className={`bg-blue-100 text-blue-700 rounded-full font-semibold dark:bg-blue-900/40 dark:text-blue-300 ${
                                         compact ? 'text-[10px] px-1' : 'text-xs px-2 py-0.5'
                                     }`}>
                                         You
                                     </span>
                                 )}
                                 {player.is_current_turn && (
-                                    <span className={`bg-yellow-100 text-yellow-700 rounded-full font-semibold ${
+                                    <span className={`bg-yellow-100 text-yellow-700 rounded-full font-semibold dark:bg-yellow-900/40 dark:text-yellow-300 ${
                                         compact ? 'text-[10px] px-1' : 'text-xs px-2 py-0.5'
                                     }`}>
                                         Turn
                                     </span>
                                 )}
                             </p>
-                            <div className={`flex items-center gap-2 text-gray-600 ${compact ? 'text-xs' : 'text-sm mt-1'}`}>
+                            <div className={`flex items-center gap-2 text-gray-600 dark:text-gray-400 ${compact ? 'text-xs' : 'text-sm mt-1'}`}>
                                 <span className="flex items-center gap-1">
                                     <span className="font-semibold">{player.hand_count - revealedCount}</span>{compact ? '' : ' cards'}
                                 </span>
@@ -365,7 +365,7 @@ function PlayerStatsCard({
 
                 {/* Collected trios - show inline in compact mode */}
                 {player.collected_trios.length > 0 && (
-                    <div className={compact ? 'mt-2 pt-2 border-t border-gray-200' : 'mt-3 pt-3 border-t border-gray-200'}>
+                    <div className={compact ? 'mt-2 pt-2 border-t border-gray-200 dark:border-gray-700' : 'mt-3 pt-3 border-t border-gray-200 dark:border-gray-700'}>
                         <div className={`flex gap-2 flex-wrap ${compact ? '' : 'gap-4'}`}>
                             {player.collected_trios.map((trio, idx) => (
                                 <StackedTrio

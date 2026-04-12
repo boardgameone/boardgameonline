@@ -78,7 +78,7 @@ export default function Join({ auth }: PageProps) {
                                     }
                                     placeholder="ABCD12"
                                     maxLength={6}
-                                    className="w-full px-6 py-4 rounded-xl border-2 border-gray-200 text-center text-3xl font-mono tracking-[0.5em] focus:border-blue-400 focus:ring-blue-400 transition-colors uppercase dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
+                                    className="w-full px-6 py-4 rounded-xl border-2 border-gray-200 text-center text-3xl font-mono tracking-[0.5em] focus:border-blue-400 focus:ring-blue-400 transition-colors uppercase dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
                                     autoComplete="off"
                                     autoFocus
                                 />
@@ -104,7 +104,7 @@ export default function Join({ auth }: PageProps) {
                                         onChange={(e) => setData('nickname', e.target.value)}
                                         placeholder="Enter your nickname"
                                         maxLength={20}
-                                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors font-medium dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
+                                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors font-medium dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
                                         required
                                     />
                                     {errors.nickname && (

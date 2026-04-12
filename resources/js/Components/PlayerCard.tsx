@@ -99,8 +99,8 @@ export default function PlayerCard({
                     compact ? 'p-2' : 'p-4'
                 } ${
                     isCurrentUser
-                        ? 'bg-blue-100 border-2 border-blue-400'
-                        : 'bg-gray-50 border-2 border-transparent'
+                        ? 'bg-blue-100 border-2 border-blue-400 dark:bg-blue-900/30 dark:border-blue-600'
+                        : 'bg-gray-50 border-2 border-transparent dark:bg-gray-700/50'
                 } ${
                     isSpeaking && canShowVoiceControls ? 'ring-2 ring-green-400' : ''
                 }`}
@@ -171,12 +171,12 @@ export default function PlayerCard({
 
                 {/* Player Info */}
                 <div className="flex-1 min-w-0">
-                    <p className={`font-bold text-gray-900 truncate ${compact ? 'text-sm' : ''}`}>
+                    <p className={`font-bold text-gray-900 truncate dark:text-gray-100 ${compact ? 'text-sm' : ''}`}>
                         {player.nickname}
-                        {isCurrentUser && <span className="text-blue-600"> (You)</span>}
+                        {isCurrentUser && <span className="text-blue-600 dark:text-blue-400"> (You)</span>}
                     </p>
                     {player.is_host && (
-                        <span className="inline-flex items-center text-xs text-yellow-600 font-bold">
+                        <span className="inline-flex items-center text-xs text-yellow-600 font-bold dark:text-yellow-400">
                             <GameIcon name="crown" size="xs" className="inline-block mr-1" /> Host
                         </span>
                     )}
@@ -223,7 +223,7 @@ export default function PlayerCard({
                             /* Other players: Status indicators only */
                             <>
                                 {playerHasVideo && (
-                                    <span className="text-blue-500" title="Video enabled">
+                                    <span className="text-blue-500 dark:text-blue-400" title="Video enabled">
                                         <VideoOnIcon className={compact ? 'h-4 w-4' : 'h-5 w-5'} />
                                     </span>
                                 )}

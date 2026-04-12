@@ -65,14 +65,14 @@ export default function TutorialModal({ show, onClose }: TutorialModalProps) {
 
     return (
         <Modal show={show} onClose={handleClose} maxWidth="lg">
-            <div className="bg-white p-8 rounded-lg">
+            <div className="bg-white p-8 rounded-lg dark:bg-gray-800">
                 {/* Progress indicator */}
                 <div className="flex gap-2 mb-6">
                     {steps.map((_, idx) => (
                         <div
                             key={idx}
                             className={`flex-1 h-2 rounded-full transition-all ${
-                                idx <= step ? 'bg-blue-500' : 'bg-gray-200'
+                                idx <= step ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'
                             }`}
                         />
                     ))}
@@ -81,10 +81,10 @@ export default function TutorialModal({ show, onClose }: TutorialModalProps) {
                 {/* Content */}
                 <div className="text-center mb-6">
                     <div className="flex justify-center mb-4">{currentStep.icon}</div>
-                    <h2 className="text-2xl font-black text-gray-900 mb-3">
+                    <h2 className="text-2xl font-black text-gray-900 mb-3 dark:text-gray-100">
                         {currentStep.title}
                     </h2>
-                    <p className="text-gray-600 text-lg leading-relaxed">
+                    <p className="text-gray-600 text-lg leading-relaxed dark:text-gray-400">
                         {currentStep.content}
                     </p>
                 </div>
@@ -94,12 +94,12 @@ export default function TutorialModal({ show, onClose }: TutorialModalProps) {
                     <button
                         onClick={handlePrev}
                         disabled={step === 0}
-                        className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-30 disabled:cursor-not-allowed font-semibold"
+                        className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-30 disabled:cursor-not-allowed font-semibold dark:text-gray-400 dark:hover:text-gray-200"
                     >
                         ← Previous
                     </button>
 
-                    <span className="text-sm text-gray-500 font-medium">
+                    <span className="text-sm text-gray-500 font-medium dark:text-gray-400">
                         {step + 1} / {steps.length}
                     </span>
 
