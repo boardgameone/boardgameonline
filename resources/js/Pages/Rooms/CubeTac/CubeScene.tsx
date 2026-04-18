@@ -269,14 +269,17 @@ export default CubeScene;
 // mouse drag instead of OS key-repeat (which stalls ~500ms before firing).
 // -----------------------------------------------------------------------------
 
-const ORBIT_SPEED_RAD_PER_SEC = Math.PI / 1.5; // ~120°/sec
+const ORBIT_SPEED_RAD_PER_SEC = Math.PI * 3; // ~540°/sec
 
-// Minimal subset of OrbitControls we call — avoids pulling in three's types
-// just for the `.rotateLeft` / `.rotateUp` helpers we need.
+// Minimal subset of OrbitControls we call. Drei hands back three-stdlib's
+// OrbitControls instance, which exposes spherical-angle getters/setters but
+// keeps `rotateLeft` / `rotateUp` as private closures — so we drive the
+// camera by reading and writing the azimuthal/polar angles directly.
 interface OrbitControlsImpl {
-    rotateLeft?: (angle: number) => void;
-    rotateUp?: (angle: number) => void;
-    update?: () => void;
+    getAzimuthalAngle: () => number;
+    getPolarAngle: () => number;
+    setAzimuthalAngle: (angle: number) => void;
+    setPolarAngle: (angle: number) => void;
 }
 
 function ArrowKeyOrbit({
@@ -298,9 +301,12 @@ function ArrowKeyOrbit({
         if (held.has('ArrowRight')) dx += step;
         if (held.has('ArrowUp')) dy -= step;
         if (held.has('ArrowDown')) dy += step;
-        if (dx !== 0) controls.rotateLeft?.(dx);
-        if (dy !== 0) controls.rotateUp?.(dy);
-        controls.update?.();
+        if (dx !== 0) {
+            controls.setAzimuthalAngle(controls.getAzimuthalAngle() - dx);
+        }
+        if (dy !== 0) {
+            controls.setPolarAngle(controls.getPolarAngle() - dy);
+        }
     });
     return null;
 }
