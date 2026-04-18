@@ -48,6 +48,8 @@ interface LocalState {
     pendingMarkIndex: number | null;
     /** Cumulative wins per slot; survives RESET so rematches keep score. */
     wins: number[];
+    /** Total completed games (wins + draws); survives RESET. Feeds rounds. */
+    gamesPlayed: number;
 }
 
 type LocalAction =
@@ -69,15 +71,20 @@ function freshState(playerCount: number): LocalState {
         pendingAction: false,
         pendingMarkIndex: null,
         wins: Array(playerCount).fill(0),
+        gamesPlayed: 0,
     };
 }
 
 function reducer(state: LocalState, action: LocalAction): LocalState {
     if (action.type === 'RESET') {
-        // Preserve the per-slot wins tally across rematches — only the game
-        // board itself is reset. Changing player count remounts the component,
-        // which is the only thing that clears wins.
-        return { ...freshState(state.playerCount), wins: state.wins };
+        // Preserve the per-slot wins tally and games-played counter across
+        // rematches — only the board itself resets. Changing player count
+        // remounts the component, which is the only thing that clears these.
+        return {
+            ...freshState(state.playerCount),
+            wins: state.wins,
+            gamesPlayed: state.gamesPlayed,
+        };
     }
 
     if (state.winner !== null) {
@@ -145,6 +152,7 @@ function reducer(state: LocalState, action: LocalAction): LocalState {
             pendingAction: false,
             pendingMarkIndex: null,
             wins: nextWins,
+            gamesPlayed: state.gamesPlayed + 1,
         };
     }
 
@@ -157,6 +165,7 @@ function reducer(state: LocalState, action: LocalAction): LocalState {
             winningLines: [],
             pendingAction: false,
             pendingMarkIndex: null,
+            gamesPlayed: state.gamesPlayed + 1,
         };
     }
 
@@ -348,6 +357,7 @@ function LocalGameBoard({ playerCount, onLeave, onChangeCount }: LocalGameBoardP
                         onUndoMark={handleUndoMark}
                         turnLabelOverride={`${players[state.currentTurn]?.nickname ?? 'Player'}'s Turn`}
                         onLeave={onLeave}
+                        gamesPlayed={state.gamesPlayed}
                     />
                     {canChangeCount && (
                         <button

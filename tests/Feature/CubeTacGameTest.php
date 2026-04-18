@@ -940,6 +940,56 @@ class CubeTacGameTest extends TestCase
         $this->assertSame(1, $data['guestPlayer']->refresh()->wins);
     }
 
+    public function test_games_played_increments_on_wins_and_draws_and_survives_reset(): void
+    {
+        $data = $this->makeGameWithTwoPlayers();
+        $this->assertSame(0, $data['room']->refresh()->games_played);
+
+        // Game 1: host wins via mark.
+        $this->seedOneMarkFromWin($data['room'], [$data['hostPlayer']->id, $data['guestPlayer']->id]);
+        $this->actingAs($data['host'])->post(
+            route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]),
+            ['face' => RubikCube::FACE_F, 'row' => 0, 'col' => 2],
+        );
+        $this->assertSame(1, $data['room']->refresh()->games_played);
+
+        // Rematch — games_played must persist.
+        $this->actingAs($data['host'])->post(
+            route('rooms.cubetac.reset', [$data['game']->slug, $data['room']->room_code]),
+        );
+        $this->assertSame(1, $data['room']->refresh()->games_played);
+
+        // Game 2: force a draw. Pre-seed move_count at limit - 1 with no
+        // three-in-a-row, and the next mark pushes us over the limit.
+        $data['room']->update([
+            'settings' => [
+                'marks' => RubikCube::initialMarks(),
+                'current_turn' => 0,
+                'move_count' => 59,
+                'move_limit' => 60,
+                'winner' => null,
+                'winning_lines' => [],
+                'last_action' => null,
+                'move_history' => [],
+                'pending_action' => false,
+                // After reset, slot 0 is the previous slot-1 player (guest).
+                'player_ids' => [$data['guestPlayer']->id, $data['hostPlayer']->id],
+            ],
+        ]);
+
+        $this->actingAs($data['guest'])->post(
+            route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]),
+            ['face' => RubikCube::FACE_F, 'row' => 0, 'col' => 0],
+        );
+
+        $data['room']->refresh();
+        $this->assertSame(2, $data['room']->games_played);
+        $this->assertSame('draw', $data['room']->settings['winner']);
+        // Draw doesn't change wins — only the first game's host win counts.
+        $this->assertSame(1, $data['hostPlayer']->refresh()->wins);
+        $this->assertSame(0, $data['guestPlayer']->refresh()->wins);
+    }
+
     public function test_finished_game_guards_prevent_double_increment(): void
     {
         $data = $this->makeGameWithTwoPlayers();
