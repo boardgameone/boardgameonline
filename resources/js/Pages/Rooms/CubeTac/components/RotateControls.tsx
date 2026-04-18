@@ -162,9 +162,6 @@ export default function RotateControls({ onRotate, disabled }: RotateControlsPro
                     <RotateCcwIcon className="h-3 w-3" /> ccw
                 </span>
             </div>
-            <div className="hidden text-[10px] font-semibold tracking-wide text-gray-400 sm:block">
-                Keys: U D L R F P · +Shift for counter-clockwise
-            </div>
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
                 {FACES.map((face) => (
                     <div key={face.name} className="flex flex-col items-center gap-1">
