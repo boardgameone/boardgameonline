@@ -278,7 +278,7 @@ export default CubeScene;
 // mouse drag instead of OS key-repeat (which stalls ~500ms before firing).
 // -----------------------------------------------------------------------------
 
-const ORBIT_SPEED_RAD_PER_SEC = Math.PI * 3; // ~540°/sec
+const ORBIT_SPEED_RAD_PER_SEC = Math.PI * 6; // ~1080°/sec
 
 // Minimal subset of OrbitControls we call. Drei hands back three-stdlib's
 // OrbitControls instance, which exposes spherical-angle getters/setters but
