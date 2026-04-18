@@ -20,6 +20,7 @@ class CreateGameRoomRequest extends FormRequest
         $rules = [
             'game_id' => ['required', 'integer', 'exists:games,id'],
             'name' => ['nullable', 'string', 'max:100'],
+            'is_public' => ['nullable', 'boolean'],
         ];
 
         // Nickname required for guests, optional for authenticated users

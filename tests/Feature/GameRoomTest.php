@@ -32,6 +32,50 @@ class GameRoomTest extends TestCase
         ]);
     }
 
+    public function test_rooms_default_to_public(): void
+    {
+        $user = User::factory()->create();
+        $game = Game::factory()->create();
+
+        $this->actingAs($user)->post(route('rooms.store'), [
+            'game_id' => $game->id,
+        ]);
+
+        $room = GameRoom::where('host_user_id', $user->id)->first();
+        $this->assertTrue($room->is_public);
+    }
+
+    public function test_user_can_create_private_room(): void
+    {
+        $user = User::factory()->create();
+        $game = Game::factory()->create();
+
+        $this->actingAs($user)->post(route('rooms.store'), [
+            'game_id' => $game->id,
+            'is_public' => false,
+        ]);
+
+        $room = GameRoom::where('host_user_id', $user->id)->first();
+        $this->assertFalse($room->is_public);
+    }
+
+    public function test_private_rooms_remain_joinable_via_code(): void
+    {
+        $user = User::factory()->create();
+        $game = Game::factory()->create(['max_players' => 10]);
+        $room = GameRoom::factory()->forGame($game)->create(['is_public' => false]);
+
+        $response = $this->actingAs($user)->post(route('rooms.join.submit'), [
+            'room_code' => $room->room_code,
+        ]);
+
+        $response->assertRedirect(route('rooms.show', [$game->slug, $room->room_code]));
+        $this->assertDatabaseHas('game_players', [
+            'game_room_id' => $room->id,
+            'user_id' => $user->id,
+        ]);
+    }
+
     public function test_room_code_is_generated_automatically(): void
     {
         $user = User::factory()->create();

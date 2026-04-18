@@ -33,6 +33,7 @@ class GameRoomController extends Controller
             'game_id' => $game->id,
             'host_user_id' => Auth::id(), // null for guests
             'name' => $request->validated('name'),
+            'is_public' => $request->validated('is_public') ?? true,
         ]);
 
         $this->joinAsPlayer($room, true, $request->validated('nickname'));

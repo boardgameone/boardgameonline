@@ -27,6 +27,7 @@ export interface GameRoom {
     room_code: string;
     name: string | null;
     status: 'waiting' | 'playing' | 'finished';
+    is_public: boolean;
     current_hour: number;
     started_at: string | null;
     ended_at: string | null;
