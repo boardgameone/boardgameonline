@@ -20,6 +20,7 @@ export interface CubeTacPlayerLite {
     id: number | null;
     nickname: string;
     avatar_color: string;
+    wins: number;
 }
 
 export interface FinishedPhaseProps {
@@ -106,7 +107,8 @@ export default function FinishedPhase({
             </div>
 
             {/* Actions */}
-            <div className="flex flex-col items-center gap-3 border-t-2 border-yellow-600/30 bg-white/85 px-4 py-6 backdrop-blur-xs">
+            <div className="flex flex-col items-center gap-4 border-t-2 border-yellow-600/30 bg-white/85 px-4 py-5 backdrop-blur-xs">
+                <Scoreboard players={players} winnerSlot={isDraw ? null : typeof winner === 'number' ? winner : null} />
                 <div className="flex gap-3">
                     {canRematch && onRematch && (
                         <button
@@ -128,6 +130,43 @@ export default function FinishedPhase({
                     )}
                 </div>
             </div>
+        </div>
+    );
+}
+
+interface ScoreboardProps {
+    players: CubeTacPlayerLite[];
+    /** Slot index of the player who just won this match, or null for a draw. */
+    winnerSlot: number | null;
+}
+
+function Scoreboard({ players, winnerSlot }: ScoreboardProps) {
+    return (
+        <div className="flex flex-wrap items-center justify-center gap-2">
+            {players.map((p, slot) => {
+                const isWinner = slot === winnerSlot;
+                const rowStyle: CSSProperties = isWinner
+                    ? { borderColor: p.avatar_color, boxShadow: `0 0 14px ${hexWithAlpha(p.avatar_color, 0.45)}` }
+                    : {};
+                return (
+                    <div
+                        key={slot}
+                        style={rowStyle}
+                        className={`flex items-center gap-2 rounded-full border-2 bg-white px-3 py-1 text-sm font-black shadow-sm ${
+                            isWinner ? 'text-gray-900' : 'border-gray-200 text-gray-700'
+                        }`}
+                    >
+                        <span
+                            className="inline-block h-3 w-3 rounded-full"
+                            style={{ backgroundColor: p.avatar_color }}
+                        />
+                        <span className="max-w-[8rem] truncate">{p.nickname}</span>
+                        <span className="rounded-full bg-yellow-200 px-2 py-0.5 text-xs font-black text-yellow-900">
+                            🏆 {p.wins}
+                        </span>
+                    </div>
+                );
+            })}
         </div>
     );
 }
