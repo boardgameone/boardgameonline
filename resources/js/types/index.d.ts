@@ -30,6 +30,7 @@ export interface GameRoom {
     current_hour: number;
     started_at: string | null;
     ended_at: string | null;
+    games_played: number;
     game?: Game;
     host?: User;
     players?: GamePlayer[];

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -29,6 +30,7 @@ class GameRoom extends Model
         'settings',
         'started_at',
         'ended_at',
+        'games_played',
     ];
 
     /**
@@ -42,6 +44,7 @@ class GameRoom extends Model
             'hour_started_at' => 'datetime',
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
+            'games_played' => 'integer',
         ];
     }
 
@@ -190,9 +193,9 @@ class GameRoom extends Model
     /**
      * Get players whose die value matches the given hour.
      *
-     * @return \Illuminate\Database\Eloquent\Collection<int, GamePlayer>
+     * @return Collection<int, GamePlayer>
      */
-    public function playersAtHour(int $hour): \Illuminate\Database\Eloquent\Collection
+    public function playersAtHour(int $hour): Collection
     {
         return $this->connectedPlayers()->where('die_value', $hour)->get();
     }

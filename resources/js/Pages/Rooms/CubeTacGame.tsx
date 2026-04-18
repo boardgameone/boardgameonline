@@ -163,6 +163,7 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
                         onEndTurn={handleEndTurn}
                         onUndoMark={handleUndoMark}
                         onLeave={handleLeave}
+                        gamesPlayed={room.games_played ?? 0}
                     />
                 ) : gameState && room.status === 'finished' ? (
                     <FinishedPhase
