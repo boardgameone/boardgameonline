@@ -190,10 +190,48 @@ class GameRoomTest extends TestCase
         $response = $this->actingAs($player)->post(route('rooms.leave', [$game->slug, $room->room_code]));
 
         $response->assertRedirect(route('games.show', $game->slug));
+        $this->assertDatabaseHas('game_rooms', ['id' => $room->id]);
         $this->assertDatabaseHas('game_players', [
             'game_room_id' => $room->id,
             'user_id' => $player->id,
             'is_connected' => false,
+        ]);
+    }
+
+    public function test_room_is_deleted_when_last_player_leaves(): void
+    {
+        $host = User::factory()->create();
+        $game = Game::factory()->create();
+        $room = GameRoom::factory()->withHost($host)->forGame($game)->create();
+        GamePlayer::factory()->forRoom($room)->forUser($host)->host()->create();
+
+        $response = $this->actingAs($host)->post(route('rooms.leave', [$game->slug, $room->room_code]));
+
+        $response->assertRedirect(route('games.show', $game->slug));
+        $this->assertDatabaseMissing('game_rooms', ['id' => $room->id]);
+        $this->assertDatabaseMissing('game_players', ['game_room_id' => $room->id]);
+    }
+
+    public function test_host_leaving_with_others_reassigns_and_keeps_room(): void
+    {
+        $host = User::factory()->create();
+        $other = User::factory()->create();
+        $game = Game::factory()->create();
+        $room = GameRoom::factory()->withHost($host)->forGame($game)->create();
+        GamePlayer::factory()->forRoom($room)->forUser($host)->host()->create();
+        $otherPlayer = GamePlayer::factory()->forRoom($room)->forUser($other)->create();
+
+        $response = $this->actingAs($host)->post(route('rooms.leave', [$game->slug, $room->room_code]));
+
+        $response->assertRedirect(route('games.show', $game->slug));
+        $this->assertDatabaseHas('game_rooms', [
+            'id' => $room->id,
+            'host_user_id' => $other->id,
+        ]);
+        $this->assertDatabaseHas('game_players', [
+            'id' => $otherPlayer->id,
+            'is_host' => true,
+            'is_connected' => true,
         ]);
     }
 
