@@ -34,6 +34,18 @@ php artisan migrate:fresh   # Reset database
 - **Routing**: Web routes in `routes/web.php` using middleware groups `['auth', 'verified']`
 - **Form Validation**: Request classes in `app/Http/Requests/`
 
+### Shared lobby actions (apply to every game)
+
+Lobby-level actions live in `GameRoomController` and work for every game (CubeTac, Trio, Twenty-Eight, …). Do **not** duplicate them in game-specific controllers. When adding a new game, these are inherited automatically via the `rooms.*` routes in `routes/web.php`:
+
+- `rooms.store`, `rooms.join`, `rooms.joinDirect` — create/join a room
+- `rooms.leave` — current player disconnects (sets `is_connected=false`; auto-reassigns host)
+- `rooms.kick` — **host-only**, waiting-phase-only; removes another player by `player_id` (marks `is_connected=false`). UI lives in the game's `WaitingPhase`.
+- `rooms.resetGame` — host-only; resets a finished room back to `waiting` with the same players
+- `rooms.chat`, `rooms.messages`, `rooms.voice.*` — shared chat + WebRTC signalling
+
+Game-specific controllers (`CubeTacGameController`, `TrioGameController`, `TwentyEightGameController`) should only hold gameplay actions (start, move, turn-end, etc.), not lobby management.
+
 ### Frontend (React + Inertia.js + TypeScript)
 
 - **Entry Point**: `resources/js/app.tsx`
