@@ -10,7 +10,7 @@
  * the 3D cube glyphs); 2..5 use triangle, square, plus, hexagon.
  */
 
-import { Suspense, lazy, useMemo, type CSSProperties, type Ref } from 'react';
+import { Suspense, lazy, useMemo, type CSSProperties, type ReactNode, type Ref } from 'react';
 import { Marks, Move, indexOf } from '@/lib/rubikCube';
 import RotateControls from './components/RotateControls';
 import type { CubeSceneHandle } from './CubeScene';
@@ -202,6 +202,8 @@ export default function PlayingPhase({
                     </div>
                 )}
 
+                <ShortcutHints />
+
                 <Leaderboard
                     players={players}
                     currentTurn={currentTurn}
@@ -384,6 +386,57 @@ function countMarksBySlot(marks: Marks, n: number): number[] {
     }
     return out;
 }
+
+// -----------------------------------------------------------------------------
+
+/**
+ * Bottom-left hint overlay advertising the keyboard shortcuts: arrow keys
+ * orbit the camera, letter keys rotate a face (Shift inverts). Hidden on
+ * mobile where keyboard input isn't available; pointer-events-none so it
+ * never intercepts cube drags.
+ */
+function ShortcutHints() {
+    return (
+        <div
+            className="pointer-events-none absolute bottom-3 left-3 hidden rounded-lg bg-white/80 px-3 py-2 shadow-md backdrop-blur-xs sm:block"
+            aria-hidden="true"
+        >
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-700">
+                <span className="inline-flex items-center gap-0.5">
+                    <Kbd>←</Kbd>
+                    <Kbd>↑</Kbd>
+                    <Kbd>→</Kbd>
+                    <Kbd>↓</Kbd>
+                </span>
+                <span className="text-gray-500">orbit camera</span>
+            </div>
+            <div className="mt-1.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-700">
+                <span className="inline-flex items-center gap-0.5">
+                    <Kbd>U</Kbd>
+                    <Kbd>D</Kbd>
+                    <Kbd>L</Kbd>
+                    <Kbd>R</Kbd>
+                    <Kbd>F</Kbd>
+                    <Kbd>P</Kbd>
+                </span>
+                <span className="text-gray-500">rotate face</span>
+            </div>
+            <div className="mt-1 text-[9px] font-semibold tracking-wide text-gray-400">
+                +Shift for counter-clockwise
+            </div>
+        </div>
+    );
+}
+
+function Kbd({ children }: { children: ReactNode }) {
+    return (
+        <span className="inline-grid h-[1.25rem] min-w-[1.25rem] place-items-center rounded-sm border border-gray-300 bg-gray-50 px-1 text-[9px] font-black text-gray-700 shadow-[inset_0_-1px_0_rgba(0,0,0,0.08)]">
+            {children}
+        </span>
+    );
+}
+
+// -----------------------------------------------------------------------------
 
 /** Expand a #rrggbb string to `rgba(r, g, b, a)`. Tolerates #rgb shorthand. */
 function hexWithAlpha(hex: string, alpha: number): string {
