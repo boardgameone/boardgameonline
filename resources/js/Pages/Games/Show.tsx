@@ -30,6 +30,7 @@ export default function Show({ auth, game, waitingRooms }: Props) {
         game_id: game.id,
         name: '',
         nickname: '',
+        is_public: true as boolean,
     });
 
     const submit: FormEventHandler = (e) => {
@@ -125,6 +126,24 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                             />
                             {errors.name && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.name}</p>}
                         </div>
+                        <label
+                            htmlFor="is-private-mobile"
+                            className="flex items-start gap-2 rounded-lg border-2 border-gray-200 bg-white/60 p-2.5 cursor-pointer transition hover:border-teal-300 dark:bg-gray-900 dark:border-gray-700 dark:hover:border-teal-700"
+                        >
+                            <input
+                                id="is-private-mobile"
+                                type="checkbox"
+                                checked={!data.is_public}
+                                onChange={(e) => setData('is_public', !e.target.checked)}
+                                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                            />
+                            <span className="flex-1">
+                                <span className="block text-xs font-bold text-gray-900 dark:text-gray-100">Private room</span>
+                                <span className="block text-[11px] text-gray-600 dark:text-gray-400">
+                                    Hidden from Open Rooms — join via code only
+                                </span>
+                            </span>
+                        </label>
                         <button
                             type="submit"
                             disabled={processing || (!auth.user && !data.nickname)}
@@ -354,6 +373,24 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                                     />
                                     {errors.name && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name}</p>}
                                 </div>
+                                <label
+                                    htmlFor="is-private"
+                                    className="flex items-start gap-2 rounded-xl border-2 border-gray-200 bg-white/60 p-3 cursor-pointer transition hover:border-teal-300 dark:bg-gray-900 dark:border-gray-700 dark:hover:border-teal-700"
+                                >
+                                    <input
+                                        id="is-private"
+                                        type="checkbox"
+                                        checked={!data.is_public}
+                                        onChange={(e) => setData('is_public', !e.target.checked)}
+                                        className="mt-0.5 h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                                    />
+                                    <span className="flex-1">
+                                        <span className="block text-xs font-bold text-gray-900 dark:text-gray-100">Private room</span>
+                                        <span className="block text-[11px] text-gray-600 dark:text-gray-400">
+                                            Hidden from Open Rooms — join via code only
+                                        </span>
+                                    </span>
+                                </label>
                                 <button
                                     type="submit"
                                     disabled={processing || (!auth.user && !data.nickname)}

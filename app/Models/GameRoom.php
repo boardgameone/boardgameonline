@@ -22,6 +22,7 @@ class GameRoom extends Model
         'room_code',
         'name',
         'status',
+        'is_public',
         'current_hour',
         'hour_started_at',
         'thief_player_id',
@@ -40,6 +41,7 @@ class GameRoom extends Model
     {
         return [
             'settings' => 'array',
+            'is_public' => 'boolean',
             'current_hour' => 'integer',
             'hour_started_at' => 'datetime',
             'started_at' => 'datetime',
