@@ -57,6 +57,11 @@ export interface PlayingPhaseProps {
     onLeave?: () => void;
     /** Ref for the cube scene's imperative handle (drives rotation animation). */
     cubeRef?: Ref<CubeSceneHandle>;
+    /**
+     * Total completed games in this lobby (wins + draws). Feeds the round
+     * indicator in the leaderboard — a round is one game per player.
+     */
+    gamesPlayed: number;
 }
 
 /** 2D HUD chips for each slot — Unicode chars so the badges stay cheap. */
@@ -79,6 +84,7 @@ export default function PlayingPhase({
     turnLabelOverride,
     onLeave,
     cubeRef,
+    gamesPlayed,
 }: PlayingPhaseProps) {
     const markCounts = useMemo(() => countMarksBySlot(marks, players.length), [marks, players.length]);
     const playerColors = useMemo(() => players.map((p) => p.avatar_color), [players]);
@@ -196,7 +202,11 @@ export default function PlayingPhase({
                     </div>
                 )}
 
-                <Leaderboard players={players} currentTurn={currentTurn} />
+                <Leaderboard
+                    players={players}
+                    currentTurn={currentTurn}
+                    gamesPlayed={gamesPlayed}
+                />
             </div>
 
             {/* Player HUD + rotate controls */}
@@ -286,19 +296,33 @@ function PlayerBadge({ player, slot, isActive, markCount }: PlayerBadgeProps) {
 interface LeaderboardProps {
     players: CubeTacPlayerInfo[];
     currentTurn: number;
+    /** Games already completed in this lobby (feeds the round indicator). */
+    gamesPlayed: number;
 }
 
 /**
  * Always-visible per-slot wins tally floated on the right edge of the cube
- * canvas. Hidden on mobile (< sm) where the cube takes most of the viewport;
- * the bottom HUD still shows players and FinishedPhase surfaces the full
- * scoreboard between games.
+ * canvas, plus a round indicator. A round is N games (one game per player),
+ * so with N=3 the indicator cycles R1 G1/3 → R1 G2/3 → R1 G3/3 → R2 G1/3…
+ *
+ * Hidden on mobile (< sm) where the cube takes most of the viewport; the
+ * bottom HUD still shows players and FinishedPhase surfaces the scoreboard
+ * between games.
  */
-function Leaderboard({ players, currentTurn }: LeaderboardProps) {
+function Leaderboard({ players, currentTurn, gamesPlayed }: LeaderboardProps) {
+    const n = Math.max(1, players.length);
+    const round = Math.floor(gamesPlayed / n) + 1;
+    const gameInRound = (gamesPlayed % n) + 1;
+
     return (
         <div className="pointer-events-none absolute right-4 top-1/2 hidden -translate-y-1/2 flex-col gap-2 sm:flex">
-            <div className="rounded-full bg-white/85 px-3 py-1 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-gray-600 shadow-md backdrop-blur-xs">
-                Score
+            <div className="rounded-xl bg-white/90 px-3 py-1.5 text-center shadow-md backdrop-blur-xs">
+                <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-gray-500">
+                    Round {round}
+                </div>
+                <div className="text-[11px] font-black text-gray-900">
+                    Game {gameInRound} / {n}
+                </div>
             </div>
             {players.map((p, slot) => (
                 <LeaderboardRow
