@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Game;
+use App\Models\GameRoom;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -61,6 +62,22 @@ class GameTest extends TestCase
         $response = $this->actingAs($user)->get(route('games.show', $game->slug));
 
         $response->assertStatus(404);
+    }
+
+    public function test_game_show_hides_private_rooms_from_waiting_list(): void
+    {
+        $user = User::factory()->create();
+        $game = Game::factory()->create();
+
+        $publicRoom = GameRoom::factory()->forGame($game)->create(['is_public' => true]);
+        GameRoom::factory()->forGame($game)->create(['is_public' => false]);
+
+        $response = $this->actingAs($user)->get(route('games.show', $game->slug));
+
+        $response->assertInertia(fn ($page) => $page
+            ->has('waitingRooms', 1)
+            ->where('waitingRooms.0.id', $publicRoom->id)
+        );
     }
 
     public function test_welcome_page_shows_featured_games(): void

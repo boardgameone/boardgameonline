@@ -31,6 +31,7 @@ class GameController extends Controller
 
         $waitingRooms = $game->rooms()
             ->where('status', 'waiting')
+            ->where('is_public', true)
             ->with(['host:id,name', 'connectedPlayers:id,game_room_id,nickname,avatar_color'])
             ->withCount('connectedPlayers')
             ->latest()
