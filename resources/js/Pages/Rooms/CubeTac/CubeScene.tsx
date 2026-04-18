@@ -13,7 +13,7 @@
  * via `apply()` atomically.
  */
 
-import { Canvas, ThreeEvent, useFrame } from '@react-three/fiber';
+import { Canvas, ThreeEvent, useFrame, useThree } from '@react-three/fiber';
 import { Environment, Html, OrbitControls, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import {
@@ -491,6 +491,28 @@ function FaceLabel({ face }: FaceLabelProps) {
     const label = FACE_DISPLAY_NAMES[face];
     const colors = FACE_LABEL_COLORS[face];
 
+    // Camera-facing visibility: deterministic per-frame dot test instead of
+    // drei's raycast-based `occlude`, which can misfire when CubeScene is
+    // remounted (e.g. after Play Again) before the cubie meshes register in
+    // the scene graph and briefly leaves every label visible.
+    const divRef = useRef<HTMLDivElement>(null);
+    const camera = useThree((s) => s.camera);
+    const toCamera = useMemo(() => new THREE.Vector3(), []);
+
+    useFrame(() => {
+        const el = divRef.current;
+        if (!el) return;
+        toCamera
+            .set(
+                camera.position.x - position[0],
+                camera.position.y - position[1],
+                camera.position.z - position[2],
+            )
+            .normalize();
+        const facing = normal[0] * toCamera.x + normal[1] * toCamera.y + normal[2] * toCamera.z;
+        el.style.visibility = facing > 0.05 ? 'visible' : 'hidden';
+    });
+
     return (
         <Html
             position={position}
@@ -498,9 +520,9 @@ function FaceLabel({ face }: FaceLabelProps) {
             distanceFactor={8}
             pointerEvents="none"
             zIndexRange={[10, 0]}
-            occlude
         >
             <div
+                ref={divRef}
                 className="pointer-events-none select-none"
                 style={{
                     transform: 'translate(-50%, -50%)',
