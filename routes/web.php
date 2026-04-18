@@ -75,6 +75,8 @@ Route::post('/rooms/{game:slug}/{room:room_code}/twenty-eight/next-round', [Twen
 Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/start', [CubeTacGameController::class, 'start'])->middleware('throttle:20,1')->name('rooms.cubetac.start');
 Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/mark', [CubeTacGameController::class, 'mark'])->middleware('throttle:60,1')->name('rooms.cubetac.mark');
 Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/rotate', [CubeTacGameController::class, 'rotate'])->middleware('throttle:60,1')->name('rooms.cubetac.rotate');
+Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/end-turn', [CubeTacGameController::class, 'endTurn'])->middleware('throttle:60,1')->name('rooms.cubetac.endTurn');
+Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/undo-mark', [CubeTacGameController::class, 'undoMark'])->middleware('throttle:60,1')->name('rooms.cubetac.undoMark');
 Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/reset', [CubeTacGameController::class, 'reset'])->middleware('throttle:20,1')->name('rooms.cubetac.reset');
 Route::get('/play/cubetac/local', [CubeTacGameController::class, 'local'])->name('cubetac.local');
 

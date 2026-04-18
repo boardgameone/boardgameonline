@@ -11,7 +11,7 @@
  */
 
 import { Suspense, lazy, useMemo, type CSSProperties, type Ref } from 'react';
-import { Marks, Move } from '@/lib/rubikCube';
+import { Marks, Move, indexOf } from '@/lib/rubikCube';
 import RotateControls from './components/RotateControls';
 import type { CubeSceneHandle } from './CubeScene';
 
@@ -33,8 +33,22 @@ export interface PlayingPhaseProps {
     /** Viewer's slot, or `null` for spectators / local mode. */
     mySlot: number | null;
     isMyTurn: boolean;
+    /**
+     * True after the current player has placed a mark but not yet clicked
+     * Confirm Turn. Marks/rotations are blocked; the Confirm button is shown.
+     * Rotations never set this — they auto-advance the turn.
+     */
+    pendingAction: boolean;
+    /**
+     * Most recent action's metadata. When `pendingAction` is true and this
+     * is a mark, its `{face,row,col}` identifies the sticker the current
+     * player can click again to undo.
+     */
+    lastAction?: Record<string, unknown> | null;
     onMark: (face: number, row: number, col: number) => void;
     onRotate: (move: Move) => void;
+    onEndTurn: () => void;
+    onUndoMark: () => void;
     /** Banner override — used by local mode to show "Player 1's turn" etc. */
     turnLabelOverride?: string;
     /** Back / leave handler */
@@ -54,8 +68,12 @@ export default function PlayingPhase({
     players,
     mySlot,
     isMyTurn,
+    pendingAction,
+    lastAction,
     onMark,
     onRotate,
+    onEndTurn,
+    onUndoMark,
     turnLabelOverride,
     onLeave,
     cubeRef,
@@ -73,7 +91,39 @@ export default function PlayingPhase({
                 ? 'Your Turn'
                 : `${currentPlayer?.nickname ?? 'Opponent'}'s Turn`);
 
-    const subLabel = isMyTurn || turnLabelOverride ? 'Tap a sticker · or rotate a face' : 'Waiting…';
+    const canAct = isMyTurn && !pendingAction;
+    const pendingMark = pendingAction && lastAction && lastAction.type === 'mark'
+        ? {
+            face: lastAction.face as number,
+            row: lastAction.row as number,
+            col: lastAction.col as number,
+        }
+        : null;
+    const pendingIndex = pendingMark
+        ? indexOf(pendingMark.face, pendingMark.row, pendingMark.col)
+        : null;
+    const subLabel = pendingAction && isMyTurn
+        ? 'Confirm · or tap your mark to undo'
+        : canAct || turnLabelOverride
+            ? 'Tap a sticker · or rotate a face'
+            : 'Waiting…';
+
+    // One click handler, two behaviors: clicking an empty sticker marks it;
+    // clicking the pending mark (same face/row/col) undoes it. Any other
+    // click (already-marked stickers, etc.) is ignored.
+    const handleStickerClick = (face: number, row: number, col: number) => {
+        if (pendingMark
+            && pendingMark.face === face
+            && pendingMark.row === row
+            && pendingMark.col === col) {
+            onUndoMark();
+            return;
+        }
+        if (canAct && marks[indexOf(face, row, col)] === null) {
+            onMark(face, row, col);
+        }
+    };
+    const stickerClickActive = isMyTurn && (canAct || pendingMark !== null);
 
     return (
         <div className="relative flex h-full w-full flex-col overflow-hidden">
@@ -130,8 +180,9 @@ export default function PlayingPhase({
                         ref={cubeRef}
                         marks={marks}
                         playerColors={playerColors}
-                        onStickerClick={isMyTurn ? onMark : undefined}
-                        interactive={isMyTurn}
+                        pendingIndex={pendingIndex}
+                        onStickerClick={stickerClickActive ? handleStickerClick : undefined}
+                        interactive={stickerClickActive}
                     />
                 </Suspense>
 
@@ -158,7 +209,24 @@ export default function PlayingPhase({
                     ))}
                 </div>
 
-                <RotateControls onRotate={onRotate} disabled={!isMyTurn} />
+                <RotateControls onRotate={onRotate} disabled={!canAct} />
+
+                {isMyTurn && pendingAction && (
+                    <div className="flex justify-center pt-1">
+                        <button
+                            type="button"
+                            onClick={onEndTurn}
+                            aria-label="End turn"
+                            className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-emerald-500 to-teal-500 px-6 py-2.5 text-sm font-black uppercase tracking-[0.2em] text-white shadow-lg border-b-4 border-emerald-700 transition hover:scale-[1.03] hover:from-emerald-600 hover:to-teal-600 active:scale-95"
+                            style={{ boxShadow: `0 8px 22px ${hexWithAlpha(currentColor, 0.35)}` }}
+                        >
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                            Confirm Turn
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -155,6 +155,10 @@ class CubeTacGameController extends Controller
             return back()->withErrors(['error' => 'It is not your turn.']);
         }
 
+        if ($settings['pending_action'] ?? false) {
+            return back()->withErrors(['error' => 'Confirm your turn before taking another action.']);
+        }
+
         $face = (int) $request->validated('face');
         $row = (int) $request->validated('row');
         $col = (int) $request->validated('col');
@@ -182,7 +186,7 @@ class CubeTacGameController extends Controller
         $settings['last_action'] = $action;
         $settings = $this->appendHistory($settings, $action);
 
-        $settings = $this->finalizeAfterAction($settings);
+        $settings = $this->finalizeAfterAction($settings, requireConfirm: true);
 
         $room->update([
             'settings' => $settings,
@@ -224,6 +228,10 @@ class CubeTacGameController extends Controller
             return back()->withErrors(['error' => 'It is not your turn.']);
         }
 
+        if ($settings['pending_action'] ?? false) {
+            return back()->withErrors(['error' => 'Confirm your turn before taking another action.']);
+        }
+
         /** @var string $move */
         $move = $request->validated('move');
         /** @var array<int, int|null> $marks */
@@ -241,7 +249,7 @@ class CubeTacGameController extends Controller
         $settings['last_action'] = $action;
         $settings = $this->appendHistory($settings, $action);
 
-        $settings = $this->finalizeAfterAction($settings);
+        $settings = $this->finalizeAfterAction($settings, requireConfirm: false);
 
         $room->update([
             'settings' => $settings,
@@ -346,6 +354,7 @@ class CubeTacGameController extends Controller
             'is_my_turn' => $currentPlayer !== null
                 && $this->expectedPlayerId($settings) === $currentPlayer->id
                 && ($settings['winner'] ?? null) === null,
+            'pending_action' => (bool) ($settings['pending_action'] ?? false),
             'my_slot' => $mySlot,
             'players' => $playersBySlot,
         ];
@@ -368,19 +377,20 @@ class CubeTacGameController extends Controller
             'winning_lines' => [],
             'last_action' => null,
             'move_history' => [],
+            'pending_action' => false,
             'player_ids' => array_values($playerIds),
         ];
     }
 
     /**
-     * After a mark or rotate: check win / draw and advance to the next
-     * slot if the game continues. `current_turn` is an int slot index
-     * (0..N-1) that wraps via modular arithmetic.
+     * After a mark or rotate: check win / draw. If the game continues,
+     * either auto-advance the turn (rotate) or flag `pending_action`
+     * so the UI shows a Confirm Turn button (mark).
      *
      * @param  array<string, mixed>  $settings
      * @return array<string, mixed>
      */
-    private function finalizeAfterAction(array $settings): array
+    private function finalizeAfterAction(array $settings, bool $requireConfirm): array
     {
         /** @var array<int, int|null> $marks */
         $marks = $settings['marks'];
@@ -399,6 +409,7 @@ class CubeTacGameController extends Controller
                 $settings['winner'] = $currentSlot;
                 $settings['winning_lines'] = $lines;
             }
+            $settings['pending_action'] = false;
 
             return $settings;
         }
@@ -409,17 +420,136 @@ class CubeTacGameController extends Controller
             || RubikCube::isComplete($marks)) {
             $settings['winner'] = 'draw';
             $settings['winning_lines'] = [];
+            $settings['pending_action'] = false;
 
             return $settings;
         }
 
-        // Advance to the next slot
+        if ($requireConfirm) {
+            // Game continues — wait for the current player to click
+            // Confirm Turn (handled by endTurn()). Slot stays put.
+            $settings['pending_action'] = true;
+
+            return $settings;
+        }
+
+        // Rotations auto-advance the turn — no confirm step.
         /** @var list<int> $playerIds */
         $playerIds = $settings['player_ids'] ?? [];
         $n = max(1, count($playerIds));
         $settings['current_turn'] = ($currentSlot + 1) % $n;
+        $settings['pending_action'] = false;
 
         return $settings;
+    }
+
+    /**
+     * Undo a pending mark. The current player clicked a sticker but hasn't
+     * yet confirmed; clicking the same sticker again calls this endpoint
+     * to take the mark back. Rotations cannot be undone — they auto-confirm.
+     */
+    public function undoMark(Game $game, GameRoom $room): RedirectResponse
+    {
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
+        $currentPlayer = $this->findCurrentPlayer($room);
+
+        if (! $currentPlayer) {
+            abort(403, 'You are not a player in this room.');
+        }
+
+        if (! $room->isPlaying()) {
+            return back()->withErrors(['error' => 'Game is not in progress.']);
+        }
+
+        $settings = $room->settings ?? [];
+
+        if (($settings['winner'] ?? null) !== null) {
+            return back()->withErrors(['error' => 'Game is already over.']);
+        }
+
+        $expectedPlayerId = $this->expectedPlayerId($settings);
+        if ($expectedPlayerId !== $currentPlayer->id) {
+            return back()->withErrors(['error' => 'It is not your turn.']);
+        }
+
+        if (! ($settings['pending_action'] ?? false)) {
+            return back()->withErrors(['error' => 'Nothing to undo.']);
+        }
+
+        $last = $settings['last_action'] ?? null;
+        if (! is_array($last) || ($last['type'] ?? null) !== 'mark') {
+            return back()->withErrors(['error' => 'Only marks can be undone.']);
+        }
+
+        $idx = RubikCube::indexOf((int) $last['face'], (int) $last['row'], (int) $last['col']);
+        /** @var array<int, int|null> $marks */
+        $marks = $settings['marks'];
+        $marks[$idx] = null;
+        $settings['marks'] = $marks;
+        $settings['move_count'] = max(0, ((int) ($settings['move_count'] ?? 0)) - 1);
+        $settings['pending_action'] = false;
+
+        // Pop the mark from history if it was the most recent entry.
+        $history = $settings['move_history'] ?? [];
+        if (! empty($history) && ($history[count($history) - 1]['move_id'] ?? null) === ($last['move_id'] ?? null)) {
+            array_pop($history);
+            $settings['move_history'] = array_values($history);
+        }
+        $settings['last_action'] = null;
+
+        $room->update(['settings' => $settings]);
+
+        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
+    }
+
+    /**
+     * Advance to the next slot after the current player has taken their
+     * mark or rotate action and clicked "Confirm Turn".
+     */
+    public function endTurn(Game $game, GameRoom $room): RedirectResponse
+    {
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
+        $currentPlayer = $this->findCurrentPlayer($room);
+
+        if (! $currentPlayer) {
+            abort(403, 'You are not a player in this room.');
+        }
+
+        if (! $room->isPlaying()) {
+            return back()->withErrors(['error' => 'Game is not in progress.']);
+        }
+
+        $settings = $room->settings ?? [];
+
+        if (($settings['winner'] ?? null) !== null) {
+            return back()->withErrors(['error' => 'Game is already over.']);
+        }
+
+        $expectedPlayerId = $this->expectedPlayerId($settings);
+        if ($expectedPlayerId !== $currentPlayer->id) {
+            return back()->withErrors(['error' => 'It is not your turn.']);
+        }
+
+        if (! ($settings['pending_action'] ?? false)) {
+            return back()->withErrors(['error' => 'Take an action before ending your turn.']);
+        }
+
+        /** @var list<int> $playerIds */
+        $playerIds = $settings['player_ids'] ?? [];
+        $n = max(1, count($playerIds));
+        $currentSlot = (int) $settings['current_turn'];
+        $settings['current_turn'] = ($currentSlot + 1) % $n;
+        $settings['pending_action'] = false;
+
+        $room->update(['settings' => $settings]);
+
+        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
     }
 
     /**

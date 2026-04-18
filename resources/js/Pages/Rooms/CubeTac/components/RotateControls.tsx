@@ -3,9 +3,9 @@
  *
  * Each face of the cube is labeled on the 3D view (TOP / BOT / LEFT /
  * RIGHT / FRONT / BACK) and each button here maps 1-to-1 to those labels
- * plus a direction (↻ clockwise, ↺ counter-clockwise). Color-coding is
- * shared with the cube face labels so a player can instantly find "the
- * teal TOP button rotates the teal-labeled TOP face".
+ * plus a direction (↻ clockwise, ↺ counter-clockwise). Buttons are fully
+ * filled with the face's color so a player can instantly match "the teal
+ * TOP button rotates the teal TOP face" without reading the label.
  */
 
 import { Move } from '@/lib/rubikCube';
@@ -19,12 +19,17 @@ interface FaceConfig {
     name: string;
     cw: Move;
     ccw: Move;
+    /** Full-color tint set. All Tailwind v4 classes; no dynamic class synthesis. */
     tint: {
-        border: string;
-        activeBorder: string;
-        text: string;
-        dot: string;
+        /** Saturated button fill. */
+        bg: string;
+        /** One shade darker for hover. */
         hoverBg: string;
+        /** Label pill background (tinted-light). */
+        labelBg: string;
+        /** Label text color — matches the face hue but dark enough to read. */
+        labelText: string;
+        /** Focus ring color. */
         ring: string;
     };
 }
@@ -35,12 +40,11 @@ const FACES: FaceConfig[] = [
         cw: 'U',
         ccw: "U'",
         tint: {
-            border: 'border-teal-300',
-            activeBorder: 'hover:border-teal-500',
-            text: 'text-teal-800',
-            dot: 'bg-teal-400',
-            hoverBg: 'hover:bg-teal-50',
-            ring: 'ring-teal-200',
+            bg: 'bg-teal-500',
+            hoverBg: 'hover:bg-teal-600',
+            labelBg: 'bg-teal-100',
+            labelText: 'text-teal-800',
+            ring: 'focus-visible:ring-teal-400',
         },
     },
     {
@@ -48,12 +52,11 @@ const FACES: FaceConfig[] = [
         cw: 'D',
         ccw: "D'",
         tint: {
-            border: 'border-purple-300',
-            activeBorder: 'hover:border-purple-500',
-            text: 'text-purple-800',
-            dot: 'bg-purple-400',
-            hoverBg: 'hover:bg-purple-50',
-            ring: 'ring-purple-200',
+            bg: 'bg-purple-500',
+            hoverBg: 'hover:bg-purple-600',
+            labelBg: 'bg-purple-100',
+            labelText: 'text-purple-800',
+            ring: 'focus-visible:ring-purple-400',
         },
     },
     {
@@ -61,12 +64,11 @@ const FACES: FaceConfig[] = [
         cw: 'L',
         ccw: "L'",
         tint: {
-            border: 'border-emerald-300',
-            activeBorder: 'hover:border-emerald-500',
-            text: 'text-emerald-800',
-            dot: 'bg-emerald-400',
-            hoverBg: 'hover:bg-emerald-50',
-            ring: 'ring-emerald-200',
+            bg: 'bg-emerald-500',
+            hoverBg: 'hover:bg-emerald-600',
+            labelBg: 'bg-emerald-100',
+            labelText: 'text-emerald-800',
+            ring: 'focus-visible:ring-emerald-400',
         },
     },
     {
@@ -74,12 +76,11 @@ const FACES: FaceConfig[] = [
         cw: 'R',
         ccw: "R'",
         tint: {
-            border: 'border-sky-300',
-            activeBorder: 'hover:border-sky-500',
-            text: 'text-sky-800',
-            dot: 'bg-sky-400',
-            hoverBg: 'hover:bg-sky-50',
-            ring: 'ring-sky-200',
+            bg: 'bg-sky-500',
+            hoverBg: 'hover:bg-sky-600',
+            labelBg: 'bg-sky-100',
+            labelText: 'text-sky-800',
+            ring: 'focus-visible:ring-sky-400',
         },
     },
     {
@@ -87,12 +88,11 @@ const FACES: FaceConfig[] = [
         cw: 'F',
         ccw: "F'",
         tint: {
-            border: 'border-pink-300',
-            activeBorder: 'hover:border-pink-500',
-            text: 'text-pink-800',
-            dot: 'bg-pink-400',
-            hoverBg: 'hover:bg-pink-50',
-            ring: 'ring-pink-200',
+            bg: 'bg-pink-500',
+            hoverBg: 'hover:bg-pink-600',
+            labelBg: 'bg-pink-100',
+            labelText: 'text-pink-800',
+            ring: 'focus-visible:ring-pink-400',
         },
     },
     {
@@ -100,12 +100,11 @@ const FACES: FaceConfig[] = [
         cw: 'B',
         ccw: "B'",
         tint: {
-            border: 'border-amber-300',
-            activeBorder: 'hover:border-amber-500',
-            text: 'text-amber-800',
-            dot: 'bg-amber-400',
-            hoverBg: 'hover:bg-amber-50',
-            ring: 'ring-amber-200',
+            bg: 'bg-amber-500',
+            hoverBg: 'hover:bg-amber-600',
+            labelBg: 'bg-amber-100',
+            labelText: 'text-amber-900',
+            ring: 'focus-visible:ring-amber-400',
         },
     },
 ];
@@ -127,8 +126,9 @@ export default function RotateControls({ onRotate, disabled }: RotateControlsPro
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
                 {FACES.map((face) => (
                     <div key={face.name} className="flex flex-col items-center gap-1">
-                        <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-gray-600">
-                            <span className={`h-1.5 w-1.5 rounded-full ${face.tint.dot}`} />
+                        <div
+                            className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${face.tint.labelBg} ${face.tint.labelText}`}
+                        >
                             {face.name}
                         </div>
                         <div className="flex gap-1">
@@ -170,10 +170,10 @@ function RotateButton({ face, move, direction, onClick, disabled }: RotateButton
             disabled={disabled}
             aria-label={`Rotate ${face.name} ${direction === 'cw' ? 'clockwise' : 'counter-clockwise'} (${move})`}
             title={`${face.name} ${direction === 'cw' ? 'clockwise' : 'counter-clockwise'}`}
-            className={`group grid h-11 w-11 place-items-center rounded-lg border-2 bg-white transition-all duration-150 sm:h-12 sm:w-12 ${
+            className={`group grid h-11 w-11 place-items-center rounded-lg text-white transition-all duration-150 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2 sm:h-12 sm:w-12 ${
                 disabled
-                    ? 'cursor-not-allowed border-gray-200 bg-gray-100/60 text-gray-300'
-                    : `${face.tint.border} ${face.tint.activeBorder} ${face.tint.hoverBg} ${face.tint.text} shadow-xs hover:shadow-md active:scale-95`
+                    ? 'cursor-not-allowed bg-gray-200 text-gray-400 shadow-xs'
+                    : `${face.tint.bg} ${face.tint.hoverBg} ${face.tint.ring} shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95 active:translate-y-0`
             }`}
         >
             {direction === 'cw' ? (
