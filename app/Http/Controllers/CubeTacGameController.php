@@ -195,6 +195,8 @@ class CubeTacGameController extends Controller
             'ended_at' => $settings['winner'] !== null ? now() : null,
         ]);
 
+        $this->recordWinIfAny($settings);
+
         return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
     }
 
@@ -257,6 +259,8 @@ class CubeTacGameController extends Controller
             'status' => $settings['winner'] !== null ? 'finished' : 'playing',
             'ended_at' => $settings['winner'] !== null ? now() : null,
         ]);
+
+        $this->recordWinIfAny($settings);
 
         return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
     }
@@ -594,7 +598,33 @@ class CubeTacGameController extends Controller
             'avatar_color' => $player->avatar_color,
             'is_host' => $player->is_host,
             'is_connected' => $player->is_connected,
+            'wins' => $player->wins,
         ];
+    }
+
+    /**
+     * Increment the winner's `wins` counter by one when a game just ended
+     * with a decisive winner. Draws (`'draw'`) and games still in progress
+     * (`null`) are skipped. Relies on the mark/rotate handlers' guards to
+     * ensure this is only ever reached once per game transition.
+     *
+     * @param  array<string, mixed>  $settings
+     */
+    private function recordWinIfAny(array $settings): void
+    {
+        $winner = $settings['winner'] ?? null;
+        if (! is_int($winner)) {
+            return;
+        }
+
+        /** @var list<int> $playerIds */
+        $playerIds = $settings['player_ids'] ?? [];
+        $winnerPlayerId = $playerIds[$winner] ?? null;
+        if ($winnerPlayerId === null) {
+            return;
+        }
+
+        GamePlayer::whereKey($winnerPlayerId)->increment('wins');
     }
 
     private function findCurrentPlayer(GameRoom $room): ?GamePlayer

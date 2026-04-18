@@ -30,6 +30,7 @@ class GamePlayer extends Model
         'is_video_enabled',
         'turn_order',
         'game_data',
+        'wins',
     ];
 
     /**
@@ -48,6 +49,7 @@ class GamePlayer extends Model
             'die_value' => 'integer',
             'turn_order' => 'integer',
             'game_data' => 'array',
+            'wins' => 'integer',
         ];
     }
 

@@ -765,6 +765,215 @@ class CubeTacGameTest extends TestCase
         $this->assertSame(0, $data['room']->settings['current_turn']);
     }
 
+    // --------------------------------------------------------------------
+    // Per-lobby win counter (persists across rematches)
+    // --------------------------------------------------------------------
+
+    /**
+     * Seed a room to a "one mark from a three-in-a-row" state so that the
+     * current player's next mark immediately ends the game. Avoids replaying
+     * the full move sequence in tests that only care about post-game effects.
+     *
+     * @param  list<int>  $playerIds
+     */
+    private function seedOneMarkFromWin(GameRoom $room, array $playerIds): void
+    {
+        $marks = RubikCube::initialMarks();
+        // Host (slot 0) already has two in a row on F face row 0.
+        $marks[RubikCube::indexOf(RubikCube::FACE_F, 0, 0)] = 0;
+        $marks[RubikCube::indexOf(RubikCube::FACE_F, 0, 1)] = 0;
+
+        $room->update([
+            'status' => 'playing',
+            'started_at' => now(),
+            'ended_at' => null,
+            'winner' => null,
+            'settings' => [
+                'marks' => $marks,
+                'current_turn' => 0,
+                'move_count' => 4,
+                'move_limit' => 60,
+                'winner' => null,
+                'winning_lines' => [],
+                'last_action' => null,
+                'move_history' => [],
+                'pending_action' => false,
+                'player_ids' => $playerIds,
+            ],
+        ]);
+    }
+
+    public function test_mark_win_increments_the_winners_wins(): void
+    {
+        $data = $this->makeGameWithTwoPlayers();
+        $this->seedOneMarkFromWin($data['room'], [$data['hostPlayer']->id, $data['guestPlayer']->id]);
+
+        $this->actingAs($data['host'])->post(
+            route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]),
+            ['face' => RubikCube::FACE_F, 'row' => 0, 'col' => 2],
+        )->assertRedirect();
+
+        $data['room']->refresh();
+        $this->assertSame('finished', $data['room']->status);
+        $this->assertSame(1, $data['hostPlayer']->refresh()->wins);
+        $this->assertSame(0, $data['guestPlayer']->refresh()->wins);
+    }
+
+    public function test_rotation_win_increments_the_winners_wins(): void
+    {
+        // Reuse the long-form rotation-win sequence from the existing rotation
+        // test, then assert wins are credited exactly once to the host.
+        $data = $this->makeGameWithTwoPlayers();
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.start', [$data['game']->slug, $data['room']->room_code]));
+
+        $target = RubikCube::indexOf(RubikCube::FACE_F, 2, 2);
+        $source = null;
+        for ($i = 0; $i < 54; $i++) {
+            if ($i === $target) {
+                continue;
+            }
+            $probe = RubikCube::initialMarks();
+            $probe[$i] = 0;
+            $after = RubikCube::apply('D', $probe);
+            if ($after[$target] === 0) {
+                $source = $i;
+                break;
+            }
+        }
+        $this->assertNotNull($source);
+        [$srcFace, $srcRow, $srcCol] = RubikCube::faceRowCol($source);
+
+        $markAndEnd = function ($user, int $face, int $row, int $col) use ($data) {
+            $this->actingAs($user)->post(
+                route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]),
+                ['face' => $face, 'row' => $row, 'col' => $col],
+            );
+            $this->actingAs($user)->post(
+                route('rooms.cubetac.endTurn', [$data['game']->slug, $data['room']->room_code]),
+            );
+        };
+
+        $markAndEnd($data['host'], RubikCube::FACE_F, 0, 0);
+        $markAndEnd($data['guest'], RubikCube::FACE_U, 1, 1);
+        $markAndEnd($data['host'], RubikCube::FACE_F, 1, 1);
+        $markAndEnd($data['guest'], RubikCube::FACE_B, 1, 1);
+        $markAndEnd($data['host'], $srcFace, $srcRow, $srcCol);
+        $markAndEnd($data['guest'], RubikCube::FACE_R, 1, 1);
+        $this->actingAs($data['host'])->post(
+            route('rooms.cubetac.rotate', [$data['game']->slug, $data['room']->room_code]),
+            ['move' => 'D'],
+        );
+
+        $data['room']->refresh();
+        $this->assertSame('finished', $data['room']->status);
+        $this->assertSame(1, $data['hostPlayer']->refresh()->wins);
+        $this->assertSame(0, $data['guestPlayer']->refresh()->wins);
+    }
+
+    public function test_draw_does_not_increment_any_wins(): void
+    {
+        $data = $this->makeGameWithTwoPlayers();
+
+        // Seed so move_count is already at the limit - 1, with no winning
+        // lines set up. The next mark pushes move_count past the limit and
+        // `finalizeAfterAction` sets winner='draw'.
+        $data['room']->update([
+            'status' => 'playing',
+            'started_at' => now(),
+            'settings' => [
+                'marks' => RubikCube::initialMarks(),
+                'current_turn' => 0,
+                'move_count' => 59,
+                'move_limit' => 60,
+                'winner' => null,
+                'winning_lines' => [],
+                'last_action' => null,
+                'move_history' => [],
+                'pending_action' => false,
+                'player_ids' => [$data['hostPlayer']->id, $data['guestPlayer']->id],
+            ],
+        ]);
+
+        $this->actingAs($data['host'])->post(
+            route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]),
+            ['face' => RubikCube::FACE_F, 'row' => 0, 'col' => 0],
+        )->assertRedirect();
+
+        $data['room']->refresh();
+        $this->assertSame('finished', $data['room']->status);
+        $this->assertSame('draw', $data['room']->settings['winner']);
+        $this->assertSame(0, $data['hostPlayer']->refresh()->wins);
+        $this->assertSame(0, $data['guestPlayer']->refresh()->wins);
+    }
+
+    public function test_wins_persist_across_rematch_and_track_the_new_winner(): void
+    {
+        $data = $this->makeGameWithTwoPlayers();
+
+        // Game 1: host wins.
+        $this->seedOneMarkFromWin($data['room'], [$data['hostPlayer']->id, $data['guestPlayer']->id]);
+        $this->actingAs($data['host'])->post(
+            route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]),
+            ['face' => RubikCube::FACE_F, 'row' => 0, 'col' => 2],
+        );
+        $this->assertSame(1, $data['hostPlayer']->refresh()->wins);
+        $this->assertSame(0, $data['guestPlayer']->refresh()->wins);
+
+        // Rematch — reset rotates order so the previous slot-1 player opens.
+        $this->actingAs($data['host'])->post(
+            route('rooms.cubetac.reset', [$data['game']->slug, $data['room']->room_code]),
+        )->assertRedirect();
+
+        // Wins are preserved across the reset.
+        $this->assertSame(1, $data['hostPlayer']->refresh()->wins);
+        $this->assertSame(0, $data['guestPlayer']->refresh()->wins);
+
+        // Game 2: guest (now slot 0) wins.
+        $this->seedOneMarkFromWin($data['room'], [$data['guestPlayer']->id, $data['hostPlayer']->id]);
+        $this->actingAs($data['guest'])->post(
+            route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]),
+            ['face' => RubikCube::FACE_F, 'row' => 0, 'col' => 2],
+        );
+
+        $this->assertSame(1, $data['hostPlayer']->refresh()->wins);
+        $this->assertSame(1, $data['guestPlayer']->refresh()->wins);
+    }
+
+    public function test_finished_game_guards_prevent_double_increment(): void
+    {
+        $data = $this->makeGameWithTwoPlayers();
+
+        // Finalize directly: game is already over with host (slot 0) as winner,
+        // but the player's `wins` counter is artificially still at 0. If the
+        // mark handler didn't guard against this, a retry would re-increment.
+        $data['room']->update([
+            'status' => 'finished',
+            'winner' => '0',
+            'ended_at' => now(),
+            'settings' => [
+                'marks' => RubikCube::initialMarks(),
+                'current_turn' => 0,
+                'move_count' => 5,
+                'move_limit' => 60,
+                'winner' => 0,
+                'winning_lines' => [],
+                'last_action' => null,
+                'move_history' => [],
+                'pending_action' => false,
+                'player_ids' => [$data['hostPlayer']->id, $data['guestPlayer']->id],
+            ],
+        ]);
+
+        $this->actingAs($data['host'])->post(
+            route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]),
+            ['face' => RubikCube::FACE_F, 'row' => 1, 'col' => 1],
+        )->assertSessionHasErrors('error');
+
+        $this->assertSame(0, $data['hostPlayer']->refresh()->wins);
+        $this->assertSame(0, $data['guestPlayer']->refresh()->wins);
+    }
+
     public function test_host_can_kick_a_player_from_the_lobby(): void
     {
         $data = $this->makeGameWithTwoPlayers();

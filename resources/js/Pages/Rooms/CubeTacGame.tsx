@@ -21,6 +21,7 @@ interface CubeTacPlayer {
     avatar_color: string;
     is_host: boolean;
     is_connected: boolean;
+    wins: number;
 }
 
 interface CubeTacGameState {
@@ -172,6 +173,7 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
                             id: p?.id ?? null,
                             nickname: p?.nickname ?? `Player ${slot + 1}`,
                             avatar_color: p?.avatar_color ?? '#5b9bd5',
+                            wins: p?.wins ?? 0,
                         }))}
                         mySlot={gameState.my_slot}
                         canRematch={isHost}
@@ -234,8 +236,8 @@ function GuestJoinForm({ nickname, onChange, onSubmit, processing, error }: Gues
 }
 
 function toPlayerInfo(p: CubeTacPlayer | null) {
-    if (!p) return { id: null, nickname: 'Waiting…', avatar_color: '#5b9bd5' };
-    return { id: p.id, nickname: p.nickname, avatar_color: p.avatar_color };
+    if (!p) return { id: null, nickname: 'Waiting…', avatar_color: '#5b9bd5', wins: 0 };
+    return { id: p.id, nickname: p.nickname, avatar_color: p.avatar_color, wins: p.wins };
 }
 
 function KickedNotice({ gameSlug }: { gameSlug: string }) {

@@ -182,6 +182,15 @@ function SeatCard({ slot, player, isSelf, onKick }: SeatCardProps) {
                     </svg>
                 </button>
             )}
+            {filled && player!.wins > 0 && (
+                <span
+                    title={`${player!.wins} ${player!.wins === 1 ? 'win' : 'wins'} this lobby`}
+                    className="absolute -top-2 -left-2 inline-flex h-7 min-w-[1.75rem] items-center justify-center gap-0.5 rounded-full bg-yellow-300 px-2 text-xs font-black text-yellow-900 shadow-md border-2 border-yellow-500 dark:bg-yellow-400 dark:border-yellow-600 dark:text-yellow-950"
+                >
+                    <span aria-hidden="true">🏆</span>
+                    {player!.wins}
+                </span>
+            )}
             <div
                 className="grid h-14 w-14 place-items-center rounded-full ring-4 ring-white shadow-md text-2xl font-black dark:ring-gray-800"
                 style={{ backgroundColor: hexWithAlpha(color, 0.15), color }}
