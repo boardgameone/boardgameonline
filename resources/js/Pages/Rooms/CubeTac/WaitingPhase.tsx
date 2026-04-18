@@ -7,8 +7,10 @@
 
 import { GamePlayer, GameRoom } from '@/types';
 import { Link, router } from '@inertiajs/react';
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { SLOT_CHARS } from './PlayingPhase';
+import { useVoiceChatOptional } from '@/Contexts/VoiceChatContext';
+import VideoModal from '@/Components/VideoModal';
 
 interface WaitingPhaseProps {
     room: GameRoom;
@@ -154,7 +156,32 @@ function SeatCard({ slot, player, isSelf, onKick }: SeatCardProps) {
     const char = SLOT_CHARS[slot] ?? '?';
     const color = player?.avatar_color ?? '#94a3b8';
 
+    const voiceChat = useVoiceChatOptional();
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const [showModal, setShowModal] = useState(false);
+
     const filled = player !== null;
+    const voiceReady = !!voiceChat?.isConnected && filled;
+
+    const remoteStream = filled && !isSelf ? voiceChat?.remoteVideos.get(player!.id) ?? null : null;
+    const localStream = isSelf && voiceChat?.isVideoEnabled ? voiceChat.localVideoStream ?? null : null;
+    const videoStream = remoteStream ?? localStream;
+    const hasVideo = !!videoStream;
+
+    const isSpeaking = filled && voiceReady && voiceChat!.speakingPlayers.has(player!.id);
+
+    const peerVoice = filled ? voiceChat?.players.find((p) => p.id === player!.id) : undefined;
+    const selfMuted = voiceChat?.isMuted ?? true;
+    const selfVideoOn = voiceChat?.isVideoEnabled ?? false;
+    const otherMuted = peerVoice?.is_muted ?? true;
+    const otherVideoOn = peerVoice?.is_video_enabled ?? false;
+
+    useEffect(() => {
+        if (videoRef.current && videoStream) {
+            videoRef.current.srcObject = videoStream;
+        }
+    }, [videoStream]);
+
     const cardStyle: CSSProperties = filled
         ? {
               borderColor: color,
@@ -162,50 +189,159 @@ function SeatCard({ slot, player, isSelf, onKick }: SeatCardProps) {
           }
         : {};
 
+    const handleAvatarClick = () => {
+        if (hasVideo) {
+            setShowModal(true);
+        }
+    };
+
+    const handleToggleMute = async () => {
+        if (voiceChat && isSelf) {
+            await voiceChat.toggleMute();
+        }
+    };
+
+    const handleToggleVideo = async () => {
+        if (voiceChat && isSelf) {
+            await voiceChat.toggleVideo();
+        }
+    };
+
     return (
-        <div
-            className={`relative flex w-32 flex-col items-center gap-2 rounded-2xl border-2 bg-white px-3 py-4 sm:w-40 dark:bg-gray-800 ${
-                filled ? '' : 'border-gray-200 dark:border-gray-700'
-            }`}
-            style={cardStyle}
-        >
-            {onKick && (
+        <>
+            <div
+                className={`relative flex w-32 flex-col items-center gap-2 rounded-2xl border-2 bg-white px-3 py-4 sm:w-40 dark:bg-gray-800 ${
+                    filled ? '' : 'border-gray-200 dark:border-gray-700'
+                } ${isSpeaking ? 'ring-2 ring-green-400' : ''}`}
+                style={cardStyle}
+            >
+                {onKick && (
+                    <button
+                        type="button"
+                        onClick={onKick}
+                        aria-label={`Kick ${player?.nickname ?? 'player'}`}
+                        title="Kick player"
+                        className="absolute -top-2 -right-2 grid h-7 w-7 place-items-center rounded-full bg-white text-red-600 shadow-md border-2 border-red-400 hover:bg-red-500 hover:text-white hover:scale-110 transition dark:bg-gray-900 dark:border-red-500/70 dark:text-red-400 dark:hover:bg-red-500 dark:hover:text-white"
+                    >
+                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                )}
+                {filled && player!.wins > 0 && (
+                    <span
+                        title={`${player!.wins} ${player!.wins === 1 ? 'win' : 'wins'} this lobby`}
+                        className="absolute -top-2 -left-2 inline-flex h-7 min-w-[1.75rem] items-center justify-center gap-0.5 rounded-full bg-yellow-300 px-2 text-xs font-black text-yellow-900 shadow-md border-2 border-yellow-500 dark:bg-yellow-400 dark:border-yellow-600 dark:text-yellow-950"
+                    >
+                        <span aria-hidden="true">🏆</span>
+                        {player!.wins}
+                    </span>
+                )}
                 <button
                     type="button"
-                    onClick={onKick}
-                    aria-label={`Kick ${player?.nickname ?? 'player'}`}
-                    title="Kick player"
-                    className="absolute -top-2 -right-2 grid h-7 w-7 place-items-center rounded-full bg-white text-red-600 shadow-md border-2 border-red-400 hover:bg-red-500 hover:text-white hover:scale-110 transition dark:bg-gray-900 dark:border-red-500/70 dark:text-red-400 dark:hover:bg-red-500 dark:hover:text-white"
+                    onClick={handleAvatarClick}
+                    disabled={!hasVideo}
+                    title={hasVideo ? 'Click to maximize' : undefined}
+                    className={`relative grid h-14 w-14 place-items-center overflow-hidden rounded-full ring-4 ring-white shadow-md text-2xl font-black dark:ring-gray-800 ${
+                        hasVideo ? 'cursor-pointer group' : 'cursor-default'
+                    } ${isSpeaking ? 'animate-pulse' : ''}`}
+                    style={
+                        hasVideo
+                            ? { backgroundColor: '#000' }
+                            : { backgroundColor: hexWithAlpha(color, 0.15), color }
+                    }
                 >
-                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    {hasVideo ? (
+                        <>
+                            <video
+                                ref={videoRef}
+                                autoPlay
+                                playsInline
+                                muted
+                                className="absolute inset-0 h-full w-full object-cover scale-x-[-1]"
+                            />
+                            <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition group-hover:bg-black/40 group-hover:opacity-100">
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                                </svg>
+                            </span>
+                        </>
+                    ) : (
+                        <span>{char}</span>
+                    )}
                 </button>
-            )}
-            {filled && player!.wins > 0 && (
-                <span
-                    title={`${player!.wins} ${player!.wins === 1 ? 'win' : 'wins'} this lobby`}
-                    className="absolute -top-2 -left-2 inline-flex h-7 min-w-[1.75rem] items-center justify-center gap-0.5 rounded-full bg-yellow-300 px-2 text-xs font-black text-yellow-900 shadow-md border-2 border-yellow-500 dark:bg-yellow-400 dark:border-yellow-600 dark:text-yellow-950"
-                >
-                    <span aria-hidden="true">🏆</span>
-                    {player!.wins}
+                <span className="max-w-full truncate text-sm font-black text-gray-900 dark:text-gray-100">
+                    {player ? player.nickname : 'Empty'}
                 </span>
-            )}
-            <div
-                className="grid h-14 w-14 place-items-center rounded-full ring-4 ring-white shadow-md text-2xl font-black dark:ring-gray-800"
-                style={{ backgroundColor: hexWithAlpha(color, 0.15), color }}
-            >
-                {char}
+                {isSelf && (
+                    <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300">
+                        you
+                    </span>
+                )}
+
+                {/* Voice controls / status */}
+                {voiceReady && isSelf && (
+                    <div className="flex items-center gap-1.5 pt-1">
+                        <button
+                            type="button"
+                            onClick={handleToggleMute}
+                            aria-label={selfMuted ? 'Unmute microphone' : 'Mute microphone'}
+                            title={selfMuted ? 'Unmute microphone' : 'Mute microphone'}
+                            className={`grid h-7 w-7 place-items-center rounded-full text-white shadow-md transition hover:scale-110 ${
+                                selfMuted ? 'bg-red-500' : 'bg-green-500'
+                            }`}
+                        >
+                            {selfMuted ? <MicOffIcon className="h-3.5 w-3.5" /> : <MicOnIcon className="h-3.5 w-3.5" />}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleToggleVideo}
+                            aria-label={selfVideoOn ? 'Turn off camera' : 'Turn on camera'}
+                            title={selfVideoOn ? 'Turn off camera' : 'Turn on camera'}
+                            className={`grid h-7 w-7 place-items-center rounded-full text-white shadow-md transition hover:scale-110 ${
+                                selfVideoOn ? 'bg-green-500' : 'bg-gray-500'
+                            }`}
+                        >
+                            {selfVideoOn ? (
+                                <VideoOnIcon className="h-3.5 w-3.5" />
+                            ) : (
+                                <VideoOffIcon className="h-3.5 w-3.5" />
+                            )}
+                        </button>
+                    </div>
+                )}
+                {voiceReady && !isSelf && (
+                    <div className="flex items-center gap-1.5 pt-1 text-gray-500 dark:text-gray-400">
+                        {otherVideoOn && (
+                            <span className="text-blue-500 dark:text-blue-400" title="Video on">
+                                <VideoOnIcon className="h-3.5 w-3.5" />
+                            </span>
+                        )}
+                        <span
+                            className={otherMuted ? 'text-red-400' : 'text-green-500'}
+                            title={otherMuted ? 'Muted' : 'Unmuted'}
+                        >
+                            {otherMuted ? (
+                                <MicOffIcon className="h-3.5 w-3.5" />
+                            ) : (
+                                <MicOnIcon className="h-3.5 w-3.5" />
+                            )}
+                        </span>
+                    </div>
+                )}
             </div>
-            <span className="max-w-full truncate text-sm font-black text-gray-900 dark:text-gray-100">
-                {player ? player.nickname : 'Empty'}
-            </span>
-            {isSelf && (
-                <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300">
-                    you
-                </span>
+
+            {filled && (
+                <VideoModal
+                    show={showModal}
+                    onClose={() => setShowModal(false)}
+                    stream={videoStream}
+                    playerName={player!.nickname}
+                    isMuted={isSelf ? selfMuted : otherMuted}
+                    isLocal={isSelf}
+                />
             )}
-        </div>
+        </>
     );
 }
 
@@ -219,4 +355,38 @@ function hexWithAlpha(hex: string, alpha: number): string {
     const g = parseInt(h.slice(2, 4), 16);
     const b = parseInt(h.slice(4, 6), 16);
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function MicOnIcon({ className }: { className?: string }) {
+    return (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+        </svg>
+    );
+}
+
+function MicOffIcon({ className }: { className?: string }) {
+    return (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+        </svg>
+    );
+}
+
+function VideoOnIcon({ className }: { className?: string }) {
+    return (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+    );
+}
+
+function VideoOffIcon({ className }: { className?: string }) {
+    return (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3l18 18" />
+        </svg>
+    );
 }
