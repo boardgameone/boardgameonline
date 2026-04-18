@@ -14,7 +14,7 @@
  */
 
 import { Canvas, ThreeEvent, useFrame } from '@react-three/fiber';
-import { Environment, Html, OrbitControls } from '@react-three/drei';
+import { Environment, Html, OrbitControls, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import {
     ReactNode,
@@ -47,12 +47,21 @@ import {
 } from '@/lib/rubikCube';
 
 const FACE_DISPLAY_NAMES: Record<Face, string> = {
-    0: 'TOP',
-    1: 'BOT',
-    2: 'LEFT',
-    3: 'RIGHT',
-    4: 'FRONT',
-    5: 'BACK',
+    0: 'Up',
+    1: 'Down',
+    2: 'Left',
+    3: 'Right',
+    4: 'Front',
+    5: 'Peeche',
+};
+
+const FACE_CENTER_LETTER: Record<Face, string> = {
+    0: 'U',
+    1: 'D',
+    2: 'L',
+    3: 'R',
+    4: 'F',
+    5: 'P',
 };
 
 const FACE_LABEL_COLORS: Record<Face, { bg: string; text: string }> = {
@@ -503,7 +512,6 @@ function FaceLabel({ face }: FaceLabelProps) {
                     fontSize: '10px',
                     fontWeight: 800,
                     letterSpacing: '0.14em',
-                    textTransform: 'uppercase',
                     color: colors.text,
                 }}
             >
@@ -632,6 +640,19 @@ function Sticker({ face, row, col, mark, glyphColor, isWinning, isPending, onCli
                     color={glyphColor ?? FALLBACK_GLYPH_COLOR}
                     opacity={isPending ? 0.55 : 1}
                 />
+            )}
+
+            {row === 1 && col === 1 && (mark === null || mark === undefined) && (
+                <Text
+                    position={[0, 0, GLYPH_OFFSET]}
+                    fontSize={0.5}
+                    anchorX="center"
+                    anchorY="middle"
+                    color="#cfd8ff"
+                    characters="UDLRFP"
+                >
+                    {FACE_CENTER_LETTER[face]}
+                </Text>
             )}
         </group>
     );

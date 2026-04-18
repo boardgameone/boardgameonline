@@ -432,6 +432,44 @@ class GameRoomController extends Controller
     }
 
     /**
+     * Kick a player from the lobby. Host-only, waiting phase only.
+     */
+    public function kick(Request $request, Game $game, GameRoom $room): RedirectResponse
+    {
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
+        $validated = $request->validate([
+            'player_id' => ['required', 'integer'],
+        ]);
+
+        $currentPlayer = $this->findCurrentPlayer($room);
+
+        if (! $currentPlayer?->is_host) {
+            abort(403, 'Only the host can kick players.');
+        }
+
+        if (! $room->isWaiting()) {
+            return back()->withErrors(['error' => 'Can only kick during the lobby.']);
+        }
+
+        $target = $room->players()->find($validated['player_id']);
+
+        if (! $target) {
+            abort(404, 'Player not found in this room.');
+        }
+
+        if ($target->id === $currentPlayer->id) {
+            return back()->withErrors(['error' => 'You cannot kick yourself. Use leave instead.']);
+        }
+
+        $target->update(['is_connected' => false]);
+
+        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
+    }
+
+    /**
      * Reset a finished game to allow playing again with the same players.
      */
     public function reset(Game $game, GameRoom $room): RedirectResponse
