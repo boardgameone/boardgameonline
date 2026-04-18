@@ -19,6 +19,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -417,18 +418,24 @@ class GameRoomController extends Controller
         $player = $this->findCurrentPlayer($room);
 
         if ($player) {
-            $player->update(['is_connected' => false]);
+            DB::transaction(function () use ($room, $player) {
+                $player->update(['is_connected' => false]);
 
-            if ($player->is_host && $room->isWaiting()) {
-                $newHost = $room->connectedPlayers()->where('id', '!=', $player->id)->first();
-                if ($newHost) {
-                    $newHost->update(['is_host' => true]);
-                    $room->update(['host_user_id' => $newHost->user_id]);
+                if ($player->is_host && $room->isWaiting()) {
+                    $newHost = $room->connectedPlayers()->where('id', '!=', $player->id)->first();
+                    if ($newHost) {
+                        $newHost->update(['is_host' => true]);
+                        $room->update(['host_user_id' => $newHost->user_id]);
+                    }
                 }
-            }
+
+                if ($room->connectedPlayers()->doesntExist()) {
+                    $room->delete();
+                }
+            });
         }
 
-        return redirect()->route('games.show', $room->game->slug);
+        return redirect()->route('games.show', $game->slug);
     }
 
     /**

@@ -721,18 +721,37 @@ function glyphMaterial(color: string, opacity = 1) {
     );
 }
 
+// Plus-sign outline used by both XGlyph (rotated 45°) and PlusGlyph (un-rotated).
+// Built as a single 12-point polygon so the glyph is one mesh — two overlapping
+// transparent meshes at the same depth produced an unstable alpha sort, which
+// made the intersection appear to flicker while the mark was pending.
+function createPlusShape(): THREE.Shape {
+    const L = 0.36; // half-length of each bar
+    const T = 0.08; // half-thickness of each bar
+    const s = new THREE.Shape();
+    s.moveTo(L, -T);
+    s.lineTo(L, T);
+    s.lineTo(T, T);
+    s.lineTo(T, L);
+    s.lineTo(-T, L);
+    s.lineTo(-T, T);
+    s.lineTo(-L, T);
+    s.lineTo(-L, -T);
+    s.lineTo(-T, -T);
+    s.lineTo(-T, -L);
+    s.lineTo(T, -L);
+    s.lineTo(T, -T);
+    s.closePath();
+    return s;
+}
+
 function XGlyph({ color, opacity }: { color: string; opacity: number }) {
+    const shape = useMemo(createPlusShape, []);
     return (
-        <group position={[0, 0, GLYPH_OFFSET]}>
-            <mesh rotation={[0, 0, Math.PI / 4]}>
-                <boxGeometry args={[0.72, 0.16, 0.1]} />
-                {glyphMaterial(color, opacity)}
-            </mesh>
-            <mesh rotation={[0, 0, -Math.PI / 4]}>
-                <boxGeometry args={[0.72, 0.16, 0.1]} />
-                {glyphMaterial(color, opacity)}
-            </mesh>
-        </group>
+        <mesh position={[0, 0, GLYPH_OFFSET - 0.05]} rotation={[0, 0, Math.PI / 4]}>
+            <extrudeGeometry args={[shape, { depth: 0.1, bevelEnabled: false }]} />
+            {glyphMaterial(color, opacity)}
+        </mesh>
     );
 }
 
@@ -804,19 +823,12 @@ function SquareGlyph({ color, opacity }: { color: string; opacity: number }) {
 }
 
 function PlusGlyph({ color, opacity }: { color: string; opacity: number }) {
-    // Two perpendicular bars — same boxGeometry dims as X but without the
-    // π/4 rotation, so the silhouette is a clean cross.
+    const shape = useMemo(createPlusShape, []);
     return (
-        <group position={[0, 0, GLYPH_OFFSET]}>
-            <mesh>
-                <boxGeometry args={[0.66, 0.17, 0.1]} />
-                {glyphMaterial(color, opacity)}
-            </mesh>
-            <mesh rotation={[0, 0, Math.PI / 2]}>
-                <boxGeometry args={[0.66, 0.17, 0.1]} />
-                {glyphMaterial(color, opacity)}
-            </mesh>
-        </group>
+        <mesh position={[0, 0, GLYPH_OFFSET - 0.05]}>
+            <extrudeGeometry args={[shape, { depth: 0.1, bevelEnabled: false }]} />
+            {glyphMaterial(color, opacity)}
+        </mesh>
     );
 }
 
