@@ -52,7 +52,7 @@ const FACE_DISPLAY_NAMES: Record<Face, string> = {
     2: 'Left',
     3: 'Right',
     4: 'Front',
-    5: 'Peeche',
+    5: 'Peeché',
 };
 
 const FACE_CENTER_LETTER: Record<Face, string> = {

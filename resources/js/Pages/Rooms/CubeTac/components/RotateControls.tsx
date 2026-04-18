@@ -2,11 +2,13 @@
  * Rotate-face control panel.
  *
  * Each face of the cube is labeled on the 3D view (Up / Down / Left /
- * Right / Front / Peeche) and each button here maps 1-to-1 to those
+ * Right / Front / Peeché) and each button here maps 1-to-1 to those
  * labels plus a direction (↻ clockwise, ↺ counter-clockwise). Buttons
  * are fully filled with the face's color so a player can instantly match
  * "the teal Up button rotates the teal Up face" without reading the label.
  */
+
+import { useEffect } from 'react';
 
 import { Move } from '@/lib/rubikCube';
 
@@ -96,7 +98,7 @@ const FACES: FaceConfig[] = [
         },
     },
     {
-        name: 'Peeche',
+        name: 'Peeché',
         cw: 'B',
         ccw: "B'",
         tint: {
@@ -110,6 +112,43 @@ const FACES: FaceConfig[] = [
 ];
 
 export default function RotateControls({ onRotate, disabled }: RotateControlsProps) {
+    // Keyboard shortcut: first letter of each face name triggers clockwise
+    // rotation of that face; Shift+key rotates counter-clockwise. Skipped
+    // while disabled (not my turn, pending-action) or while focus is on
+    // a text input (chat field, name fields) to keep typing unobstructed.
+    useEffect(() => {
+        if (disabled) {
+            return;
+        }
+        const keyToFace = new Map<string, FaceConfig>();
+        for (const face of FACES) {
+            keyToFace.set(face.name[0].toLowerCase(), face);
+        }
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.repeat || e.ctrlKey || e.altKey || e.metaKey) {
+                return;
+            }
+            const face = keyToFace.get(e.key.toLowerCase());
+            if (!face) {
+                return;
+            }
+            const target = e.target as HTMLElement | null;
+            if (
+                target?.tagName === 'INPUT'
+                || target?.tagName === 'TEXTAREA'
+                || target?.isContentEditable
+            ) {
+                return;
+            }
+            e.preventDefault();
+            onRotate(e.shiftKey ? face.ccw : face.cw);
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => {
+            window.removeEventListener('keydown', onKeyDown);
+        };
+    }, [onRotate, disabled]);
+
     return (
         <div className="flex w-full flex-col items-center gap-2">
             <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-gray-500">
@@ -122,6 +161,9 @@ export default function RotateControls({ onRotate, disabled }: RotateControlsPro
                 <span className="inline-flex items-center gap-1">
                     <RotateCcwIcon className="h-3 w-3" /> ccw
                 </span>
+            </div>
+            <div className="hidden text-[10px] font-semibold tracking-wide text-gray-400 sm:block">
+                Keys: U D L R F P · +Shift for counter-clockwise
             </div>
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
                 {FACES.map((face) => (
@@ -163,13 +205,15 @@ interface RotateButtonProps {
 }
 
 function RotateButton({ face, move, direction, onClick, disabled }: RotateButtonProps) {
+    const shortcut = `${direction === 'ccw' ? 'Shift+' : ''}${face.name[0].toUpperCase()}`;
+    const directionLabel = direction === 'cw' ? 'clockwise' : 'counter-clockwise';
     return (
         <button
             type="button"
             onClick={onClick}
             disabled={disabled}
-            aria-label={`Rotate ${face.name} ${direction === 'cw' ? 'clockwise' : 'counter-clockwise'} (${move})`}
-            title={`${face.name} ${direction === 'cw' ? 'clockwise' : 'counter-clockwise'}`}
+            aria-label={`Rotate ${face.name} ${directionLabel} (${move})`}
+            title={`${face.name} ${directionLabel} — ${shortcut}`}
             className={`group grid h-11 w-11 place-items-center rounded-lg text-white transition-all duration-150 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2 sm:h-12 sm:w-12 ${
                 disabled
                     ? 'cursor-not-allowed bg-gray-200 text-gray-400 shadow-xs'
