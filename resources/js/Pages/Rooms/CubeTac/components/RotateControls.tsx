@@ -1,11 +1,11 @@
 /**
  * Rotate-face control panel.
  *
- * Each face of the cube is labeled on the 3D view (TOP / BOT / LEFT /
- * RIGHT / FRONT / BACK) and each button here maps 1-to-1 to those labels
- * plus a direction (↻ clockwise, ↺ counter-clockwise). Buttons are fully
- * filled with the face's color so a player can instantly match "the teal
- * TOP button rotates the teal TOP face" without reading the label.
+ * Each face of the cube is labeled on the 3D view (Up / Down / Left /
+ * Right / Front / Peeche) and each button here maps 1-to-1 to those
+ * labels plus a direction (↻ clockwise, ↺ counter-clockwise). Buttons
+ * are fully filled with the face's color so a player can instantly match
+ * "the teal Up button rotates the teal Up face" without reading the label.
  */
 
 import { Move } from '@/lib/rubikCube';
@@ -36,7 +36,7 @@ interface FaceConfig {
 
 const FACES: FaceConfig[] = [
     {
-        name: 'TOP',
+        name: 'Up',
         cw: 'U',
         ccw: "U'",
         tint: {
@@ -48,7 +48,7 @@ const FACES: FaceConfig[] = [
         },
     },
     {
-        name: 'BOT',
+        name: 'Down',
         cw: 'D',
         ccw: "D'",
         tint: {
@@ -60,7 +60,7 @@ const FACES: FaceConfig[] = [
         },
     },
     {
-        name: 'LEFT',
+        name: 'Left',
         cw: 'L',
         ccw: "L'",
         tint: {
@@ -72,7 +72,7 @@ const FACES: FaceConfig[] = [
         },
     },
     {
-        name: 'RIGHT',
+        name: 'Right',
         cw: 'R',
         ccw: "R'",
         tint: {
@@ -84,7 +84,7 @@ const FACES: FaceConfig[] = [
         },
     },
     {
-        name: 'FRONT',
+        name: 'Front',
         cw: 'F',
         ccw: "F'",
         tint: {
@@ -96,7 +96,7 @@ const FACES: FaceConfig[] = [
         },
     },
     {
-        name: 'BACK',
+        name: 'Peeche',
         cw: 'B',
         ccw: "B'",
         tint: {
@@ -127,7 +127,7 @@ export default function RotateControls({ onRotate, disabled }: RotateControlsPro
                 {FACES.map((face) => (
                     <div key={face.name} className="flex flex-col items-center gap-1">
                         <div
-                            className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${face.tint.labelBg} ${face.tint.labelText}`}
+                            className={`rounded-full px-2.5 py-0.5 text-[10px] font-black tracking-wider ${face.tint.labelBg} ${face.tint.labelText}`}
                         >
                             {face.name}
                         </div>
