@@ -10,10 +10,12 @@
  * the 3D cube glyphs); 2..5 use triangle, square, plus, hexagon.
  */
 
-import { Suspense, lazy, useMemo, type CSSProperties, type ReactNode, type Ref } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type Ref } from 'react';
 import { Marks, Move, indexOf } from '@/lib/rubikCube';
 import RotateControls from './components/RotateControls';
 import type { CubeSceneHandle } from './CubeScene';
+import { useVoiceChatOptional } from '@/Contexts/VoiceChatContext';
+import VideoModal from '@/Components/VideoModal';
 
 const CubeScene = lazy(() => import('./CubeScene'));
 
@@ -34,6 +36,8 @@ export interface PlayingPhaseProps {
     players: CubeTacPlayerInfo[];
     /** Viewer's slot, or `null` for spectators / local mode. */
     mySlot: number | null;
+    /** Viewer's player id, or `null` for spectators / local mode. Drives voice UI. */
+    currentPlayerId?: number | null;
     isMyTurn: boolean;
     /**
      * True after the current player has placed a mark but not yet clicked
@@ -74,6 +78,7 @@ export default function PlayingPhase({
     moveLimit,
     players,
     mySlot,
+    currentPlayerId = null,
     isMyTurn,
     pendingAction,
     lastAction,
@@ -86,6 +91,10 @@ export default function PlayingPhase({
     cubeRef,
     gamesPlayed,
 }: PlayingPhaseProps) {
+    const voiceChat = useVoiceChatOptional();
+    const voiceReady = !!voiceChat?.isConnected && currentPlayerId !== null;
+    const selfMuted = voiceChat?.isMuted ?? true;
+    const selfVideoOn = voiceChat?.isVideoEnabled ?? false;
     const markCounts = useMemo(() => countMarksBySlot(marks, players.length), [marks, players.length]);
     const playerColors = useMemo(() => players.map((p) => p.avatar_color), [players]);
 
@@ -221,8 +230,35 @@ export default function PlayingPhase({
                             slot={slot}
                             isActive={currentTurn === slot}
                             markCount={markCounts[slot] ?? 0}
+                            currentPlayerId={currentPlayerId}
                         />
                     ))}
+                    {voiceReady && (
+                        <div className="flex items-center gap-1.5 rounded-full bg-white px-2 py-1 shadow-xs border-2 border-gray-200">
+                            <button
+                                type="button"
+                                onClick={() => voiceChat!.toggleMute()}
+                                aria-label={selfMuted ? 'Unmute microphone' : 'Mute microphone'}
+                                title={selfMuted ? 'Unmute microphone' : 'Mute microphone'}
+                                className={`grid h-8 w-8 place-items-center rounded-full text-white shadow-md transition hover:scale-110 ${
+                                    selfMuted ? 'bg-red-500' : 'bg-green-500'
+                                }`}
+                            >
+                                {selfMuted ? <MicOffIcon className="h-4 w-4" /> : <MicOnIcon className="h-4 w-4" />}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => voiceChat!.toggleVideo()}
+                                aria-label={selfVideoOn ? 'Turn off camera' : 'Turn on camera'}
+                                title={selfVideoOn ? 'Turn off camera' : 'Turn on camera'}
+                                className={`grid h-8 w-8 place-items-center rounded-full text-white shadow-md transition hover:scale-110 ${
+                                    selfVideoOn ? 'bg-green-500' : 'bg-gray-500'
+                                }`}
+                            >
+                                {selfVideoOn ? <VideoOnIcon className="h-4 w-4" /> : <VideoOffIcon className="h-4 w-4" />}
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 <RotateControls onRotate={onRotate} disabled={!canAct} />
@@ -255,11 +291,37 @@ interface PlayerBadgeProps {
     slot: number;
     isActive: boolean;
     markCount: number;
+    currentPlayerId: number | null;
 }
 
-function PlayerBadge({ player, slot, isActive, markCount }: PlayerBadgeProps) {
+function PlayerBadge({ player, slot, isActive, markCount, currentPlayerId }: PlayerBadgeProps) {
     const color = player.avatar_color;
     const char = SLOT_CHARS[slot] ?? '?';
+
+    const voiceChat = useVoiceChatOptional();
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const [showModal, setShowModal] = useState(false);
+
+    const playerId = player.id;
+    const isSelf = playerId !== null && currentPlayerId !== null && playerId === currentPlayerId;
+    const voiceReady = !!voiceChat?.isConnected && playerId !== null;
+
+    const remoteStream = voiceReady && !isSelf ? voiceChat!.remoteVideos.get(playerId!) ?? null : null;
+    const localStream = isSelf && voiceChat?.isVideoEnabled ? voiceChat.localVideoStream ?? null : null;
+    const videoStream = remoteStream ?? localStream;
+    const hasVideo = !!videoStream;
+
+    const isSpeaking = voiceReady && voiceChat!.speakingPlayers.has(playerId!);
+    const peerVoice = voiceReady ? voiceChat!.players.find((p) => p.id === playerId) : undefined;
+    const peerMuted = peerVoice?.is_muted ?? true;
+    const selfMuted = voiceChat?.isMuted ?? true;
+    const showMutedDot = voiceReady && !isSelf && peerMuted;
+
+    useEffect(() => {
+        if (videoRef.current && videoStream) {
+            videoRef.current.srcObject = videoStream;
+        }
+    }, [videoStream]);
 
     // Active player gets a colored ring + drop glow. Inline styles for the
     // dynamic color — Tailwind v3 JIT can't synthesize arbitrary class names.
@@ -271,25 +333,100 @@ function PlayerBadge({ player, slot, isActive, markCount }: PlayerBadgeProps) {
         : {};
 
     return (
-        <div
-            className="flex items-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-2.5 py-1.5 shadow-xs transition"
-            style={activeStyle}
-        >
+        <>
             <div
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-full ring-2 ring-white text-lg font-black"
-                style={{ backgroundColor: hexWithAlpha(color, 0.15), color }}
+                className={`flex items-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-2.5 py-1.5 shadow-xs transition ${
+                    isSpeaking ? 'ring-2 ring-green-400' : ''
+                }`}
+                style={activeStyle}
             >
-                {char}
+                <button
+                    type="button"
+                    onClick={() => hasVideo && setShowModal(true)}
+                    disabled={!hasVideo}
+                    title={hasVideo ? 'Click to maximize' : undefined}
+                    className={`relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full ring-2 ring-white text-lg font-black ${
+                        hasVideo ? 'cursor-pointer group' : 'cursor-default'
+                    } ${isSpeaking ? 'animate-pulse' : ''}`}
+                    style={hasVideo ? { backgroundColor: '#000' } : { backgroundColor: hexWithAlpha(color, 0.15), color }}
+                >
+                    {hasVideo ? (
+                        <video
+                            ref={videoRef}
+                            autoPlay
+                            playsInline
+                            muted
+                            className="absolute inset-0 h-full w-full object-cover scale-x-[-1]"
+                        />
+                    ) : (
+                        <span>{char}</span>
+                    )}
+                    {showMutedDot && (
+                        <span
+                            className="absolute -bottom-0.5 -right-0.5 grid h-3.5 w-3.5 place-items-center rounded-full bg-red-500 text-white ring-2 ring-white"
+                            title="Muted"
+                        >
+                            <MicOffIcon className="h-2 w-2" />
+                        </span>
+                    )}
+                </button>
+                <div className="flex flex-col leading-tight">
+                    <span className="max-w-[96px] truncate text-xs font-black text-gray-900">
+                        {player.nickname || 'Waiting…'}
+                    </span>
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">
+                        {markCount} marks
+                    </span>
+                </div>
             </div>
-            <div className="flex flex-col leading-tight">
-                <span className="max-w-[96px] truncate text-xs font-black text-gray-900">
-                    {player.nickname || 'Waiting…'}
-                </span>
-                <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">
-                    {markCount} marks
-                </span>
-            </div>
-        </div>
+
+            {playerId !== null && (
+                <VideoModal
+                    show={showModal}
+                    onClose={() => setShowModal(false)}
+                    stream={videoStream}
+                    playerName={player.nickname || `Player ${slot + 1}`}
+                    isMuted={isSelf ? selfMuted : peerMuted}
+                    isLocal={isSelf}
+                />
+            )}
+        </>
+    );
+}
+
+// -----------------------------------------------------------------------------
+
+function MicOnIcon({ className }: { className?: string }) {
+    return (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+        </svg>
+    );
+}
+
+function MicOffIcon({ className }: { className?: string }) {
+    return (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+        </svg>
+    );
+}
+
+function VideoOnIcon({ className }: { className?: string }) {
+    return (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+    );
+}
+
+function VideoOffIcon({ className }: { className?: string }) {
+    return (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3l18 18" />
+        </svg>
     );
 }
 

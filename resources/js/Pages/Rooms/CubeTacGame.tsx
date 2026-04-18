@@ -10,9 +10,10 @@ import WaitingPhase from '@/Pages/Rooms/CubeTac/WaitingPhase';
 import PlayingPhase from '@/Pages/Rooms/CubeTac/PlayingPhase';
 import FinishedPhase from '@/Pages/Rooms/CubeTac/FinishedPhase';
 import type { CubeSceneHandle } from '@/Pages/Rooms/CubeTac/CubeScene';
+import { VoiceChatProvider } from '@/Contexts/VoiceChatContext';
 import { GamePlayer, GameRoom, PageProps } from '@/types';
 import { Head, Link, router, useForm, usePoll } from '@inertiajs/react';
-import { FormEventHandler, useRef } from 'react';
+import { FormEventHandler, ReactNode, useRef } from 'react';
 import { Marks, Move } from '@/lib/rubikCube';
 
 interface CubeTacPlayer {
@@ -123,69 +124,82 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
 
     const connectedPlayers = (room.players ?? []).filter((p) => p.is_connected);
 
+    const content: ReactNode = wasKicked ? (
+        <KickedNotice gameSlug={gameSlug} />
+    ) : needsToJoin && isGuest ? (
+        <GuestJoinForm
+            nickname={data.nickname}
+            onChange={(v) => setData('nickname', v)}
+            onSubmit={handleJoin}
+            processing={processing}
+            error={errors.nickname}
+        />
+    ) : room.status === 'waiting' ? (
+        <WaitingPhase
+            room={room}
+            currentPlayer={currentPlayer}
+            players={connectedPlayers}
+            isHost={isHost}
+            gameSlug={gameSlug}
+        />
+    ) : gameState && room.status === 'playing' ? (
+        <PlayingPhase
+            cubeRef={cubeRef}
+            marks={gameState.marks}
+            currentTurn={gameState.current_turn}
+            moveCount={gameState.move_count}
+            moveLimit={gameState.move_limit}
+            players={gameState.players.map(toPlayerInfo)}
+            mySlot={gameState.my_slot}
+            currentPlayerId={currentPlayer?.id ?? null}
+            isMyTurn={gameState.is_my_turn}
+            pendingAction={gameState.pending_action}
+            lastAction={gameState.last_action}
+            onMark={handleMark}
+            onRotate={handleRotate}
+            onEndTurn={handleEndTurn}
+            onUndoMark={handleUndoMark}
+            onLeave={handleLeave}
+            gamesPlayed={room.games_played ?? 0}
+        />
+    ) : gameState && room.status === 'finished' ? (
+        <FinishedPhase
+            marks={gameState.marks}
+            winner={gameState.winner ?? 'draw'}
+            winningLines={gameState.winning_lines}
+            players={gameState.players.map((p, slot) => ({
+                id: p?.id ?? null,
+                nickname: p?.nickname ?? `Player ${slot + 1}`,
+                avatar_color: p?.avatar_color ?? '#5b9bd5',
+                wins: p?.wins ?? 0,
+            }))}
+            mySlot={gameState.my_slot}
+            canRematch={isHost}
+            onRematch={handleRematch}
+            onLeave={handleLeave}
+            leaveLabel="Leave room"
+        />
+    ) : (
+        <div className="flex h-full items-center justify-center font-techDisplay text-sm uppercase tracking-widest text-white/40">
+            Loading…
+        </div>
+    );
+
     return (
         <GameLayout fullHeight={true}>
             <Head title={`CubeTac — ${room.room_code}`} />
 
             <div className="relative flex h-full flex-col">
-                {wasKicked ? (
-                    <KickedNotice gameSlug={gameSlug} />
-                ) : needsToJoin && isGuest ? (
-                    <GuestJoinForm
-                        nickname={data.nickname}
-                        onChange={(v) => setData('nickname', v)}
-                        onSubmit={handleJoin}
-                        processing={processing}
-                        error={errors.nickname}
-                    />
-                ) : room.status === 'waiting' ? (
-                    <WaitingPhase
-                        room={room}
-                        currentPlayer={currentPlayer}
-                        players={connectedPlayers}
-                        isHost={isHost}
+                {currentPlayer ? (
+                    <VoiceChatProvider
                         gameSlug={gameSlug}
-                    />
-                ) : gameState && room.status === 'playing' ? (
-                    <PlayingPhase
-                        cubeRef={cubeRef}
-                        marks={gameState.marks}
-                        currentTurn={gameState.current_turn}
-                        moveCount={gameState.move_count}
-                        moveLimit={gameState.move_limit}
-                        players={gameState.players.map(toPlayerInfo)}
-                        mySlot={gameState.my_slot}
-                        isMyTurn={gameState.is_my_turn}
-                        pendingAction={gameState.pending_action}
-                        lastAction={gameState.last_action}
-                        onMark={handleMark}
-                        onRotate={handleRotate}
-                        onEndTurn={handleEndTurn}
-                        onUndoMark={handleUndoMark}
-                        onLeave={handleLeave}
-                        gamesPlayed={room.games_played ?? 0}
-                    />
-                ) : gameState && room.status === 'finished' ? (
-                    <FinishedPhase
-                        marks={gameState.marks}
-                        winner={gameState.winner ?? 'draw'}
-                        winningLines={gameState.winning_lines}
-                        players={gameState.players.map((p, slot) => ({
-                            id: p?.id ?? null,
-                            nickname: p?.nickname ?? `Player ${slot + 1}`,
-                            avatar_color: p?.avatar_color ?? '#5b9bd5',
-                            wins: p?.wins ?? 0,
-                        }))}
-                        mySlot={gameState.my_slot}
-                        canRematch={isHost}
-                        onRematch={handleRematch}
-                        onLeave={handleLeave}
-                        leaveLabel="Leave room"
-                    />
+                        roomCode={room.room_code}
+                        currentPlayerId={currentPlayer.id}
+                    >
+                        {content}
+                    </VoiceChatProvider>
                 ) : (
-                    <div className="flex h-full items-center justify-center font-techDisplay text-sm uppercase tracking-widest text-white/40">
-                        Loading…
-                    </div>
+                    content
                 )}
             </div>
         </GameLayout>
