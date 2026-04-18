@@ -40,6 +40,7 @@ interface CubeTacGameState {
     player_ids: Array<number | null>;
     current_player_id: number | null;
     is_my_turn: boolean;
+    pending_action: boolean;
     my_slot: number | null;
     /** One entry per slot (0..N-1). `null` means that slot's player disconnected. */
     players: Array<CubeTacPlayer | null>;
@@ -90,6 +91,22 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
         );
     };
 
+    const handleEndTurn = () => {
+        router.post(
+            route('rooms.cubetac.endTurn', [gameSlug, room.room_code]),
+            {},
+            { preserveScroll: true, preserveState: true },
+        );
+    };
+
+    const handleUndoMark = () => {
+        router.post(
+            route('rooms.cubetac.undoMark', [gameSlug, room.room_code]),
+            {},
+            { preserveScroll: true, preserveState: true },
+        );
+    };
+
     const handleRematch = () => {
         router.post(
             route('rooms.cubetac.reset', [gameSlug, room.room_code]),
@@ -135,8 +152,12 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
                         players={gameState.players.map(toPlayerInfo)}
                         mySlot={gameState.my_slot}
                         isMyTurn={gameState.is_my_turn}
+                        pendingAction={gameState.pending_action}
+                        lastAction={gameState.last_action}
                         onMark={handleMark}
                         onRotate={handleRotate}
+                        onEndTurn={handleEndTurn}
+                        onUndoMark={handleUndoMark}
                         onLeave={handleLeave}
                     />
                 ) : gameState && room.status === 'finished' ? (

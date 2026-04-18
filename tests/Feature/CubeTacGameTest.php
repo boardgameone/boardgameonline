@@ -102,7 +102,7 @@ class CubeTacGameTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_marking_a_sticker_records_it_and_advances_turn(): void
+    public function test_marking_a_sticker_records_it_and_flags_pending_action(): void
     {
         $data = $this->makeGameWithTwoPlayers();
         $this->actingAs($data['host'])
@@ -117,8 +117,160 @@ class CubeTacGameTest extends TestCase
 
         $data['room']->refresh();
         $this->assertSame(0, $data['room']->settings['marks'][RubikCube::indexOf(RubikCube::FACE_F, 1, 1)]);
-        $this->assertSame(1, $data['room']->settings['current_turn']);
+        // Turn stays on slot 0 until the player clicks Confirm.
+        $this->assertSame(0, $data['room']->settings['current_turn']);
+        $this->assertTrue($data['room']->settings['pending_action']);
         $this->assertSame(1, $data['room']->settings['move_count']);
+    }
+
+    public function test_end_turn_advances_to_the_next_slot(): void
+    {
+        $data = $this->makeGameWithTwoPlayers();
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.start', [$data['game']->slug, $data['room']->room_code]));
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]), [
+                'face' => 0, 'row' => 0, 'col' => 0,
+            ]);
+
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.endTurn', [$data['game']->slug, $data['room']->room_code]))
+            ->assertRedirect();
+
+        $data['room']->refresh();
+        $this->assertSame(1, $data['room']->settings['current_turn']);
+        $this->assertFalse($data['room']->settings['pending_action']);
+    }
+
+    public function test_end_turn_requires_a_pending_action(): void
+    {
+        $data = $this->makeGameWithTwoPlayers();
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.start', [$data['game']->slug, $data['room']->room_code]));
+
+        // No mark yet — cannot end turn.
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.endTurn', [$data['game']->slug, $data['room']->room_code]))
+            ->assertSessionHasErrors('error');
+
+        $data['room']->refresh();
+        $this->assertSame(0, $data['room']->settings['current_turn']);
+    }
+
+    public function test_end_turn_rejected_when_not_your_turn(): void
+    {
+        $data = $this->makeGameWithTwoPlayers();
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.start', [$data['game']->slug, $data['room']->room_code]));
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]), [
+                'face' => 0, 'row' => 0, 'col' => 0,
+            ]);
+
+        // Guest is not the current player, even though a pending action exists.
+        $this->actingAs($data['guest'])
+            ->post(route('rooms.cubetac.endTurn', [$data['game']->slug, $data['room']->room_code]))
+            ->assertSessionHasErrors('error');
+
+        $data['room']->refresh();
+        $this->assertSame(0, $data['room']->settings['current_turn']);
+        $this->assertTrue($data['room']->settings['pending_action']);
+    }
+
+    public function test_undo_mark_clears_pending_mark_and_decrements_move_count(): void
+    {
+        $data = $this->makeGameWithTwoPlayers();
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.start', [$data['game']->slug, $data['room']->room_code]));
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]), [
+                'face' => 0, 'row' => 0, 'col' => 0,
+            ]);
+
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.undoMark', [$data['game']->slug, $data['room']->room_code]))
+            ->assertRedirect();
+
+        $data['room']->refresh();
+        $this->assertNull($data['room']->settings['marks'][RubikCube::indexOf(0, 0, 0)]);
+        $this->assertSame(0, $data['room']->settings['move_count']);
+        $this->assertFalse($data['room']->settings['pending_action']);
+        $this->assertNull($data['room']->settings['last_action']);
+        // Turn stays with the same player — they can pick a different sticker.
+        $this->assertSame(0, $data['room']->settings['current_turn']);
+    }
+
+    public function test_undo_mark_rejected_when_no_pending_action(): void
+    {
+        $data = $this->makeGameWithTwoPlayers();
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.start', [$data['game']->slug, $data['room']->room_code]));
+
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.undoMark', [$data['game']->slug, $data['room']->room_code]))
+            ->assertSessionHasErrors('error');
+    }
+
+    public function test_undo_mark_rejected_when_not_your_turn(): void
+    {
+        $data = $this->makeGameWithTwoPlayers();
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.start', [$data['game']->slug, $data['room']->room_code]));
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]), [
+                'face' => 0, 'row' => 0, 'col' => 0,
+            ]);
+
+        $this->actingAs($data['guest'])
+            ->post(route('rooms.cubetac.undoMark', [$data['game']->slug, $data['room']->room_code]))
+            ->assertSessionHasErrors('error');
+
+        $data['room']->refresh();
+        // Mark stays in place.
+        $this->assertSame(0, $data['room']->settings['marks'][RubikCube::indexOf(0, 0, 0)]);
+    }
+
+    public function test_can_remark_after_undoing(): void
+    {
+        $data = $this->makeGameWithTwoPlayers();
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.start', [$data['game']->slug, $data['room']->room_code]));
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]), [
+                'face' => 0, 'row' => 0, 'col' => 0,
+            ]);
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.undoMark', [$data['game']->slug, $data['room']->room_code]));
+
+        // After undo, the player can mark a different sticker.
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]), [
+                'face' => 0, 'row' => 1, 'col' => 1,
+            ])->assertRedirect();
+
+        $data['room']->refresh();
+        $this->assertSame(0, $data['room']->settings['marks'][RubikCube::indexOf(0, 1, 1)]);
+        $this->assertNull($data['room']->settings['marks'][RubikCube::indexOf(0, 0, 0)]);
+        $this->assertTrue($data['room']->settings['pending_action']);
+    }
+
+    public function test_cannot_mark_again_while_pending_confirmation(): void
+    {
+        $data = $this->makeGameWithTwoPlayers();
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.start', [$data['game']->slug, $data['room']->room_code]));
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]), [
+                'face' => 0, 'row' => 0, 'col' => 0,
+            ]);
+
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]), [
+                'face' => 0, 'row' => 0, 'col' => 1,
+            ])->assertSessionHasErrors('error');
+
+        $data['room']->refresh();
+        $this->assertNull($data['room']->settings['marks'][RubikCube::indexOf(0, 0, 1)]);
     }
 
     public function test_cannot_mark_when_not_your_turn(): void
@@ -181,7 +333,9 @@ class CubeTacGameTest extends TestCase
             ])->assertRedirect();
 
         $data['room']->refresh();
+        // Rotations still auto-advance the turn (no Confirm step for rotations).
         $this->assertSame(1, $data['room']->settings['current_turn']);
+        $this->assertFalse($data['room']->settings['pending_action']);
         $this->assertSame(1, $data['room']->settings['move_count']);
         $this->assertSame('rotate', $data['room']->settings['last_action']['type']);
         $this->assertSame('U', $data['room']->settings['last_action']['move']);
@@ -205,13 +359,29 @@ class CubeTacGameTest extends TestCase
         $this->actingAs($data['host'])
             ->post(route('rooms.cubetac.start', [$data['game']->slug, $data['room']->room_code]));
 
+        // After each non-winning mark the player must call endTurn; the
+        // final winning mark ends the game directly so no endTurn is needed.
+        $markAndEnd = function ($user, int $face, int $row, int $col) use ($data) {
+            $this->actingAs($user)->post(
+                route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]),
+                ['face' => $face, 'row' => $row, 'col' => $col],
+            );
+            $this->actingAs($user)->post(
+                route('rooms.cubetac.endTurn', [$data['game']->slug, $data['room']->room_code]),
+            );
+        };
+
         // Slot 0 (host) wants F row 0: (0,0), (0,1), (0,2)
         // Slot 1 (guest) plays two filler moves on another face
-        $this->actingAs($data['host'])->post(route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]), ['face' => 4, 'row' => 0, 'col' => 0]);
-        $this->actingAs($data['guest'])->post(route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]), ['face' => 1, 'row' => 0, 'col' => 0]);
-        $this->actingAs($data['host'])->post(route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]), ['face' => 4, 'row' => 0, 'col' => 1]);
-        $this->actingAs($data['guest'])->post(route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]), ['face' => 1, 'row' => 0, 'col' => 1]);
-        $this->actingAs($data['host'])->post(route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]), ['face' => 4, 'row' => 0, 'col' => 2]);
+        $markAndEnd($data['host'], 4, 0, 0);
+        $markAndEnd($data['guest'], 1, 0, 0);
+        $markAndEnd($data['host'], 4, 0, 1);
+        $markAndEnd($data['guest'], 1, 0, 1);
+        // Winning mark — no endTurn needed (game finishes).
+        $this->actingAs($data['host'])->post(
+            route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]),
+            ['face' => 4, 'row' => 0, 'col' => 2],
+        );
 
         $data['room']->refresh();
         $this->assertSame('finished', $data['room']->status);
@@ -234,6 +404,7 @@ class CubeTacGameTest extends TestCase
             'winning_lines' => [],
             'last_action' => null,
             'move_history' => [],
+            'pending_action' => false,
             'player_ids' => [$data['hostPlayer']->id, $data['guestPlayer']->id],
         ];
         $data['room']->update(['status' => 'finished', 'winner' => '0', 'settings' => $settings]);
@@ -276,25 +447,30 @@ class CubeTacGameTest extends TestCase
         $this->assertNotNull($source, 'Could not find a source sticker that moves to F(2,2) under D');
         [$srcFace, $srcRow, $srcCol] = RubikCube::faceRowCol($source);
 
+        $markAndEnd = function ($user, int $face, int $row, int $col) use ($data) {
+            $this->actingAs($user)->post(
+                route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]),
+                ['face' => $face, 'row' => $row, 'col' => $col],
+            );
+            $this->actingAs($user)->post(
+                route('rooms.cubetac.endTurn', [$data['game']->slug, $data['room']->room_code]),
+            );
+        };
+
         // Slot 0 → F(0,0)
-        $this->actingAs($data['host'])->post(route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]),
-            ['face' => RubikCube::FACE_F, 'row' => 0, 'col' => 0]);
+        $markAndEnd($data['host'], RubikCube::FACE_F, 0, 0);
         // Slot 1 → U face center (y=+1, untouched by D)
-        $this->actingAs($data['guest'])->post(route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]),
-            ['face' => RubikCube::FACE_U, 'row' => 1, 'col' => 1]);
+        $markAndEnd($data['guest'], RubikCube::FACE_U, 1, 1);
         // Slot 0 → F(1,1)
-        $this->actingAs($data['host'])->post(route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]),
-            ['face' => RubikCube::FACE_F, 'row' => 1, 'col' => 1]);
+        $markAndEnd($data['host'], RubikCube::FACE_F, 1, 1);
         // Slot 1 → B face center (untouched by D)
-        $this->actingAs($data['guest'])->post(route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]),
-            ['face' => RubikCube::FACE_B, 'row' => 1, 'col' => 1]);
+        $markAndEnd($data['guest'], RubikCube::FACE_B, 1, 1);
         // Slot 0 → source sticker (will rotate into F(2,2))
-        $this->actingAs($data['host'])->post(route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]),
-            ['face' => $srcFace, 'row' => $srcRow, 'col' => $srcCol]);
+        $markAndEnd($data['host'], $srcFace, $srcRow, $srcCol);
         // Slot 1 → R face center (untouched by D)
-        $this->actingAs($data['guest'])->post(route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]),
-            ['face' => RubikCube::FACE_R, 'row' => 1, 'col' => 1]);
+        $markAndEnd($data['guest'], RubikCube::FACE_R, 1, 1);
         // Slot 0 → rotate D, bringing source mark onto F(2,2) to complete the diagonal
+        // (rotations still auto-advance / auto-finalize — no endTurn needed).
         $this->actingAs($data['host'])->post(route('rooms.cubetac.rotate', [$data['game']->slug, $data['room']->room_code]),
             ['move' => 'D']);
 
@@ -325,6 +501,7 @@ class CubeTacGameTest extends TestCase
                 'winning_lines' => [],
                 'last_action' => null,
                 'move_history' => [],
+                'pending_action' => false,
                 'player_ids' => [$data['hostPlayer']->id, $data['guestPlayer']->id],
             ],
         ]);
@@ -350,6 +527,7 @@ class CubeTacGameTest extends TestCase
                 'winning_lines' => [],
                 'last_action' => null,
                 'move_history' => [],
+                'pending_action' => false,
                 'player_ids' => [$data['hostPlayer']->id, $data['guestPlayer']->id],
             ],
         ]);
@@ -385,11 +563,13 @@ class CubeTacGameTest extends TestCase
         $this->actingAs($host)
             ->post(route('rooms.cubetac.start', [$game->slug, $room->room_code]));
 
-        // Host (slot 0) marks first
+        // Host (slot 0) marks first, then confirms the turn
         $this->actingAs($host)
             ->post(route('rooms.cubetac.mark', [$game->slug, $room->room_code]), [
                 'face' => 0, 'row' => 0, 'col' => 0,
             ]);
+        $this->actingAs($host)
+            ->post(route('rooms.cubetac.endTurn', [$game->slug, $room->room_code]));
 
         // Guest plays slot 1 using their session id (simulate by setting the session)
         $this->withSession(['_token' => 'test'])
@@ -444,29 +624,30 @@ class CubeTacGameTest extends TestCase
         $this->assertSame(90, $data['room']->settings['move_limit']); // 30 * 3
         $this->assertSame(0, $data['room']->settings['current_turn']);
 
-        // Slot 0 marks
-        $this->actingAs($data['users'][0])
-            ->post(route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]),
-                ['face' => 0, 'row' => 0, 'col' => 0])
-            ->assertRedirect();
+        $markAndEnd = function ($user, int $face, int $row, int $col) use ($data) {
+            $this->actingAs($user)->post(
+                route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]),
+                ['face' => $face, 'row' => $row, 'col' => $col],
+            );
+            $this->actingAs($user)->post(
+                route('rooms.cubetac.endTurn', [$data['game']->slug, $data['room']->room_code]),
+            );
+        };
+
+        // Slot 0 marks then confirms
+        $markAndEnd($data['users'][0], 0, 0, 0);
         $data['room']->refresh();
         $this->assertSame(0, $data['room']->settings['marks'][RubikCube::indexOf(0, 0, 0)]);
         $this->assertSame(1, $data['room']->settings['current_turn']);
 
-        // Slot 1 marks
-        $this->actingAs($data['users'][1])
-            ->post(route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]),
-                ['face' => 0, 'row' => 0, 'col' => 1])
-            ->assertRedirect();
+        // Slot 1 marks then confirms
+        $markAndEnd($data['users'][1], 0, 0, 1);
         $data['room']->refresh();
         $this->assertSame(1, $data['room']->settings['marks'][RubikCube::indexOf(0, 0, 1)]);
         $this->assertSame(2, $data['room']->settings['current_turn']);
 
-        // Slot 2 marks
-        $this->actingAs($data['users'][2])
-            ->post(route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]),
-                ['face' => 0, 'row' => 0, 'col' => 2])
-            ->assertRedirect();
+        // Slot 2 marks then confirms
+        $markAndEnd($data['users'][2], 0, 0, 2);
         $data['room']->refresh();
         $this->assertSame(2, $data['room']->settings['marks'][RubikCube::indexOf(0, 0, 2)]);
         // Wraps back to slot 0
@@ -495,7 +676,16 @@ class CubeTacGameTest extends TestCase
         $this->actingAs($data['users'][0])
             ->post(route('rooms.cubetac.start', [$data['game']->slug, $data['room']->room_code]));
 
-        $mark = function (User $user, int $face, int $row, int $col) use ($data) {
+        $markAndEnd = function (User $user, int $face, int $row, int $col) use ($data) {
+            $this->actingAs($user)->post(
+                route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]),
+                ['face' => $face, 'row' => $row, 'col' => $col],
+            );
+            $this->actingAs($user)->post(
+                route('rooms.cubetac.endTurn', [$data['game']->slug, $data['room']->room_code]),
+            );
+        };
+        $markOnly = function (User $user, int $face, int $row, int $col) use ($data) {
             $this->actingAs($user)->post(
                 route('rooms.cubetac.mark', [$data['game']->slug, $data['room']->room_code]),
                 ['face' => $face, 'row' => $row, 'col' => $col],
@@ -504,14 +694,14 @@ class CubeTacGameTest extends TestCase
 
         // Slot 1 targets F row 1: (1,0), (1,1), (1,2). Everyone else plays
         // filler elsewhere. Turn order: 0, 1, 2, 0, 1, 2, 0, 1.
-        $mark($data['users'][0], 1, 0, 0); // slot 0 filler
-        $mark($data['users'][1], 4, 1, 0); // slot 1 → F(1,0)
-        $mark($data['users'][2], 1, 0, 1); // slot 2 filler
-        $mark($data['users'][0], 1, 0, 2); // slot 0 filler
-        $mark($data['users'][1], 4, 1, 1); // slot 1 → F(1,1)
-        $mark($data['users'][2], 1, 1, 0); // slot 2 filler
-        $mark($data['users'][0], 1, 1, 1); // slot 0 filler
-        $mark($data['users'][1], 4, 1, 2); // slot 1 → F(1,2) — win
+        $markAndEnd($data['users'][0], 1, 0, 0); // slot 0 filler
+        $markAndEnd($data['users'][1], 4, 1, 0); // slot 1 → F(1,0)
+        $markAndEnd($data['users'][2], 1, 0, 1); // slot 2 filler
+        $markAndEnd($data['users'][0], 1, 0, 2); // slot 0 filler
+        $markAndEnd($data['users'][1], 4, 1, 1); // slot 1 → F(1,1)
+        $markAndEnd($data['users'][2], 1, 1, 0); // slot 2 filler
+        $markAndEnd($data['users'][0], 1, 1, 1); // slot 0 filler
+        $markOnly($data['users'][1], 4, 1, 2);   // slot 1 → F(1,2) — win (no endTurn)
 
         $data['room']->refresh();
         $this->assertSame('finished', $data['room']->status);
@@ -557,6 +747,7 @@ class CubeTacGameTest extends TestCase
                 'winning_lines' => [],
                 'last_action' => null,
                 'move_history' => [],
+                'pending_action' => false,
                 'player_ids' => $original,
             ],
         ]);

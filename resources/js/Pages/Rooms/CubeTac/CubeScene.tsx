@@ -55,13 +55,13 @@ const FACE_DISPLAY_NAMES: Record<Face, string> = {
     5: 'BACK',
 };
 
-const FACE_LABEL_COLORS: Record<Face, { accent: string }> = {
-    0: { accent: '#2dd4bf' }, // teal
-    1: { accent: '#a78bfa' }, // violet
-    2: { accent: '#34d399' }, // emerald
-    3: { accent: '#38bdf8' }, // sky
-    4: { accent: '#f472b6' }, // pink
-    5: { accent: '#fbbf24' }, // amber
+const FACE_LABEL_COLORS: Record<Face, { bg: string; text: string }> = {
+    0: { bg: '#14b8a6', text: '#ffffff' }, // teal
+    1: { bg: '#8b5cf6', text: '#ffffff' }, // violet
+    2: { bg: '#10b981', text: '#ffffff' }, // emerald
+    3: { bg: '#0ea5e9', text: '#ffffff' }, // sky
+    4: { bg: '#ec4899', text: '#ffffff' }, // pink
+    5: { bg: '#f59e0b', text: '#1f2937' }, // amber (dark text — light hue)
 };
 
 export type StickerClickHandler = (face: number, row: number, col: number) => void;
@@ -81,6 +81,13 @@ interface CubeSceneProps {
      */
     playerColors: string[];
     winningIndices?: Set<number>;
+    /**
+     * When the current player has placed a mark but not yet confirmed,
+     * the sticker at this flat index renders translucent + outlined to
+     * signal "tentative — tap again to undo." `null` when nothing is
+     * pending (or viewer isn't the current player).
+     */
+    pendingIndex?: number | null;
     onStickerClick?: StickerClickHandler;
     interactive: boolean;
 }
@@ -99,7 +106,7 @@ interface Animation {
 const DEFAULT_DURATION_MS = 280;
 
 const CubeScene = forwardRef<CubeSceneHandle, CubeSceneProps>(function CubeScene(
-    { marks, playerColors, winningIndices, onStickerClick, interactive },
+    { marks, playerColors, winningIndices, pendingIndex, onStickerClick, interactive },
     ref,
 ) {
     const [displayedMarks, setDisplayedMarks] = useState<Marks>(marks);
@@ -107,6 +114,45 @@ const CubeScene = forwardRef<CubeSceneHandle, CubeSceneProps>(function CubeScene
     const queueRef = useRef<Array<{ move: Move; resolve: () => void }>>([]);
     const isAnimatingRef = useRef(false);
     const marksRef = useRef(marks);
+    // Drei's OrbitControls ref resolves to three's own OrbitControls class;
+    // we only need the quarter-turn helpers (`rotateLeft`/`rotateUp`/`update`).
+    // Typed loosely and cast at the ref= site below.
+    const orbitControlsRef = useRef<OrbitControlsImpl | null>(null);
+    const heldArrowKeysRef = useRef<Set<string>>(new Set());
+
+    useEffect(() => {
+        const isArrow = (key: string) =>
+            key === 'ArrowLeft' || key === 'ArrowRight' || key === 'ArrowUp' || key === 'ArrowDown';
+
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (!isArrow(e.key)) return;
+            const target = e.target as HTMLElement | null;
+            if (
+                target?.tagName === 'INPUT'
+                || target?.tagName === 'TEXTAREA'
+                || target?.isContentEditable
+            ) {
+                return;
+            }
+            e.preventDefault();
+            heldArrowKeysRef.current.add(e.key);
+        };
+        const onKeyUp = (e: KeyboardEvent) => {
+            if (!isArrow(e.key)) return;
+            heldArrowKeysRef.current.delete(e.key);
+        };
+        const onBlur = () => {
+            heldArrowKeysRef.current.clear();
+        };
+        window.addEventListener('keydown', onKeyDown);
+        window.addEventListener('keyup', onKeyUp);
+        window.addEventListener('blur', onBlur);
+        return () => {
+            window.removeEventListener('keydown', onKeyDown);
+            window.removeEventListener('keyup', onKeyUp);
+            window.removeEventListener('blur', onBlur);
+        };
+    }, []);
 
     // Always track the latest marks prop so completion handlers can reconcile.
     useEffect(() => {
@@ -191,11 +237,17 @@ const CubeScene = forwardRef<CubeSceneHandle, CubeSceneProps>(function CubeScene
                     animation={animation}
                     onAnimationComplete={onAnimationComplete}
                     winningIndices={winningIndices}
+                    pendingIndex={pendingIndex ?? null}
                     onStickerClick={interactive ? onStickerClick : undefined}
                 />
             </Suspense>
 
             <OrbitControls
+                // Drei's ref type is the full three.js OrbitControls; we only
+                // need a structural subset — cast to any to avoid pulling in
+                // all of three's types for this single prop.
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                ref={orbitControlsRef as any}
                 makeDefault
                 enablePan={false}
                 minDistance={5.8}
@@ -204,11 +256,54 @@ const CubeScene = forwardRef<CubeSceneHandle, CubeSceneProps>(function CubeScene
                 maxPolarAngle={Math.PI * 0.82}
                 rotateSpeed={0.7}
             />
+            <ArrowKeyOrbit controlsRef={orbitControlsRef} heldKeysRef={heldArrowKeysRef} />
         </Canvas>
     );
 });
 
 export default CubeScene;
+
+// -----------------------------------------------------------------------------
+// Arrow-key camera orbit — held keys are tracked in a Set and applied every
+// frame via `ArrowKeyOrbit` below, so hold-to-rotate mirrors the cadence of
+// mouse drag instead of OS key-repeat (which stalls ~500ms before firing).
+// -----------------------------------------------------------------------------
+
+const ORBIT_SPEED_RAD_PER_SEC = Math.PI / 1.5; // ~120°/sec
+
+// Minimal subset of OrbitControls we call — avoids pulling in three's types
+// just for the `.rotateLeft` / `.rotateUp` helpers we need.
+interface OrbitControlsImpl {
+    rotateLeft?: (angle: number) => void;
+    rotateUp?: (angle: number) => void;
+    update?: () => void;
+}
+
+function ArrowKeyOrbit({
+    controlsRef,
+    heldKeysRef,
+}: {
+    controlsRef: React.MutableRefObject<OrbitControlsImpl | null>;
+    heldKeysRef: React.MutableRefObject<Set<string>>;
+}) {
+    useFrame((_, delta) => {
+        const held = heldKeysRef.current;
+        if (held.size === 0) return;
+        const controls = controlsRef.current;
+        if (!controls) return;
+        const step = ORBIT_SPEED_RAD_PER_SEC * delta;
+        let dx = 0;
+        let dy = 0;
+        if (held.has('ArrowLeft')) dx -= step;
+        if (held.has('ArrowRight')) dx += step;
+        if (held.has('ArrowUp')) dy -= step;
+        if (held.has('ArrowDown')) dy += step;
+        if (dx !== 0) controls.rotateLeft?.(dx);
+        if (dy !== 0) controls.rotateUp?.(dy);
+        controls.update?.();
+    });
+    return null;
+}
 
 // -----------------------------------------------------------------------------
 // CubeRoot — renders all 26 cubies + their visible stickers, splitting the
@@ -223,6 +318,7 @@ interface CubeRootProps {
     animation: Animation | null;
     onAnimationComplete: () => void;
     winningIndices?: Set<number>;
+    pendingIndex: number | null;
     onStickerClick?: StickerClickHandler;
 }
 
@@ -232,6 +328,7 @@ const CubeRoot = memo(function CubeRoot({
     animation,
     onAnimationComplete,
     winningIndices,
+    pendingIndex,
     onStickerClick,
 }: CubeRootProps) {
     const stickers = useMemo(() => collectStickers(), []);
@@ -281,6 +378,7 @@ const CubeRoot = memo(function CubeRoot({
             ? playerColors[mark] ?? FALLBACK_GLYPH_COLOR
             : null;
         const isWinning = winningIndices?.has(idx) ?? false;
+        const isPending = pendingIndex === idx;
         return (
             <Sticker
                 key={`sticker-${idx}`}
@@ -290,6 +388,7 @@ const CubeRoot = memo(function CubeRoot({
                 mark={mark}
                 glyphColor={color}
                 isWinning={isWinning}
+                isPending={isPending}
                 onClick={onStickerClick}
             />
         );
@@ -391,18 +490,15 @@ function FaceLabel({ face }: FaceLabelProps) {
                 style={{
                     transform: 'translate(-50%, -50%)',
                     whiteSpace: 'nowrap',
-                    background: 'rgba(255,255,255,0.88)',
-                    backdropFilter: 'blur(6px)',
-                    WebkitBackdropFilter: 'blur(6px)',
-                    borderLeft: `3px solid ${colors.accent}`,
-                    borderRadius: '4px',
-                    padding: '3px 10px 3px 8px',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                    background: colors.bg,
+                    borderRadius: '6px',
+                    padding: '3px 10px',
+                    boxShadow: '0 3px 10px rgba(0,0,0,0.22)',
                     fontSize: '10px',
-                    fontWeight: 700,
+                    fontWeight: 800,
                     letterSpacing: '0.14em',
                     textTransform: 'uppercase',
-                    color: '#1e293b',
+                    color: colors.text,
                 }}
             >
                 {label}
@@ -453,6 +549,8 @@ interface StickerProps {
     /** Hex color for the glyph when mark is non-null; null otherwise. */
     glyphColor: string | null;
     isWinning: boolean;
+    /** Current player's unconfirmed mark — renders translucent + outlined. */
+    isPending: boolean;
     onClick?: StickerClickHandler;
 }
 
@@ -460,7 +558,7 @@ const STICKER_SIZE = 0.84;
 const STICKER_OFFSET = 0.49;
 const GLYPH_OFFSET = 0.06;
 
-function Sticker({ face, row, col, mark, glyphColor, isWinning, onClick }: StickerProps) {
+function Sticker({ face, row, col, mark, glyphColor, isWinning, isPending, onClick }: StickerProps) {
     const { position, rotation } = useMemo(() => {
         const cubiePos = sticker3D(face, row, col);
         const normal = faceNormal(face);
@@ -479,7 +577,10 @@ function Sticker({ face, row, col, mark, glyphColor, isWinning, onClick }: Stick
     }, [face, row, col]);
 
     const handleClick = (e: ThreeEvent<MouseEvent>) => {
-        if (!onClick || mark !== null) return;
+        // Forward every click — the parent decides whether to mark, undo, or
+        // ignore based on game state. CubeScene used to block marked stickers
+        // here, but that prevented the "click your pending mark to undo" UX.
+        if (!onClick) return;
         e.stopPropagation();
         onClick(face, row, col);
     };
@@ -505,14 +606,26 @@ function Sticker({ face, row, col, mark, glyphColor, isWinning, onClick }: Stick
                 />
             </mesh>
 
-            {/* Thin frame */}
+            {/* Frame — quiet grey by default. When pending, layer a second
+                slightly-larger outline in the player color so the "tap again
+                to undo" cue is clear without a noisy animated halo. */}
             <lineSegments>
                 <edgesGeometry args={[new THREE.PlaneGeometry(STICKER_SIZE, STICKER_SIZE)]} />
                 <lineBasicMaterial color="#8ba3c9" transparent opacity={0.35} />
             </lineSegments>
+            {isPending && glyphColor && (
+                <lineSegments position={[0, 0, 0.01]}>
+                    <edgesGeometry args={[new THREE.PlaneGeometry(STICKER_SIZE * 1.02, STICKER_SIZE * 1.02)]} />
+                    <lineBasicMaterial color={glyphColor} transparent={false} />
+                </lineSegments>
+            )}
 
             {mark !== null && mark !== undefined && (
-                <MarkGlyph slot={mark} color={glyphColor ?? FALLBACK_GLYPH_COLOR} />
+                <MarkGlyph
+                    slot={mark}
+                    color={glyphColor ?? FALLBACK_GLYPH_COLOR}
+                    opacity={isPending ? 0.55 : 1}
+                />
             )}
         </group>
     );
@@ -524,14 +637,14 @@ function Sticker({ face, row, col, mark, glyphColor, isWinning, onClick }: Stick
 // distinct shapes so 3..6-player games stay readable even in screenshots.
 // -----------------------------------------------------------------------------
 
-function MarkGlyph({ slot, color }: { slot: number; color: string }) {
+function MarkGlyph({ slot, color, opacity = 1 }: { slot: number; color: string; opacity?: number }) {
     switch (slot) {
-        case 0: return <XGlyph color={color} />;
-        case 1: return <OGlyph color={color} />;
-        case 2: return <TriangleGlyph color={color} />;
-        case 3: return <SquareGlyph color={color} />;
-        case 4: return <PlusGlyph color={color} />;
-        case 5: return <HexagonGlyph color={color} />;
+        case 0: return <XGlyph color={color} opacity={opacity} />;
+        case 1: return <OGlyph color={color} opacity={opacity} />;
+        case 2: return <TriangleGlyph color={color} opacity={opacity} />;
+        case 3: return <SquareGlyph color={color} opacity={opacity} />;
+        case 4: return <PlusGlyph color={color} opacity={opacity} />;
+        case 5: return <HexagonGlyph color={color} opacity={opacity} />;
         default: return null;
     }
 }
@@ -540,46 +653,50 @@ function MarkGlyph({ slot, color }: { slot: number; color: string }) {
  * Shared material for every glyph — saturated base color with a strong
  * self-lit halo so each of the six palettes reads vividly against the
  * near-white sticker. Emissive is the same hex as `color`, so no extra
- * tinting math is needed per slot.
+ * tinting math is needed per slot. `opacity<1` is used to "ghost" the
+ * pending-but-unconfirmed mark.
  */
-function glyphMaterial(color: string) {
+function glyphMaterial(color: string, opacity = 1) {
+    const isTransparent = opacity < 1;
     return (
         <meshStandardMaterial
             color={color}
             emissive={color}
-            emissiveIntensity={1.15}
+            emissiveIntensity={isTransparent ? 0.8 : 1.15}
             metalness={0.15}
             roughness={0.22}
             toneMapped={false}
+            transparent={isTransparent}
+            opacity={opacity}
         />
     );
 }
 
-function XGlyph({ color }: { color: string }) {
+function XGlyph({ color, opacity }: { color: string; opacity: number }) {
     return (
         <group position={[0, 0, GLYPH_OFFSET]}>
             <mesh rotation={[0, 0, Math.PI / 4]}>
                 <boxGeometry args={[0.72, 0.16, 0.1]} />
-                {glyphMaterial(color)}
+                {glyphMaterial(color, opacity)}
             </mesh>
             <mesh rotation={[0, 0, -Math.PI / 4]}>
                 <boxGeometry args={[0.72, 0.16, 0.1]} />
-                {glyphMaterial(color)}
+                {glyphMaterial(color, opacity)}
             </mesh>
         </group>
     );
 }
 
-function OGlyph({ color }: { color: string }) {
+function OGlyph({ color, opacity }: { color: string; opacity: number }) {
     return (
         <mesh position={[0, 0, GLYPH_OFFSET]}>
             <torusGeometry args={[0.29, 0.1, 20, 40]} />
-            {glyphMaterial(color)}
+            {glyphMaterial(color, opacity)}
         </mesh>
     );
 }
 
-function TriangleGlyph({ color }: { color: string }) {
+function TriangleGlyph({ color, opacity }: { color: string; opacity: number }) {
     const shape = useMemo(() => {
         const outerR = 0.36;
         const innerR = 0.20;
@@ -605,12 +722,12 @@ function TriangleGlyph({ color }: { color: string }) {
     return (
         <mesh position={[0, -0.02, GLYPH_OFFSET - 0.05]}>
             <extrudeGeometry args={[shape, { depth: 0.1, bevelEnabled: false }]} />
-            {glyphMaterial(color)}
+            {glyphMaterial(color, opacity)}
         </mesh>
     );
 }
 
-function SquareGlyph({ color }: { color: string }) {
+function SquareGlyph({ color, opacity }: { color: string; opacity: number }) {
     const shape = useMemo(() => {
         const outer = 0.28;
         const inner = 0.18;
@@ -632,29 +749,29 @@ function SquareGlyph({ color }: { color: string }) {
     return (
         <mesh position={[0, 0, GLYPH_OFFSET - 0.05]}>
             <extrudeGeometry args={[shape, { depth: 0.1, bevelEnabled: false }]} />
-            {glyphMaterial(color)}
+            {glyphMaterial(color, opacity)}
         </mesh>
     );
 }
 
-function PlusGlyph({ color }: { color: string }) {
+function PlusGlyph({ color, opacity }: { color: string; opacity: number }) {
     // Two perpendicular bars — same boxGeometry dims as X but without the
     // π/4 rotation, so the silhouette is a clean cross.
     return (
         <group position={[0, 0, GLYPH_OFFSET]}>
             <mesh>
                 <boxGeometry args={[0.66, 0.17, 0.1]} />
-                {glyphMaterial(color)}
+                {glyphMaterial(color, opacity)}
             </mesh>
             <mesh rotation={[0, 0, Math.PI / 2]}>
                 <boxGeometry args={[0.66, 0.17, 0.1]} />
-                {glyphMaterial(color)}
+                {glyphMaterial(color, opacity)}
             </mesh>
         </group>
     );
 }
 
-function HexagonGlyph({ color }: { color: string }) {
+function HexagonGlyph({ color, opacity }: { color: string; opacity: number }) {
     const shape = useMemo(() => {
         const outerR = 0.34;
         const innerR = 0.22;
@@ -680,7 +797,7 @@ function HexagonGlyph({ color }: { color: string }) {
     return (
         <mesh position={[0, 0, GLYPH_OFFSET - 0.05]}>
             <extrudeGeometry args={[shape, { depth: 0.1, bevelEnabled: false }]} />
-            {glyphMaterial(color)}
+            {glyphMaterial(color, opacity)}
         </mesh>
     );
 }
