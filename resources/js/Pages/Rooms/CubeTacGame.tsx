@@ -11,7 +11,7 @@ import PlayingPhase from '@/Pages/Rooms/CubeTac/PlayingPhase';
 import FinishedPhase from '@/Pages/Rooms/CubeTac/FinishedPhase';
 import type { CubeSceneHandle } from '@/Pages/Rooms/CubeTac/CubeScene';
 import { GamePlayer, GameRoom, PageProps } from '@/types';
-import { Head, router, useForm, usePoll } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePoll } from '@inertiajs/react';
 import { FormEventHandler, useRef } from 'react';
 import { Marks, Move } from '@/lib/rubikCube';
 
@@ -61,6 +61,7 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
     const gameSlug = room.game?.slug || 'cubetac';
     const isGuest = !auth.user;
     const needsToJoin = !currentPlayer && room.status === 'waiting' && !room.is_full;
+    const wasKicked = currentPlayer !== null && !currentPlayer.is_connected && room.status === 'waiting';
 
     const { data, setData, post, processing, errors } = useForm({
         nickname: '',
@@ -126,7 +127,9 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
             <Head title={`CubeTac — ${room.room_code}`} />
 
             <div className="relative flex h-full flex-col">
-                {needsToJoin && isGuest ? (
+                {wasKicked ? (
+                    <KickedNotice gameSlug={gameSlug} />
+                ) : needsToJoin && isGuest ? (
                     <GuestJoinForm
                         nickname={data.nickname}
                         onChange={(v) => setData('nickname', v)}
@@ -233,6 +236,30 @@ function GuestJoinForm({ nickname, onChange, onSubmit, processing, error }: Gues
 function toPlayerInfo(p: CubeTacPlayer | null) {
     if (!p) return { id: null, nickname: 'Waiting…', avatar_color: '#5b9bd5' };
     return { id: p.id, nickname: p.nickname, avatar_color: p.avatar_color };
+}
+
+function KickedNotice({ gameSlug }: { gameSlug: string }) {
+    return (
+        <div className="flex h-full items-center justify-center px-6">
+            <div className="flex w-full max-w-sm flex-col items-center gap-4 rounded-3xl bg-white p-8 shadow-xl border-2 border-red-300 dark:bg-gray-800 dark:border-red-600/60">
+                <div className="grid h-16 w-16 place-items-center rounded-full bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300">
+                    <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </div>
+                <h3 className="text-2xl font-black text-red-700 dark:text-red-300">Removed from lobby</h3>
+                <p className="text-center text-sm font-bold text-gray-600 dark:text-gray-300">
+                    You were removed from the lobby by the host.
+                </p>
+                <Link
+                    href={route('games.show', gameSlug)}
+                    className="w-full rounded-full bg-linear-to-r from-orange-500 via-red-500 to-pink-600 px-6 py-3 text-center text-lg font-black text-white shadow-lg border-b-4 border-red-700 transition hover:scale-[1.02]"
+                >
+                    Back to game
+                </Link>
+            </div>
+        </div>
+    );
 }
 
 export type { CubeTacPlayer, CubeTacGameState };

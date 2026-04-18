@@ -39,6 +39,7 @@ Route::get('/rooms/{game:slug}/{room:room_code}', [GameRoomController::class, 's
 Route::post('/rooms/{game:slug}/{room:room_code}/join-direct', [GameRoomController::class, 'joinDirect'])->middleware('throttle:20,1')->name('rooms.joinDirect');
 Route::post('/rooms/{game:slug}/{room:room_code}/start', [GameRoomController::class, 'start'])->middleware('throttle:20,1')->name('rooms.start');
 Route::post('/rooms/{game:slug}/{room:room_code}/leave', [GameRoomController::class, 'leave'])->middleware('throttle:20,1')->name('rooms.leave');
+Route::post('/rooms/{game:slug}/{room:room_code}/kick', [GameRoomController::class, 'kick'])->middleware('throttle:20,1')->name('rooms.kick');
 Route::post('/rooms/{game:slug}/{room:room_code}/reset', [GameRoomController::class, 'reset'])->middleware('throttle:20,1')->name('rooms.resetGame');
 
 // Game action routes (Cheese Thief)
