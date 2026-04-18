@@ -16,6 +16,7 @@ import RotateControls from './components/RotateControls';
 import type { CubeSceneHandle } from './CubeScene';
 import { useVoiceChatOptional } from '@/Contexts/VoiceChatContext';
 import VideoModal from '@/Components/VideoModal';
+import { useSound } from '@/hooks/useSound';
 
 const CubeScene = lazy(() => import('./CubeScene'));
 
@@ -95,6 +96,11 @@ export default function PlayingPhase({
     const voiceReady = !!voiceChat?.isConnected && currentPlayerId !== null;
     const selfMuted = voiceChat?.isMuted ?? true;
     const selfVideoOn = voiceChat?.isVideoEnabled ?? false;
+    const { play: playRotateSound } = useSound('/sounds/cubetac/rotate.mp3', { volume: 0.6 });
+    const handleRotateWithSound = (move: Move) => {
+        playRotateSound();
+        onRotate(move);
+    };
     const markCounts = useMemo(() => countMarksBySlot(marks, players.length), [marks, players.length]);
     const playerColors = useMemo(() => players.map((p) => p.avatar_color), [players]);
 
@@ -261,7 +267,7 @@ export default function PlayingPhase({
                     )}
                 </div>
 
-                <RotateControls onRotate={onRotate} disabled={!canAct} />
+                <RotateControls onRotate={handleRotateWithSound} disabled={!canAct} />
 
                 {isMyTurn && pendingAction && (
                     <div className="flex justify-center pt-1">
