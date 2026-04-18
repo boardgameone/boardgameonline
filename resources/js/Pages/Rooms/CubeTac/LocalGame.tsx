@@ -19,6 +19,7 @@ import {
     Marks,
     Move,
     apply,
+    faceRowCol,
     indexOf,
     initialMarks,
     isComplete,
@@ -41,11 +42,17 @@ interface LocalState {
     winner: number | 'draw' | null;
     winningLines: WinningLine[];
     playerCount: number;
+    /** True after a mark is placed; cleared by END_TURN or UNDO_MARK. Rotations never set this. */
+    pendingAction: boolean;
+    /** Index of the pending mark's sticker — drives "click again to undo". */
+    pendingMarkIndex: number | null;
 }
 
 type LocalAction =
     | { type: 'MARK'; face: number; row: number; col: number }
+    | { type: 'UNDO_MARK' }
     | { type: 'ROTATE'; move: Move }
+    | { type: 'END_TURN' }
     | { type: 'RESET' };
 
 function freshState(playerCount: number): LocalState {
@@ -57,6 +64,8 @@ function freshState(playerCount: number): LocalState {
         winner: null,
         winningLines: [],
         playerCount,
+        pendingAction: false,
+        pendingMarkIndex: null,
     };
 }
 
@@ -67,6 +76,38 @@ function reducer(state: LocalState, action: LocalAction): LocalState {
 
     if (state.winner !== null) {
         return state; // game over, ignore moves
+    }
+
+    if (action.type === 'END_TURN') {
+        if (!state.pendingAction) {
+            return state;
+        }
+        return {
+            ...state,
+            currentTurn: (state.currentTurn + 1) % state.playerCount,
+            pendingAction: false,
+            pendingMarkIndex: null,
+        };
+    }
+
+    if (action.type === 'UNDO_MARK') {
+        if (!state.pendingAction || state.pendingMarkIndex === null) {
+            return state;
+        }
+        const clearedMarks: Marks = [...state.marks];
+        clearedMarks[state.pendingMarkIndex] = null;
+        return {
+            ...state,
+            marks: clearedMarks,
+            moveCount: Math.max(0, state.moveCount - 1),
+            pendingAction: false,
+            pendingMarkIndex: null,
+        };
+    }
+
+    // Any further action (MARK / ROTATE) is blocked while a mark is pending.
+    if (state.pendingAction) {
+        return state;
     }
 
     let newMarks: Marks;
@@ -93,6 +134,8 @@ function reducer(state: LocalState, action: LocalAction): LocalState {
             moveCount: nextCount,
             winner: state.currentTurn,
             winningLines: mine.length > 0 ? mine : allLines,
+            pendingAction: false,
+            pendingMarkIndex: null,
         };
     }
 
@@ -103,6 +146,19 @@ function reducer(state: LocalState, action: LocalAction): LocalState {
             moveCount: nextCount,
             winner: 'draw',
             winningLines: [],
+            pendingAction: false,
+            pendingMarkIndex: null,
+        };
+    }
+
+    // MARK waits for confirm; ROTATE auto-advances.
+    if (action.type === 'MARK') {
+        return {
+            ...state,
+            marks: newMarks,
+            moveCount: nextCount,
+            pendingAction: true,
+            pendingMarkIndex: indexOf(action.face, action.row, action.col),
         };
     }
 
@@ -111,6 +167,8 @@ function reducer(state: LocalState, action: LocalAction): LocalState {
         marks: newMarks,
         currentTurn: (state.currentTurn + 1) % state.playerCount,
         moveCount: nextCount,
+        pendingAction: false,
+        pendingMarkIndex: null,
     };
 }
 
@@ -233,9 +291,25 @@ function LocalGameBoard({ playerCount, onLeave, onChangeCount }: LocalGameBoardP
         cubeRef.current?.playMove(move);
         dispatch({ type: 'ROTATE', move });
     };
+    const handleEndTurn = () => {
+        dispatch({ type: 'END_TURN' });
+    };
+    const handleUndoMark = () => {
+        dispatch({ type: 'UNDO_MARK' });
+    };
     const handleReset = () => {
         dispatch({ type: 'RESET' });
     };
+
+    // PlayingPhase reads `lastAction.{face,row,col}` to know which sticker
+    // is the pending-undo target. In local mode we derive it from the
+    // reducer's `pendingMarkIndex` so the two data sources stay aligned.
+    const lastAction = state.pendingMarkIndex !== null
+        ? (() => {
+            const [face, row, col] = faceRowCol(state.pendingMarkIndex);
+            return { type: 'mark' as const, face, row, col };
+        })()
+        : null;
 
     // Floating "change player count" affordance, visible in the pre-game
     // state (before anyone has made a move) so users can back out of their
@@ -256,8 +330,12 @@ function LocalGameBoard({ playerCount, onLeave, onChangeCount }: LocalGameBoardP
                         players={players}
                         mySlot={null}
                         isMyTurn={true}
+                        pendingAction={state.pendingAction}
+                        lastAction={lastAction}
                         onMark={handleMark}
                         onRotate={handleRotate}
+                        onEndTurn={handleEndTurn}
+                        onUndoMark={handleUndoMark}
                         turnLabelOverride={`${players[state.currentTurn]?.nickname ?? 'Player'}'s Turn`}
                         onLeave={onLeave}
                     />
