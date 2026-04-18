@@ -34,6 +34,17 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
         router.post(route('rooms.leave', [gameSlug, room.room_code]));
     };
 
+    const handleKick = (player: GamePlayer) => {
+        if (!window.confirm(`Kick ${player.nickname}?`)) {
+            return;
+        }
+        router.post(
+            route('rooms.kick', [gameSlug, room.room_code]),
+            { player_id: player.id },
+            { preserveScroll: true },
+        );
+    };
+
     const handleCopyCode = async () => {
         try {
             await navigator.clipboard.writeText(room.room_code);
@@ -87,12 +98,15 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
                 <div className="grid grid-cols-2 justify-items-center gap-3 sm:grid-cols-3 sm:gap-4">
                     {Array.from({ length: seatCount }, (_, slot) => {
                         const player = players[slot] ?? null;
+                        const isSelf = player !== null && currentPlayer?.id === player.id;
+                        const canKick = isHost && player !== null && !isSelf && !player.is_host;
                         return (
                             <SeatCard
                                 key={slot}
                                 slot={slot}
                                 player={player}
-                                isSelf={player !== null && currentPlayer?.id === player.id}
+                                isSelf={isSelf}
+                                onKick={canKick ? () => handleKick(player!) : undefined}
                             />
                         );
                     })}
@@ -133,9 +147,10 @@ interface SeatCardProps {
     slot: number;
     player: GamePlayer | null;
     isSelf: boolean;
+    onKick?: () => void;
 }
 
-function SeatCard({ slot, player, isSelf }: SeatCardProps) {
+function SeatCard({ slot, player, isSelf, onKick }: SeatCardProps) {
     const char = SLOT_CHARS[slot] ?? '?';
     const color = player?.avatar_color ?? '#94a3b8';
 
@@ -154,6 +169,19 @@ function SeatCard({ slot, player, isSelf }: SeatCardProps) {
             }`}
             style={cardStyle}
         >
+            {onKick && (
+                <button
+                    type="button"
+                    onClick={onKick}
+                    aria-label={`Kick ${player?.nickname ?? 'player'}`}
+                    title="Kick player"
+                    className="absolute -top-2 -right-2 grid h-7 w-7 place-items-center rounded-full bg-white text-red-600 shadow-md border-2 border-red-400 hover:bg-red-500 hover:text-white hover:scale-110 transition dark:bg-gray-900 dark:border-red-500/70 dark:text-red-400 dark:hover:bg-red-500 dark:hover:text-white"
+                >
+                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            )}
             <div
                 className="grid h-14 w-14 place-items-center rounded-full ring-4 ring-white shadow-md text-2xl font-black dark:ring-gray-800"
                 style={{ backgroundColor: hexWithAlpha(color, 0.15), color }}

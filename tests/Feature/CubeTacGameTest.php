@@ -764,4 +764,68 @@ class CubeTacGameTest extends TestCase
         );
         $this->assertSame(0, $data['room']->settings['current_turn']);
     }
+
+    public function test_host_can_kick_a_player_from_the_lobby(): void
+    {
+        $data = $this->makeGameWithTwoPlayers();
+
+        $this->actingAs($data['host'])
+            ->post(route('rooms.kick', [$data['game']->slug, $data['room']->room_code]), [
+                'player_id' => $data['guestPlayer']->id,
+            ])
+            ->assertRedirect();
+
+        $this->assertFalse($data['guestPlayer']->refresh()->is_connected);
+    }
+
+    public function test_non_host_cannot_kick_a_player(): void
+    {
+        $data = $this->makeGameWithTwoPlayers();
+
+        $this->actingAs($data['guest'])
+            ->post(route('rooms.kick', [$data['game']->slug, $data['room']->room_code]), [
+                'player_id' => $data['hostPlayer']->id,
+            ])
+            ->assertForbidden();
+
+        $this->assertTrue($data['hostPlayer']->refresh()->is_connected);
+    }
+
+    public function test_host_cannot_kick_themselves(): void
+    {
+        $data = $this->makeGameWithTwoPlayers();
+
+        $this->actingAs($data['host'])
+            ->post(route('rooms.kick', [$data['game']->slug, $data['room']->room_code]), [
+                'player_id' => $data['hostPlayer']->id,
+            ])
+            ->assertSessionHasErrors('error');
+
+        $this->assertTrue($data['hostPlayer']->refresh()->is_connected);
+    }
+
+    public function test_kick_rejected_outside_the_lobby(): void
+    {
+        $data = $this->makeGameWithTwoPlayers();
+        $data['room']->update(['status' => 'playing']);
+
+        $this->actingAs($data['host'])
+            ->post(route('rooms.kick', [$data['game']->slug, $data['room']->room_code]), [
+                'player_id' => $data['guestPlayer']->id,
+            ])
+            ->assertSessionHasErrors('error');
+
+        $this->assertTrue($data['guestPlayer']->refresh()->is_connected);
+    }
+
+    public function test_kick_rejects_player_not_in_this_room(): void
+    {
+        $data = $this->makeGameWithTwoPlayers();
+
+        $this->actingAs($data['host'])
+            ->post(route('rooms.kick', [$data['game']->slug, $data['room']->room_code]), [
+                'player_id' => 999999,
+            ])
+            ->assertNotFound();
+    }
 }
