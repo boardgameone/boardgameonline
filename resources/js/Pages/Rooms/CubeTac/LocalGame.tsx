@@ -46,6 +46,8 @@ interface LocalState {
     pendingAction: boolean;
     /** Index of the pending mark's sticker — drives "click again to undo". */
     pendingMarkIndex: number | null;
+    /** Cumulative wins per slot; survives RESET so rematches keep score. */
+    wins: number[];
 }
 
 type LocalAction =
@@ -66,12 +68,16 @@ function freshState(playerCount: number): LocalState {
         playerCount,
         pendingAction: false,
         pendingMarkIndex: null,
+        wins: Array(playerCount).fill(0),
     };
 }
 
 function reducer(state: LocalState, action: LocalAction): LocalState {
     if (action.type === 'RESET') {
-        return freshState(state.playerCount);
+        // Preserve the per-slot wins tally across rematches — only the game
+        // board itself is reset. Changing player count remounts the component,
+        // which is the only thing that clears wins.
+        return { ...freshState(state.playerCount), wins: state.wins };
     }
 
     if (state.winner !== null) {
@@ -128,6 +134,8 @@ function reducer(state: LocalState, action: LocalAction): LocalState {
     if (allLines.length > 0) {
         // Current player wins (even if only another player's line exists, per rule).
         const mine = allLines.filter((l) => l.player === state.currentTurn);
+        const nextWins = [...state.wins];
+        nextWins[state.currentTurn] = (nextWins[state.currentTurn] ?? 0) + 1;
         return {
             ...state,
             marks: newMarks,
@@ -136,6 +144,7 @@ function reducer(state: LocalState, action: LocalAction): LocalState {
             winningLines: mine.length > 0 ? mine : allLines,
             pendingAction: false,
             pendingMarkIndex: null,
+            wins: nextWins,
         };
     }
 
@@ -280,6 +289,7 @@ function LocalGameBoard({ playerCount, onLeave, onChangeCount }: LocalGameBoardP
         id: null as number | null,
         nickname: `Player ${slot + 1}`,
         avatar_color: PALETTE[slot] ?? '#5b9bd5',
+        wins: state.wins[slot] ?? 0,
     }));
 
     const handleMark = (face: number, row: number, col: number) => {

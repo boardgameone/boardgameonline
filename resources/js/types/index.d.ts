@@ -53,6 +53,7 @@ export interface GamePlayer {
     is_muted: boolean;
     turn_order: number | null;
     game_data: Record<string, unknown> | null;
+    wins: number;
     user?: User;
 }
 

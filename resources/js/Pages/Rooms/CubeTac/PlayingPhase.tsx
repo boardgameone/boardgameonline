@@ -21,6 +21,8 @@ export interface CubeTacPlayerInfo {
     id: number | null;
     nickname: string;
     avatar_color: string;
+    /** Cumulative wins in this lobby (online) or session (local hotseat). */
+    wins: number;
 }
 
 export interface PlayingPhaseProps {
@@ -193,6 +195,8 @@ export default function PlayingPhase({
                         </div>
                     </div>
                 )}
+
+                <Leaderboard players={players} currentTurn={currentTurn} />
             </div>
 
             {/* Player HUD + rotate controls */}
@@ -273,6 +277,76 @@ function PlayerBadge({ player, slot, isActive, markCount }: PlayerBadgeProps) {
                     {markCount} marks
                 </span>
             </div>
+        </div>
+    );
+}
+
+// -----------------------------------------------------------------------------
+
+interface LeaderboardProps {
+    players: CubeTacPlayerInfo[];
+    currentTurn: number;
+}
+
+/**
+ * Always-visible per-slot wins tally floated on the right edge of the cube
+ * canvas. Hidden on mobile (< sm) where the cube takes most of the viewport;
+ * the bottom HUD still shows players and FinishedPhase surfaces the full
+ * scoreboard between games.
+ */
+function Leaderboard({ players, currentTurn }: LeaderboardProps) {
+    return (
+        <div className="pointer-events-none absolute right-4 top-1/2 hidden -translate-y-1/2 flex-col gap-2 sm:flex">
+            <div className="rounded-full bg-white/85 px-3 py-1 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-gray-600 shadow-md backdrop-blur-xs">
+                Score
+            </div>
+            {players.map((p, slot) => (
+                <LeaderboardRow
+                    key={slot}
+                    player={p}
+                    slot={slot}
+                    isActive={currentTurn === slot}
+                />
+            ))}
+        </div>
+    );
+}
+
+interface LeaderboardRowProps {
+    player: CubeTacPlayerInfo;
+    slot: number;
+    isActive: boolean;
+}
+
+function LeaderboardRow({ player, slot, isActive }: LeaderboardRowProps) {
+    const color = player.avatar_color;
+    const char = SLOT_CHARS[slot] ?? '?';
+
+    const rowStyle: CSSProperties = isActive
+        ? {
+              borderColor: color,
+              boxShadow: `0 0 14px ${hexWithAlpha(color, 0.45)}`,
+          }
+        : {};
+
+    return (
+        <div
+            className="flex items-center gap-2 rounded-full border-2 border-gray-200 bg-white px-2 py-1 shadow-md"
+            style={rowStyle}
+        >
+            <div
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-sm font-black"
+                style={{ backgroundColor: hexWithAlpha(color, 0.15), color }}
+            >
+                {char}
+            </div>
+            <span className="max-w-[7rem] truncate text-xs font-black text-gray-900">
+                {player.nickname || `Player ${slot + 1}`}
+            </span>
+            <span className="ml-auto inline-flex items-center gap-0.5 rounded-full bg-yellow-200 px-1.5 py-0.5 text-[10px] font-black text-yellow-900">
+                <span aria-hidden="true">🏆</span>
+                {player.wins}
+            </span>
         </div>
     );
 }
