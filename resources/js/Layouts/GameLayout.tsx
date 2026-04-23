@@ -1,6 +1,7 @@
 import Dropdown from '@/Components/Dropdown';
 import GameIcon from '@/Components/GameIcon';
 import MusicToggle from '@/Components/MusicToggle';
+import MusicVolumeSlider from '@/Components/MusicVolumeSlider';
 import ThemeToggle from '@/Components/ThemeToggle';
 import { User } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
@@ -83,6 +84,10 @@ export default function GameLayout({
 
                         {/* Right Side - User Menu */}
                         <div className="hidden sm:flex items-center gap-3">
+                            <div className="hidden md:flex items-center gap-2 bg-white/15 backdrop-blur-xs rounded-full px-3 py-1.5">
+                                <MusicToggle className="rounded-full p-1.5 text-white hover:bg-white/20 transition" />
+                                <MusicVolumeSlider className="w-24 text-white" />
+                            </div>
                             {user ? (
                                 <Dropdown>
                                     <Dropdown.Trigger>
@@ -128,6 +133,9 @@ export default function GameLayout({
                                             showLabel
                                             className="block w-full px-4 py-2 text-start text-sm leading-5 text-gray-700 transition duration-150 ease-in-out hover:bg-gray-100 focus:bg-gray-100 focus:outline-hidden dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:bg-gray-700"
                                         />
+                                        <div className="px-4 py-2">
+                                            <MusicVolumeSlider showLabel className="text-gray-700 dark:text-gray-200" />
+                                        </div>
                                         <div className="border-t border-gray-100 dark:border-gray-700" />
                                         <Dropdown.Link href={route('profile.edit')}>
                                             <span className="flex items-center gap-2">
@@ -153,7 +161,7 @@ export default function GameLayout({
                                 </Dropdown>
                             ) : (
                                 <div className="flex items-center gap-2 sm:gap-3">
-                                    <MusicToggle className="rounded-full bg-white/15 backdrop-blur-xs hover:bg-white/25 p-2 text-white transition" />
+                                    <MusicToggle className="md:hidden rounded-full bg-white/15 backdrop-blur-xs hover:bg-white/25 p-2 text-white transition" />
                                     <ThemeToggle className="rounded-full bg-white/15 backdrop-blur-xs hover:bg-white/25 p-2 text-white transition" />
                                     <Link
                                         href={route('login')}
@@ -267,6 +275,9 @@ export default function GameLayout({
                                         showLabel
                                         className="w-full flex items-center px-4 py-3 text-white/80 hover:text-white hover:bg-white/10 rounded-xl font-medium transition"
                                     />
+                                    <div className="px-4 py-2">
+                                        <MusicVolumeSlider showLabel className="text-white/80" />
+                                    </div>
                                     <MobileNavLink href={route('profile.edit')}>
                                         <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -296,6 +307,9 @@ export default function GameLayout({
                                     showLabel
                                     className="w-full flex items-center justify-center py-3 text-white/90 hover:text-white hover:bg-white/10 rounded-xl font-bold transition"
                                 />
+                                <div className="px-4">
+                                    <MusicVolumeSlider showLabel className="text-white/90" />
+                                </div>
                                 <Link
                                     href={route('login')}
                                     className="block w-full text-center py-3 text-white font-bold rounded-xl hover:bg-white/10 transition"

@@ -18,6 +18,7 @@ interface MusicContextValue {
 
 const MUSIC_SRC = '/sounds/bg-music.mp3';
 const STORAGE_KEY = 'musicMuted';
+const VOLUME_STORAGE_KEY = 'musicVolume';
 const DEFAULT_VOLUME = 0.22;
 
 const MusicContext = createContext<MusicContextValue | null>(null);
@@ -34,11 +35,31 @@ const readInitialMuted = (): boolean => {
     }
 };
 
+const readInitialVolume = (): number => {
+    if (typeof window === 'undefined') {
+        return DEFAULT_VOLUME;
+    }
+
+    try {
+        const raw = localStorage.getItem(VOLUME_STORAGE_KEY);
+        if (raw === null) {
+            return DEFAULT_VOLUME;
+        }
+        const parsed = parseFloat(raw);
+        if (Number.isNaN(parsed)) {
+            return DEFAULT_VOLUME;
+        }
+        return Math.max(0, Math.min(1, parsed));
+    } catch (e) {
+        return DEFAULT_VOLUME;
+    }
+};
+
 export function MusicProvider({ children }: PropsWithChildren) {
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const [isMuted, setIsMuted] = useState<boolean>(readInitialMuted);
     const [isPlaying, setIsPlaying] = useState(false);
-    const [volume, setVolumeState] = useState<number>(DEFAULT_VOLUME);
+    const [volume, setVolumeState] = useState<number>(readInitialVolume);
 
     useEffect(() => {
         if (typeof window === 'undefined') {
@@ -48,7 +69,7 @@ export function MusicProvider({ children }: PropsWithChildren) {
         const audio = new Audio(MUSIC_SRC);
         audio.loop = true;
         audio.preload = 'auto';
-        audio.volume = DEFAULT_VOLUME;
+        audio.volume = readInitialVolume();
 
         const handlePlay = () => setIsPlaying(true);
         const handlePause = () => setIsPlaying(false);
@@ -88,11 +109,26 @@ export function MusicProvider({ children }: PropsWithChildren) {
 
     useEffect(() => {
         const handleStorage = (event: StorageEvent) => {
-            if (event.key !== STORAGE_KEY || event.newValue === null) {
+            if (event.newValue === null) {
                 return;
             }
 
-            setIsMuted(event.newValue === 'true');
+            if (event.key === STORAGE_KEY) {
+                setIsMuted(event.newValue === 'true');
+                return;
+            }
+
+            if (event.key === VOLUME_STORAGE_KEY) {
+                const parsed = parseFloat(event.newValue);
+                if (Number.isNaN(parsed)) {
+                    return;
+                }
+                const clamped = Math.max(0, Math.min(1, parsed));
+                setVolumeState(clamped);
+                if (audioRef.current) {
+                    audioRef.current.volume = clamped;
+                }
+            }
         };
 
         window.addEventListener('storage', handleStorage);
@@ -128,6 +164,11 @@ export function MusicProvider({ children }: PropsWithChildren) {
         setVolumeState(clamped);
         if (audioRef.current) {
             audioRef.current.volume = clamped;
+        }
+        try {
+            localStorage.setItem(VOLUME_STORAGE_KEY, clamped.toFixed(2));
+        } catch (e) {
+            // storage disabled — ignore
         }
     }, []);
 
