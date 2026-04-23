@@ -298,6 +298,7 @@ function LocalGameBoard({ playerCount, onLeave, onChangeCount }: LocalGameBoardP
         id: null as number | null,
         nickname: `Player ${slot + 1}`,
         avatar_color: PALETTE[slot] ?? '#5b9bd5',
+        design: slot,
         wins: state.wins[slot] ?? 0,
     }));
 

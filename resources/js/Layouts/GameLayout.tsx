@@ -1,5 +1,6 @@
 import Dropdown from '@/Components/Dropdown';
 import GameIcon from '@/Components/GameIcon';
+import MusicToggle from '@/Components/MusicToggle';
 import ThemeToggle from '@/Components/ThemeToggle';
 import { User } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
@@ -123,6 +124,10 @@ export default function GameLayout({
                                             showLabel
                                             className="block w-full px-4 py-2 text-start text-sm leading-5 text-gray-700 transition duration-150 ease-in-out hover:bg-gray-100 focus:bg-gray-100 focus:outline-hidden dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:bg-gray-700"
                                         />
+                                        <MusicToggle
+                                            showLabel
+                                            className="block w-full px-4 py-2 text-start text-sm leading-5 text-gray-700 transition duration-150 ease-in-out hover:bg-gray-100 focus:bg-gray-100 focus:outline-hidden dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:bg-gray-700"
+                                        />
                                         <div className="border-t border-gray-100 dark:border-gray-700" />
                                         <Dropdown.Link href={route('profile.edit')}>
                                             <span className="flex items-center gap-2">
@@ -148,6 +153,7 @@ export default function GameLayout({
                                 </Dropdown>
                             ) : (
                                 <div className="flex items-center gap-2 sm:gap-3">
+                                    <MusicToggle className="rounded-full bg-white/15 backdrop-blur-xs hover:bg-white/25 p-2 text-white transition" />
                                     <ThemeToggle className="rounded-full bg-white/15 backdrop-blur-xs hover:bg-white/25 p-2 text-white transition" />
                                     <Link
                                         href={route('login')}
@@ -257,6 +263,10 @@ export default function GameLayout({
                                         showLabel
                                         className="w-full flex items-center px-4 py-3 text-white/80 hover:text-white hover:bg-white/10 rounded-xl font-medium transition"
                                     />
+                                    <MusicToggle
+                                        showLabel
+                                        className="w-full flex items-center px-4 py-3 text-white/80 hover:text-white hover:bg-white/10 rounded-xl font-medium transition"
+                                    />
                                     <MobileNavLink href={route('profile.edit')}>
                                         <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -279,6 +289,10 @@ export default function GameLayout({
                         ) : (
                             <div className="border-t border-white/20 px-4 py-4 space-y-2">
                                 <ThemeToggle
+                                    showLabel
+                                    className="w-full flex items-center justify-center py-3 text-white/90 hover:text-white hover:bg-white/10 rounded-xl font-bold transition"
+                                />
+                                <MusicToggle
                                     showLabel
                                     className="w-full flex items-center justify-center py-3 text-white/90 hover:text-white hover:bg-white/10 rounded-xl font-bold transition"
                                 />

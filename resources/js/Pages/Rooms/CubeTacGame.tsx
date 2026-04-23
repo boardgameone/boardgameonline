@@ -23,6 +23,7 @@ interface CubeTacPlayer {
     is_host: boolean;
     is_connected: boolean;
     wins: number;
+    design: number;
 }
 
 interface CubeTacGameState {
@@ -149,7 +150,7 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
             currentTurn={gameState.current_turn}
             moveCount={gameState.move_count}
             moveLimit={gameState.move_limit}
-            players={gameState.players.map(toPlayerInfo)}
+            players={gameState.players.map((p, slot) => toPlayerInfo(p, slot))}
             mySlot={gameState.my_slot}
             currentPlayerId={currentPlayer?.id ?? null}
             isMyTurn={gameState.is_my_turn}
@@ -171,6 +172,7 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
                 id: p?.id ?? null,
                 nickname: p?.nickname ?? `Player ${slot + 1}`,
                 avatar_color: p?.avatar_color ?? '#5b9bd5',
+                design: p?.design ?? slot,
                 wins: p?.wins ?? 0,
             }))}
             mySlot={gameState.my_slot}
@@ -250,9 +252,9 @@ function GuestJoinForm({ nickname, onChange, onSubmit, processing, error }: Gues
     );
 }
 
-function toPlayerInfo(p: CubeTacPlayer | null) {
-    if (!p) return { id: null, nickname: 'Waiting…', avatar_color: '#5b9bd5', wins: 0 };
-    return { id: p.id, nickname: p.nickname, avatar_color: p.avatar_color, wins: p.wins };
+function toPlayerInfo(p: CubeTacPlayer | null, slot: number) {
+    if (!p) return { id: null, nickname: 'Waiting…', avatar_color: '#5b9bd5', design: slot, wins: 0 };
+    return { id: p.id, nickname: p.nickname, avatar_color: p.avatar_color, design: p.design ?? slot, wins: p.wins };
 }
 
 function KickedNotice({ gameSlug }: { gameSlug: string }) {
