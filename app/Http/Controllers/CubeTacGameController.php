@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\MarkStickerRequest;
+use App\Http\Requests\PickCubeTacDesignRequest;
 use App\Http\Requests\RotateCubeRequest;
 use App\Models\Game;
 use App\Models\GamePlayer;
@@ -11,6 +12,7 @@ use App\Services\RubikCube;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -58,6 +60,14 @@ class CubeTacGameController extends Controller
                 $currentPlayer = $this->findCurrentPlayer($room);
                 $room->load('players');
             }
+        }
+
+        // Players auto-joined through the shared GameRoomController have no
+        // cubetac_design yet — backfill one here so the picker and the cube
+        // glyph have a concrete value to render from the first load.
+        if ($currentPlayer && ($currentPlayer->game_data['cubetac_design'] ?? null) === null) {
+            $this->ensureDesign($room, $currentPlayer);
+            $room->load('players');
         }
 
         $gameState = $this->buildGameState($room, $currentPlayer);
@@ -309,6 +319,51 @@ class CubeTacGameController extends Controller
     }
 
     /**
+     * Let a waiting-room player pick which glyph (X, O, △, ▢, ✚, ⬡)
+     * represents them on the cube. Self-only, waiting-phase only, uniqueness
+     * enforced server-side inside a transaction. Updates `avatar_color` to
+     * match so color and glyph stay in sync.
+     */
+    public function pickDesign(PickCubeTacDesignRequest $request, Game $game, GameRoom $room): RedirectResponse
+    {
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
+        $currentPlayer = $this->findCurrentPlayer($room);
+
+        if (! $currentPlayer) {
+            abort(403, 'You are not a player in this room.');
+        }
+
+        if (! $room->isWaiting()) {
+            return back()->withErrors(['error' => 'Designs are locked once the game starts.']);
+        }
+
+        $design = (int) $request->validated('design');
+
+        DB::transaction(function () use ($room, $currentPlayer, $design) {
+            $conflict = $room->players()
+                ->where('id', '!=', $currentPlayer->id)
+                ->get()
+                ->contains(function (GamePlayer $other) use ($design) {
+                    return ($other->game_data['cubetac_design'] ?? null) === $design;
+                });
+
+            if ($conflict) {
+                abort(422, 'That design is already taken by another player.');
+            }
+
+            $currentPlayer->update([
+                'game_data' => array_merge($currentPlayer->game_data ?? [], ['cubetac_design' => $design]),
+                'avatar_color' => self::SLOT_COLORS[$design] ?? self::SLOT_COLORS[0],
+            ]);
+        });
+
+        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
+    }
+
+    /**
      * Build the game state for Inertia props. CubeTac has no hidden
      * information — every player sees everything.
      *
@@ -331,10 +386,13 @@ class CubeTacGameController extends Controller
         $playerIds = $settings['player_ids'] ?? [];
 
         $playersBySlot = [];
+        $designsBySlot = [];
         $mySlot = null;
         foreach ($playerIds as $slot => $playerId) {
             $player = $roomPlayers->firstWhere('id', $playerId);
-            $playersBySlot[] = $player ? $this->serializePlayer($player) : null;
+            $serialized = $player ? $this->serializePlayer($player, $slot) : null;
+            $playersBySlot[] = $serialized;
+            $designsBySlot[] = $serialized['design'] ?? $slot;
             if ($currentPlayer && $currentPlayer->id === $playerId) {
                 $mySlot = $slot;
             }
@@ -361,6 +419,7 @@ class CubeTacGameController extends Controller
             'pending_action' => (bool) ($settings['pending_action'] ?? false),
             'my_slot' => $mySlot,
             'players' => $playersBySlot,
+            'designs' => $designsBySlot,
         ];
     }
 
@@ -590,7 +649,7 @@ class CubeTacGameController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function serializePlayer(GamePlayer $player): array
+    private function serializePlayer(GamePlayer $player, int $fallbackDesign = 0): array
     {
         return [
             'id' => $player->id,
@@ -599,7 +658,23 @@ class CubeTacGameController extends Controller
             'is_host' => $player->is_host,
             'is_connected' => $player->is_connected,
             'wins' => $player->wins,
+            'design' => $this->designFor($player, $fallbackDesign),
         ];
+    }
+
+    /**
+     * Per-player glyph design index (0..5). Pulled from the model's
+     * `game_data['cubetac_design']` bag, falling back to `$fallback` (typically
+     * the slot index) for rows that predate the picker feature.
+     */
+    private function designFor(GamePlayer $player, int $fallback = 0): int
+    {
+        $design = $player->game_data['cubetac_design'] ?? null;
+        if (is_int($design) && $design >= 0 && $design <= 5) {
+            return $design;
+        }
+
+        return $fallback;
     }
 
     /**
@@ -650,13 +725,13 @@ class CubeTacGameController extends Controller
     {
         $user = Auth::user();
 
-        // Deterministic slot-based color: first joiner gets slot 0, second
-        // gets slot 1, etc. This mirrors the slot assignment that
-        // freshGameState() will use when the host starts the game, so
-        // avatar colors stay in sync with in-game glyph colors.
-        $slot = $room->connectedPlayers()->count();
+        // Auto-assign the first design (X, O, △, ▢, ✚, ⬡) not already taken
+        // by another player in the room (including disconnected rows — they
+        // keep their glyph for reconnects). Avatar color follows design so
+        // the two stay visually aligned.
+        $design = $this->firstAvailableDesign($room);
         $palette = self::SLOT_COLORS;
-        $color = $palette[$slot] ?? $palette[count($palette) - 1];
+        $color = $palette[$design] ?? $palette[count($palette) - 1];
 
         return GamePlayer::create([
             'game_room_id' => $room->id,
@@ -666,6 +741,45 @@ class CubeTacGameController extends Controller
             'avatar_color' => $color,
             'is_host' => $isHost,
             'is_connected' => true,
+            'game_data' => ['cubetac_design' => $design],
         ]);
+    }
+
+    /**
+     * Backfill `cubetac_design` on a player that was auto-joined via the
+     * shared GameRoomController path (which doesn't know about cubetac).
+     * Also syncs `avatar_color` to the design's palette color.
+     */
+    private function ensureDesign(GameRoom $room, GamePlayer $player): void
+    {
+        $design = $this->firstAvailableDesign($room);
+        $player->update([
+            'game_data' => array_merge($player->game_data ?? [], ['cubetac_design' => $design]),
+            'avatar_color' => self::SLOT_COLORS[$design] ?? self::SLOT_COLORS[0],
+        ]);
+    }
+
+    /**
+     * Pick the lowest design index (0..5) not currently held by any player
+     * in the room. Falls back to 5 if the palette is fully used (shouldn't
+     * happen for 6-max rooms, but keeps this total).
+     */
+    private function firstAvailableDesign(GameRoom $room): int
+    {
+        $taken = [];
+        foreach ($room->players as $existing) {
+            $d = $existing->game_data['cubetac_design'] ?? null;
+            if (is_int($d)) {
+                $taken[$d] = true;
+            }
+        }
+
+        for ($i = 0; $i < count(self::SLOT_COLORS); $i++) {
+            if (! isset($taken[$i])) {
+                return $i;
+            }
+        }
+
+        return count(self::SLOT_COLORS) - 1;
     }
 }

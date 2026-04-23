@@ -24,6 +24,8 @@ export interface CubeTacPlayerInfo {
     id: number | null;
     nickname: string;
     avatar_color: string;
+    /** Glyph-design index (0..5): X / O / △ / ▢ / ✚ / ⬡. */
+    design: number;
     /** Cumulative wins in this lobby (online) or session (local hotseat). */
     wins: number;
 }
@@ -103,13 +105,14 @@ export default function PlayingPhase({
     };
     const markCounts = useMemo(() => countMarksBySlot(marks, players.length), [marks, players.length]);
     const playerColors = useMemo(() => players.map((p) => p.avatar_color), [players]);
+    const playerDesigns = useMemo(() => players.map((p, slot) => p.design ?? slot), [players]);
 
     const currentPlayer = players[currentTurn];
     const currentColor = currentPlayer?.avatar_color ?? '#5b9bd5';
     const turnLabel =
         turnLabelOverride ??
         (mySlot === null
-            ? `${currentPlayer?.nickname ?? SLOT_CHARS[currentTurn] ?? '?'} to move`
+            ? `${currentPlayer?.nickname ?? SLOT_CHARS[playerDesigns[currentTurn] ?? currentTurn] ?? '?'} to move`
             : isMyTurn
                 ? 'Your Turn'
                 : `${currentPlayer?.nickname ?? 'Opponent'}'s Turn`);
@@ -203,6 +206,7 @@ export default function PlayingPhase({
                         ref={cubeRef}
                         marks={marks}
                         playerColors={playerColors}
+                        designs={playerDesigns}
                         pendingIndex={pendingIndex}
                         onStickerClick={stickerClickActive ? handleStickerClick : undefined}
                         interactive={stickerClickActive}
@@ -302,7 +306,7 @@ interface PlayerBadgeProps {
 
 function PlayerBadge({ player, slot, isActive, markCount, currentPlayerId }: PlayerBadgeProps) {
     const color = player.avatar_color;
-    const char = SLOT_CHARS[slot] ?? '?';
+    const char = SLOT_CHARS[player.design ?? slot] ?? '?';
 
     const voiceChat = useVoiceChatOptional();
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -489,7 +493,7 @@ interface LeaderboardRowProps {
 
 function LeaderboardRow({ player, slot, isActive }: LeaderboardRowProps) {
     const color = player.avatar_color;
-    const char = SLOT_CHARS[slot] ?? '?';
+    const char = SLOT_CHARS[player.design ?? slot] ?? '?';
 
     const rowStyle: CSSProperties = isActive
         ? {

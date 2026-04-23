@@ -20,6 +20,8 @@ export interface CubeTacPlayerLite {
     id: number | null;
     nickname: string;
     avatar_color: string;
+    /** Glyph-design index (0..5): X / O / △ / ▢ / ✚ / ⬡. */
+    design: number;
     wins: number;
 }
 
@@ -58,6 +60,7 @@ export default function FinishedPhase({
     }, [winningLines]);
 
     const playerColors = useMemo(() => players.map((p) => p.avatar_color), [players]);
+    const playerDesigns = useMemo(() => players.map((p, slot) => p.design ?? slot), [players]);
 
     const isDraw = winner === 'draw';
     const winnerPlayer = !isDraw && typeof winner === 'number' ? players[winner] ?? null : null;
@@ -88,6 +91,7 @@ export default function FinishedPhase({
                     <CubeScene
                         marks={marks}
                         playerColors={playerColors}
+                        designs={playerDesigns}
                         winningIndices={winningIndices}
                         interactive={false}
                     />

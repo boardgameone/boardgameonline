@@ -79,6 +79,7 @@ Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/rotate', [CubeTacGameCo
 Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/end-turn', [CubeTacGameController::class, 'endTurn'])->middleware('throttle:60,1')->name('rooms.cubetac.endTurn');
 Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/undo-mark', [CubeTacGameController::class, 'undoMark'])->middleware('throttle:60,1')->name('rooms.cubetac.undoMark');
 Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/reset', [CubeTacGameController::class, 'reset'])->middleware('throttle:20,1')->name('rooms.cubetac.reset');
+Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/pick-design', [CubeTacGameController::class, 'pickDesign'])->middleware('throttle:30,1')->name('rooms.cubetac.pickDesign');
 Route::get('/play/cubetac/local', [CubeTacGameController::class, 'local'])->name('cubetac.local');
 
 Route::middleware('auth')->group(function () {
