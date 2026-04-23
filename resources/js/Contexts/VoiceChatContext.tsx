@@ -18,9 +18,16 @@ interface ConnectionState {
 interface CallData {
     playerId: number;
     call: MediaConnection;
+    createdAt: number;
     audioElement?: HTMLAudioElement;
     videoElement?: HTMLVideoElement;
 }
+
+const STALE_CALL_MS = 15000;
+// Treat only 'failed' and 'closed' as terminal. 'disconnected' is often transient
+// (mobile/wifi blips) and the browser self-heals within 1-3s — tearing down on
+// every blip would cause audible gaps where none existed before.
+const UNHEALTHY_STATES = new Set(['failed', 'closed']);
 
 export interface VoiceChatContextValue {
     // Connection state
@@ -84,6 +91,14 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
 
     // Generate unique peer ID for this player in this room
     const getPeerId = useCallback((playerId: number) => `${roomCode}-player-${playerId}`, [roomCode]);
+
+    // Polite-peer rule: only the higher player id initiates calls. The lower id
+    // peer waits for incoming calls. Guarantees exactly one MediaConnection per
+    // pair and eliminates glare.
+    const shouldInitiateCallTo = useCallback(
+        (otherPlayerId: number) => currentPlayerId > otherPlayerId,
+        [currentPlayerId],
+    );
 
     // Create a silent audio stream (no microphone permission required)
     const createSilentStream = (): MediaStream => {
@@ -254,15 +269,12 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
         });
     }, []);
 
-    // Call another player
+    // Call another player. Only called from the polite-peer initiator side;
+    // glare cannot happen. Existing-call check and retry decisions are made
+    // by the retry poll, not here.
     const callPlayer = useCallback((playerId: number) => {
         if (!peerRef.current || !localStreamRef.current) return;
-
-        // Don't call if already have an active call
-        if (callsRef.current.has(playerId)) {
-            console.log(`Already have call with player ${playerId}, skipping`);
-            return;
-        }
+        if (!shouldInitiateCallTo(playerId)) return;
 
         const peerId = getPeerId(playerId);
 
@@ -292,15 +304,7 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
                         next.set(playerId, { iceConnectionState: iceState, connectionState: connectionState || 'unknown' });
                         return next;
                     });
-
-                    // Retry on failure
-                    if (iceState === 'failed' || iceState === 'disconnected') {
-                        console.log(`[Voice] Connection ${iceState} for player ${playerId}, will retry...`);
-                        setTimeout(() => {
-                            callsRef.current.delete(playerId);
-                            callPlayer(playerId);
-                        }, 2000);
-                    }
+                    // Retry decisions live in the peer-polling loop; no inline retry here.
                 };
 
                 call.peerConnection.addEventListener('iceconnectionstatechange', updateConnectionState);
@@ -377,8 +381,7 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
 
             call.on('error', (err) => {
                 console.error(`[Voice] Call error with player ${playerId}:`, err);
-                // Remove from calls so we can try again later
-                callsRef.current.delete(playerId);
+                cleanupCall(playerId);
                 setConnectionStates(prev => {
                     const next = new Map(prev);
                     next.delete(playerId);
@@ -386,11 +389,11 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
                 });
             });
 
-            callsRef.current.set(playerId, { playerId, call });
+            callsRef.current.set(playerId, { playerId, call, createdAt: Date.now() });
         } catch (err) {
             console.error(`[Voice] Failed to call player ${playerId}:`, err);
         }
-    }, [getPeerId, handleStream, cleanupCall]);
+    }, [getPeerId, shouldInitiateCallTo, handleStream, cleanupCall]);
 
     // Connect to voice chat
     const connect = useCallback(async () => {
@@ -459,33 +462,67 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
                 const currentPlayers = response.data.players as VoicePlayer[];
                 setPlayers(currentPlayers);
 
-                // Call other players who are already connected
+                // Call other players we are supposed to initiate to. Polite-peer
+                // rule means each pair has exactly one initiator, so no glare.
                 for (const player of currentPlayers) {
-                    if (player.id !== currentPlayerId) {
-                        // Small delay between calls
+                    if (player.id !== currentPlayerId && shouldInitiateCallTo(player.id)) {
+                        // Small delay to let peer IDs register on PeerJS cloud
                         setTimeout(() => callPlayer(player.id), 500);
                     }
                 }
 
-                // Poll for new players to call - also retry failed calls
+                // Poll every 5s for (a) newly joined players we should call and
+                // (b) existing calls that have genuinely failed. Only the
+                // initiator side re-calls — the answerer side just lets
+                // cleanupCall propagate the failure to the initiator.
                 peerPollingRef.current = setInterval(async () => {
-                    const res = await axios.get(route('rooms.voice.status', [gameSlug, roomCode]));
-                    const players = res.data.players as VoicePlayer[];
-                    for (const player of players) {
-                        if (player.id !== currentPlayerId) {
+                    try {
+                        const res = await axios.get(route('rooms.voice.status', [gameSlug, roomCode]));
+                        const players = res.data.players as VoicePlayer[];
+                        const now = Date.now();
+
+                        for (const player of players) {
+                            if (player.id === currentPlayerId) continue;
+                            if (!shouldInitiateCallTo(player.id)) continue;
+
                             const existingCall = callsRef.current.get(player.id);
-                            // Call if no existing call, or if existing call has no audio element (failed)
-                            if (!existingCall?.audioElement) {
-                                // Remove failed call first
-                                if (existingCall) {
-                                    callsRef.current.delete(player.id);
-                                }
-                                console.log(`Retry calling player ${player.id}`);
+
+                            if (!existingCall) {
+                                console.log(`[Voice] No call to player ${player.id}, initiating`);
                                 callPlayer(player.id);
+                                continue;
                             }
+
+                            const pc = existingCall.call.peerConnection;
+                            const state = pc?.connectionState;
+                            const iceState = pc?.iceConnectionState;
+                            const age = now - existingCall.createdAt;
+
+                            // Retry on genuine failure.
+                            if (
+                                (state && UNHEALTHY_STATES.has(state)) ||
+                                (iceState && UNHEALTHY_STATES.has(iceState))
+                            ) {
+                                console.log(`[Voice] Call to ${player.id} unhealthy (${state}/${iceState}), retrying`);
+                                cleanupCall(player.id);
+                                callPlayer(player.id);
+                                continue;
+                            }
+
+                            // Call stuck pre-negotiation for too long (no peerConnection,
+                            // or stayed in 'new' beyond grace window). Treat as failed.
+                            if ((!pc || state === 'new') && age > STALE_CALL_MS) {
+                                console.log(`[Voice] Call to ${player.id} stale (${state ?? 'no-pc'}, ${age}ms), retrying`);
+                                cleanupCall(player.id);
+                                callPlayer(player.id);
+                                continue;
+                            }
+                            // Otherwise: connecting or connected — leave alone.
                         }
+                    } catch {
+                        // Network hiccup on status poll; try again next tick.
                     }
-                }, 3000);
+                }, 5000);
             });
 
             // Handle incoming calls
@@ -521,6 +558,15 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
                                 next.set(playerId, { iceConnectionState: iceState, connectionState: connectionState || 'unknown' });
                                 return next;
                             });
+
+                            // Answerer side: on terminal failure, close the
+                            // MediaConnection so the initiator's state also flips
+                            // to failed and its retry loop kicks in. 'disconnected'
+                            // is skipped — let the browser self-heal.
+                            if (iceState === 'failed') {
+                                console.log(`[Voice] Incoming call failed for player ${playerId}, cleaning up`);
+                                cleanupCall(playerId);
+                            }
                         };
 
                         call.peerConnection.addEventListener('iceconnectionstatechange', updateConnectionState);
@@ -595,18 +641,29 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
                         cleanupCall(playerId);
                     });
 
-                    callsRef.current.set(playerId, { playerId, call });
+                    callsRef.current.set(playerId, { playerId, call, createdAt: Date.now() });
                 }
             });
 
             peer.on('error', (err) => {
-                console.error('[Voice] Peer error:', err.type, err);
                 if (err.type === 'unavailable-id') {
+                    console.error('[Voice] Peer error:', err.type, err);
                     setError('Another session is already connected. Please close other tabs.');
                 } else if (err.type === 'peer-unavailable') {
-                    // This is normal - the other peer might not be connected yet
-                    console.log('[Voice] Peer not available yet, will retry...');
+                    // Target peer isn't on the signalling server yet. PeerJS 1.5.5
+                    // puts the peer id in err.message (e.g. "Could not connect to
+                    // peer ROOMCODE-player-42"). Match the room-prefixed id so we
+                    // don't accidentally match on an unrelated substring.
+                    const peerIdPattern = new RegExp(`${roomCode}-player-(\\d+)`);
+                    const match = err.message?.match(peerIdPattern);
+                    const targetId = match ? parseInt(match[1], 10) : null;
+                    console.log(`[Voice] peer-unavailable:`, { message: err.message, parsedTargetId: targetId });
+                    if (targetId && callsRef.current.has(targetId)) {
+                        console.log(`[Voice] Cleaning up stale call to player ${targetId} for retry`);
+                        cleanupCall(targetId);
+                    }
                 } else {
+                    console.error('[Voice] Peer error:', err.type, err);
                     setError(`Connection error: ${err.type}`);
                 }
             });
@@ -620,7 +677,7 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
             setIsConnecting(false);
             setError('Failed to connect to voice server. Please try again.');
         }
-    }, [gameSlug, roomCode, currentPlayerId, getPeerId, fetchVoiceStatus, callPlayer, handleStream, cleanupCall]);
+    }, [gameSlug, roomCode, currentPlayerId, getPeerId, shouldInitiateCallTo, fetchVoiceStatus, callPlayer, handleStream, cleanupCall]);
 
     // Disconnect from voice chat
     const disconnect = useCallback(() => {
@@ -736,14 +793,20 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
 
                 console.log('[Voice] Got microphone access');
 
-                // Replace tracks in all existing peer connections
+                // Replace tracks in all existing peer connections. Log per-peer
+                // success/failure so we can diagnose remotes that hear silence
+                // after a successful local unmute.
                 const newTrack = stream.getAudioTracks()[0];
-                callsRef.current.forEach(({ call }) => {
-                    const sender = call.peerConnection?.getSenders().find(s => s.track?.kind === 'audio');
-                    if (sender) {
-                        sender.replaceTrack(newTrack);
-                        console.log('[Voice] Replaced audio track in peer connection');
+                callsRef.current.forEach(({ call, playerId }) => {
+                    const pc = call.peerConnection;
+                    const sender = pc?.getSenders().find(s => s.track?.kind === 'audio');
+                    if (!sender) {
+                        console.warn(`[Voice] No audio sender for player ${playerId}, cannot replace track`);
+                        return;
                     }
+                    sender.replaceTrack(newTrack)
+                        .then(() => console.log(`[Voice] Replaced audio track for player ${playerId} (pc state: ${pc?.connectionState})`))
+                        .catch(err => console.error(`[Voice] replaceTrack failed for player ${playerId}:`, err));
                 });
 
                 // Stop the old silent stream tracks
