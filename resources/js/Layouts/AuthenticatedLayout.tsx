@@ -1,5 +1,6 @@
 import Dropdown from '@/Components/Dropdown';
 import GameIcon from '@/Components/GameIcon';
+import MusicToggle from '@/Components/MusicToggle';
 import ThemeToggle from '@/Components/ThemeToggle';
 import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useState } from 'react';
@@ -107,6 +108,10 @@ export default function Authenticated({
                                         <p className="text-xs text-gray-500 truncate dark:text-gray-400">{user.email}</p>
                                     </div>
                                     <ThemeToggle
+                                        showLabel
+                                        className="block w-full px-4 py-2 text-start text-sm leading-5 text-gray-700 transition duration-150 ease-in-out hover:bg-gray-100 focus:bg-gray-100 focus:outline-hidden dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:bg-gray-700"
+                                    />
+                                    <MusicToggle
                                         showLabel
                                         className="block w-full px-4 py-2 text-start text-sm leading-5 text-gray-700 transition duration-150 ease-in-out hover:bg-gray-100 focus:bg-gray-100 focus:outline-hidden dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:bg-gray-700"
                                     />
@@ -221,6 +226,10 @@ export default function Authenticated({
 
                             <div className="space-y-1">
                                 <ThemeToggle
+                                    showLabel
+                                    className="w-full flex items-center px-4 py-3 text-white/80 hover:text-white hover:bg-white/10 rounded-xl font-medium transition"
+                                />
+                                <MusicToggle
                                     showLabel
                                     className="w-full flex items-center px-4 py-3 text-white/80 hover:text-white hover:bg-white/10 rounded-xl font-medium transition"
                                 />

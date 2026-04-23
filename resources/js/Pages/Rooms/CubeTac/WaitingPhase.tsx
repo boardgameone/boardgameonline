@@ -7,10 +7,21 @@
 
 import { GamePlayer, GameRoom } from '@/types';
 import { Link, router } from '@inertiajs/react';
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { SLOT_CHARS } from './PlayingPhase';
 import { useVoiceChatOptional } from '@/Contexts/VoiceChatContext';
 import VideoModal from '@/Components/VideoModal';
+
+/** Mirrors SLOT_COLORS in CubeTacGameController.php (design index → hex). */
+const DESIGN_COLORS = ['#ff4d2e', '#3a90ff', '#16a34a', '#a855f7', '#f59e0b', '#c2813a'];
+
+/** Human-readable names for the design-picker's aria-labels / tooltips. */
+const DESIGN_NAMES = ['X', 'Circle', 'Triangle', 'Square', 'Plus', 'Hexagon'];
+
+function designFor(player: GamePlayer | null, fallback: number): number {
+    const raw = player?.game_data?.['cubetac_design'];
+    return typeof raw === 'number' && raw >= 0 && raw <= 5 ? raw : fallback;
+}
 
 interface WaitingPhaseProps {
     room: GameRoom;
@@ -56,6 +67,28 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
             // no-op
         }
     };
+
+    const handlePickDesign = (design: number) => {
+        router.post(
+            route('rooms.cubetac.pickDesign', [gameSlug, room.room_code]),
+            { design },
+            { preserveScroll: true, preserveState: true },
+        );
+    };
+
+    // Map of design-index → holder player id, so the picker can dim
+    // swatches taken by other players. Includes disconnected holders so a
+    // reconnect keeps their glyph intact.
+    const designOwners = useMemo(() => {
+        const owners = new Map<number, number>();
+        for (const p of players) {
+            const d = designFor(p, -1);
+            if (d >= 0) {
+                owners.set(d, p.id);
+            }
+        }
+        return owners;
+    }, [players]);
 
     return (
         <div className="flex h-full w-full flex-col overflow-auto px-4 py-6 sm:px-8">
@@ -109,6 +142,8 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
                                 player={player}
                                 isSelf={isSelf}
                                 onKick={canKick ? () => handleKick(player!) : undefined}
+                                designOwners={designOwners}
+                                onPickDesign={isSelf ? handlePickDesign : undefined}
                             />
                         );
                     })}
@@ -150,10 +185,17 @@ interface SeatCardProps {
     player: GamePlayer | null;
     isSelf: boolean;
     onKick?: () => void;
+    /** design-index → holder player-id, for dimming swatches taken by others. */
+    designOwners: Map<number, number>;
+    /** Defined only for the viewer's own seat. Posts the pick to the server. */
+    onPickDesign?: (design: number) => void;
 }
 
-function SeatCard({ slot, player, isSelf, onKick }: SeatCardProps) {
-    const char = SLOT_CHARS[slot] ?? '?';
+function SeatCard({ slot, player, isSelf, onKick, designOwners, onPickDesign }: SeatCardProps) {
+    // Only filled seats render the player's chosen glyph; empty seats show a
+    // neutral "?" so an empty slot doesn't look like it's already been claimed.
+    const design = designFor(player, slot);
+    const char = player ? SLOT_CHARS[design] ?? '?' : '?';
     const color = player?.avatar_color ?? '#94a3b8';
 
     const voiceChat = useVoiceChatOptional();
@@ -329,6 +371,15 @@ function SeatCard({ slot, player, isSelf, onKick }: SeatCardProps) {
                         </span>
                     </div>
                 )}
+
+                {isSelf && onPickDesign && (
+                    <DesignPicker
+                        currentDesign={design}
+                        designOwners={designOwners}
+                        selfPlayerId={player!.id}
+                        onPick={onPickDesign}
+                    />
+                )}
             </div>
 
             {filled && (
@@ -342,6 +393,55 @@ function SeatCard({ slot, player, isSelf, onKick }: SeatCardProps) {
                 />
             )}
         </>
+    );
+}
+
+interface DesignPickerProps {
+    currentDesign: number;
+    designOwners: Map<number, number>;
+    selfPlayerId: number;
+    onPick: (design: number) => void;
+}
+
+function DesignPicker({ currentDesign, designOwners, selfPlayerId, onPick }: DesignPickerProps) {
+    return (
+        <div
+            className="mt-1 grid w-full grid-cols-6 place-items-center gap-0.5"
+            role="radiogroup"
+            aria-label="Choose your design"
+        >
+            {SLOT_CHARS.map((char, design) => {
+                const owner = designOwners.get(design);
+                const takenByOther = owner !== undefined && owner !== selfPlayerId;
+                const isCurrent = design === currentDesign;
+                const color = DESIGN_COLORS[design] ?? '#94a3b8';
+                return (
+                    <button
+                        key={design}
+                        type="button"
+                        role="radio"
+                        aria-checked={isCurrent}
+                        aria-label={DESIGN_NAMES[design]}
+                        title={takenByOther ? `${DESIGN_NAMES[design]} — taken` : DESIGN_NAMES[design]}
+                        disabled={takenByOther}
+                        onClick={() => {
+                            if (!isCurrent && !takenByOther) {
+                                onPick(design);
+                            }
+                        }}
+                        className={`grid h-5 w-5 place-items-center rounded-full text-[11px] font-black leading-none transition ${
+                            isCurrent ? 'scale-110 shadow-sm' : 'hover:scale-110'
+                        } ${takenByOther ? 'opacity-30 cursor-not-allowed' : ''}`}
+                        style={{
+                            backgroundColor: isCurrent ? color : hexWithAlpha(color, 0.15),
+                            color: isCurrent ? '#fff' : color,
+                        }}
+                    >
+                        {char}
+                    </button>
+                );
+            })}
+        </div>
     );
 }
 

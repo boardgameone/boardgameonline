@@ -89,6 +89,12 @@ interface CubeSceneProps {
      * neutral gray.
      */
     playerColors: string[];
+    /**
+     * Glyph-design indices (0..5) indexed by slot — lets each player pick
+     * X / O / △ / ▢ / ✚ / ⬡ independently of their turn-order slot. A
+     * missing entry falls back to the slot index itself.
+     */
+    designs?: number[];
     winningIndices?: Set<number>;
     /**
      * When the current player has placed a mark but not yet confirmed,
@@ -115,7 +121,7 @@ interface Animation {
 const DEFAULT_DURATION_MS = 280;
 
 const CubeScene = forwardRef<CubeSceneHandle, CubeSceneProps>(function CubeScene(
-    { marks, playerColors, winningIndices, pendingIndex, onStickerClick, interactive },
+    { marks, playerColors, designs, winningIndices, pendingIndex, onStickerClick, interactive },
     ref,
 ) {
     const [displayedMarks, setDisplayedMarks] = useState<Marks>(marks);
@@ -243,6 +249,7 @@ const CubeScene = forwardRef<CubeSceneHandle, CubeSceneProps>(function CubeScene
                 <CubeRoot
                     marks={displayedMarks}
                     playerColors={playerColors}
+                    designs={designs}
                     animation={animation}
                     onAnimationComplete={onAnimationComplete}
                     winningIndices={winningIndices}
@@ -330,6 +337,7 @@ type StickerSpec = { face: Face; row: number; col: number };
 interface CubeRootProps {
     marks: Marks;
     playerColors: string[];
+    designs?: number[];
     animation: Animation | null;
     onAnimationComplete: () => void;
     winningIndices?: Set<number>;
@@ -340,6 +348,7 @@ interface CubeRootProps {
 const CubeRoot = memo(function CubeRoot({
     marks,
     playerColors,
+    designs,
     animation,
     onAnimationComplete,
     winningIndices,
@@ -392,6 +401,9 @@ const CubeRoot = memo(function CubeRoot({
         const color = mark !== null && mark !== undefined
             ? playerColors[mark] ?? FALLBACK_GLYPH_COLOR
             : null;
+        const design = mark !== null && mark !== undefined
+            ? designs?.[mark] ?? mark
+            : null;
         const isWinning = winningIndices?.has(idx) ?? false;
         const isPending = pendingIndex === idx;
         return (
@@ -401,6 +413,7 @@ const CubeRoot = memo(function CubeRoot({
                 row={s.row}
                 col={s.col}
                 mark={mark}
+                design={design}
                 glyphColor={color}
                 isWinning={isWinning}
                 isPending={isPending}
@@ -582,6 +595,8 @@ interface StickerProps {
     row: number;
     col: number;
     mark: Mark;
+    /** Glyph-design index (0..5) for this mark, or null if the sticker is empty. */
+    design: number | null;
     /** Hex color for the glyph when mark is non-null; null otherwise. */
     glyphColor: string | null;
     isWinning: boolean;
@@ -594,7 +609,7 @@ const STICKER_SIZE = 0.84;
 const STICKER_OFFSET = 0.49;
 const GLYPH_OFFSET = 0.06;
 
-function Sticker({ face, row, col, mark, glyphColor, isWinning, isPending, onClick }: StickerProps) {
+function Sticker({ face, row, col, mark, design, glyphColor, isWinning, isPending, onClick }: StickerProps) {
     const { position, rotation } = useMemo(() => {
         const cubiePos = sticker3D(face, row, col);
         const normal = faceNormal(face);
@@ -658,7 +673,7 @@ function Sticker({ face, row, col, mark, glyphColor, isWinning, isPending, onCli
 
             {mark !== null && mark !== undefined && (
                 <MarkGlyph
-                    slot={mark}
+                    design={design ?? mark}
                     color={glyphColor ?? FALLBACK_GLYPH_COLOR}
                     opacity={isPending ? 0.55 : 1}
                 />
@@ -681,13 +696,14 @@ function Sticker({ face, row, col, mark, glyphColor, isWinning, isPending, onCli
 }
 
 // -----------------------------------------------------------------------------
-// MarkGlyph — one of six extruded slot glyphs, positioned slightly above
-// the sticker. Slots 0/1 preserve the original X / O look; slots 2..5 add
-// distinct shapes so 3..6-player games stay readable even in screenshots.
+// MarkGlyph — one of six extruded glyphs, positioned slightly above the
+// sticker. Design 0/1 preserve the original X / O look; 2..5 add distinct
+// shapes so 3..6-player games stay readable even in screenshots. `design`
+// is the player's chosen glyph index (0..5), independent of turn-order slot.
 // -----------------------------------------------------------------------------
 
-function MarkGlyph({ slot, color, opacity = 1 }: { slot: number; color: string; opacity?: number }) {
-    switch (slot) {
+function MarkGlyph({ design, color, opacity = 1 }: { design: number; color: string; opacity?: number }) {
+    switch (design) {
         case 0: return <XGlyph color={color} opacity={opacity} />;
         case 1: return <OGlyph color={color} opacity={opacity} />;
         case 2: return <TriangleGlyph color={color} opacity={opacity} />;

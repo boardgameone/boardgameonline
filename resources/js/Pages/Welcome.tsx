@@ -1,4 +1,5 @@
 import GameIcon from '@/Components/GameIcon';
+import MusicToggle from '@/Components/MusicToggle';
 import ThemeToggle from '@/Components/ThemeToggle';
 import { Game, PageProps } from '@/types';
 import { Head, Link } from '@inertiajs/react';
@@ -28,6 +29,7 @@ export default function Welcome({ auth, featuredGames }: Props) {
                         </div>
                     </Link>
                     <div className="flex gap-2 sm:gap-3 items-center">
+                        <MusicToggle />
                         <ThemeToggle />
                         {auth.user ? (
                             <Link
