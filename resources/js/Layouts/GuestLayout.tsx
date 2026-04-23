@@ -1,4 +1,5 @@
 import GameIcon from '@/Components/GameIcon';
+import MusicToggle from '@/Components/MusicToggle';
 import ThemeToggle from '@/Components/ThemeToggle';
 import { Link } from '@inertiajs/react';
 import { PropsWithChildren } from 'react';
@@ -21,6 +22,7 @@ export default function Guest({ children }: PropsWithChildren) {
                     </div>
                 </Link>
                 <div className="flex gap-2 sm:gap-3 items-center">
+                    <MusicToggle />
                     <ThemeToggle />
                     <Link
                         href={route('login')}
