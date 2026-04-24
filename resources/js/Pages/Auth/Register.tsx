@@ -1,6 +1,7 @@
 import GameIcon from '@/Components/GameIcon';
 import InputError from '@/Components/InputError';
 import GuestLayout from '@/Layouts/GuestLayout';
+import { useSfx } from '@/lib/sfx';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
 
@@ -11,11 +12,14 @@ export default function Register() {
         password: '',
         password_confirmation: '',
     });
+    const { play } = useSfx();
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
 
         post(route('register'), {
+            onSuccess: () => play('UI_SUCCESS'),
+            onError: () => play('UI_ERROR'),
             onFinish: () => reset('password', 'password_confirmation'),
         });
     };
