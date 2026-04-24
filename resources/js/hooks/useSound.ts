@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSoundContext } from '@/Contexts/SoundContext';
 
 interface UseSoundOptions {
     volume?: number;
@@ -14,17 +15,8 @@ interface UseSoundReturn {
 }
 
 /**
- * React hook for playing sound effects
- *
- * @param src - Path to the sound file (e.g., '/sounds/cheese-thief/die-roll.mp3')
- * @param options - Optional configuration (volume, loop, preload)
- * @returns Object with play/stop controls and status
- *
- * @example
- * const { play, stop, isPlaying } = useSound('/sounds/cheese-thief/die-roll.mp3', { volume: 0.8 });
- *
- * // Play the sound
- * play();
+ * React hook for playing sound effects. Honors the global SFX volume + mute
+ * from SoundContext. Effective playback volume = options.volume * context.volume.
  */
 export function useSound(
     src: string,
@@ -36,27 +28,26 @@ export function useSound(
         preload = true,
     } = options;
 
+    const { volume: globalVolume, isMuted } = useSoundContext();
+
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isLoaded, setIsLoaded] = useState(false);
 
-    // Check if sound is muted via localStorage
-    const isMuted = () => {
-        if (typeof window === 'undefined') return false;
-        return localStorage.getItem('soundMuted') === 'true';
-    };
+    const baseVolumeRef = useRef(volume);
+    useEffect(() => {
+        baseVolumeRef.current = volume;
+    }, [volume]);
 
     useEffect(() => {
-        // Create audio element
         const audio = new Audio(src);
-        audio.volume = volume;
+        audio.volume = Math.max(0, Math.min(1, volume * globalVolume));
         audio.loop = loop;
 
         if (preload) {
             audio.preload = 'auto';
         }
 
-        // Event listeners
         const handleCanPlay = () => setIsLoaded(true);
         const handleEnded = () => setIsPlaying(false);
         const handleError = (e: ErrorEvent) => {
@@ -70,7 +61,6 @@ export function useSound(
 
         audioRef.current = audio;
 
-        // Cleanup
         return () => {
             audio.removeEventListener('canplaythrough', handleCanPlay);
             audio.removeEventListener('ended', handleEnded);
@@ -78,82 +68,86 @@ export function useSound(
             audio.pause();
             audio.src = '';
         };
-    }, [src, volume, loop, preload]);
+        // Intentionally omit globalVolume — we update audio.volume live below without rebuilding the element.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [src, loop, preload]);
 
-    const play = () => {
-        if (!audioRef.current || isMuted()) return;
+    useEffect(() => {
+        if (audioRef.current) {
+            audioRef.current.volume = Math.max(0, Math.min(1, baseVolumeRef.current * globalVolume));
+        }
+    }, [globalVolume]);
 
-        // Reset to start if already playing
-        audioRef.current.currentTime = 0;
+    const api = useMemo<UseSoundReturn>(() => ({
+        play: () => {
+            if (!audioRef.current || isMuted || globalVolume <= 0) return;
+            audioRef.current.currentTime = 0;
+            audioRef.current.volume = Math.max(0, Math.min(1, baseVolumeRef.current * globalVolume));
+            audioRef.current.play().catch((error) => {
+                console.warn('Failed to play sound:', error);
+            });
+            setIsPlaying(true);
+        },
+        stop: () => {
+            if (!audioRef.current) return;
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+            setIsPlaying(false);
+        },
+        isPlaying,
+        isLoaded,
+    }), [isMuted, globalVolume, isPlaying, isLoaded]);
 
-        audioRef.current.play().catch((error) => {
-            console.warn('Failed to play sound:', error);
-        });
-
-        setIsPlaying(true);
-    };
-
-    const stop = () => {
-        if (!audioRef.current) return;
-
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-        setIsPlaying(false);
-    };
-
-    return { play, stop, isPlaying, isLoaded };
+    return api;
 }
 
 /**
- * Helper hook for playing random sounds from a list
- *
- * @param sounds - Array of sound file paths
- * @param options - Optional configuration
- * @returns Object with playRandom function and status
- *
- * @example
- * const { playRandom } = useRandomSound([
- *   '/sounds/cheese-thief/squeak-1.mp3',
- *   '/sounds/cheese-thief/squeak-2.mp3',
- *   '/sounds/cheese-thief/squeak-3.mp3',
- * ]);
+ * Helper hook for playing random sounds from a list. Respects global SFX mute + volume.
  */
 export function useRandomSound(
     sounds: string[],
     options: UseSoundOptions = {}
 ): { playRandom: () => void } {
+    const { volume: globalVolume, isMuted } = useSoundContext();
     const audioRefs = useRef<HTMLAudioElement[]>([]);
+    const baseVolumeRef = useRef(options.volume ?? 0.8);
 
     useEffect(() => {
-        // Create audio elements for all sounds
+        baseVolumeRef.current = options.volume ?? 0.8;
+    }, [options.volume]);
+
+    useEffect(() => {
         audioRefs.current = sounds.map((src) => {
             const audio = new Audio(src);
-            audio.volume = options.volume ?? 0.8;
+            audio.volume = Math.max(0, Math.min(1, (options.volume ?? 0.8) * globalVolume));
             audio.preload = options.preload !== false ? 'auto' : 'none';
             return audio;
         });
 
-        // Cleanup
         return () => {
             audioRefs.current.forEach((audio) => {
                 audio.pause();
                 audio.src = '';
             });
         };
-    }, [sounds, options.volume, options.preload]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sounds, options.preload]);
+
+    useEffect(() => {
+        audioRefs.current.forEach((audio) => {
+            audio.volume = Math.max(0, Math.min(1, baseVolumeRef.current * globalVolume));
+        });
+    }, [globalVolume]);
 
     const playRandom = () => {
-        // Check if muted
-        if (typeof window !== 'undefined' && localStorage.getItem('soundMuted') === 'true') {
-            return;
-        }
-
+        if (isMuted || globalVolume <= 0) return;
         if (audioRefs.current.length === 0) return;
 
         const randomIndex = Math.floor(Math.random() * audioRefs.current.length);
         const audio = audioRefs.current[randomIndex];
 
         audio.currentTime = 0;
+        audio.volume = Math.max(0, Math.min(1, baseVolumeRef.current * globalVolume));
         audio.play().catch((error) => {
             console.warn('Failed to play random sound:', error);
         });
@@ -161,24 +155,3 @@ export function useRandomSound(
 
     return { playRandom };
 }
-
-/**
- * Utility functions for managing global sound settings
- */
-export const soundUtils = {
-    isMuted: (): boolean => {
-        if (typeof window === 'undefined') return false;
-        return localStorage.getItem('soundMuted') === 'true';
-    },
-
-    setMuted: (muted: boolean): void => {
-        if (typeof window === 'undefined') return;
-        localStorage.setItem('soundMuted', muted ? 'true' : 'false');
-    },
-
-    toggleMuted: (): boolean => {
-        const newState = !soundUtils.isMuted();
-        soundUtils.setMuted(newState);
-        return newState;
-    },
-};
