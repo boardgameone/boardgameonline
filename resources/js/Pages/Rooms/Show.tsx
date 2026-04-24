@@ -3,9 +3,10 @@ import PlayerCard from '@/Components/PlayerCard';
 import RoomChat from '@/Components/RoomChat';
 import { VoiceChatProvider } from '@/Contexts/VoiceChatContext';
 import GameLayout from '@/Layouts/GameLayout';
+import { useSfx } from '@/lib/sfx';
 import { GamePlayer, GameRoom, GameState, PageProps } from '@/types';
 import { Head, Link, router, useForm, usePoll } from '@inertiajs/react';
-import { FormEventHandler, useState } from 'react';
+import { FormEventHandler, useEffect, useRef, useState } from 'react';
 import CheeseThiefGame from './CheeseThief/CheeseThiefGame';
 
 interface Props extends PageProps {
@@ -18,6 +19,7 @@ interface Props extends PageProps {
 export default function Show({ auth, room, currentPlayer, isHost, gameState }: Props) {
     const [copiedCode, setCopiedCode] = useState(false);
     const [copiedLink, setCopiedLink] = useState(false);
+    const { play } = useSfx();
 
     const gameSlug = room.game?.slug || '';
     const roomLink = route('rooms.show', [gameSlug, room.room_code]);
@@ -39,22 +41,50 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
     // Poll for real-time updates when the room is waiting or playing
     usePoll(2500, {}, { keepAlive: room.status !== 'finished' });
 
+    // Detect player join/leave events across polls and play lobby sounds.
+    const prevPlayerIdsRef = useRef<Set<number> | null>(null);
+    useEffect(() => {
+        const currentIds = new Set(
+            (room.players || []).filter((p) => p.is_connected).map((p) => p.id)
+        );
+        const prev = prevPlayerIdsRef.current;
+        if (prev !== null) {
+            for (const id of currentIds) {
+                if (!prev.has(id) && id !== currentPlayer?.id) {
+                    play('LOBBY_JOIN');
+                    break;
+                }
+            }
+            for (const id of prev) {
+                if (!currentIds.has(id) && id !== currentPlayer?.id) {
+                    play('LOBBY_LEAVE');
+                    break;
+                }
+            }
+        }
+        prevPlayerIdsRef.current = currentIds;
+    }, [room.players, currentPlayer?.id, play]);
+
     const handleStart = () => {
+        play('UI_CLICK');
         router.post(route('rooms.start', [gameSlug, room.room_code]));
     };
 
     const handleLeave = () => {
+        play('UI_CLICK');
         router.post(route('rooms.leave', [gameSlug, room.room_code]));
     };
 
     const copyRoomCode = () => {
         navigator.clipboard.writeText(room.room_code);
+        play('UI_SUCCESS');
         setCopiedCode(true);
         setTimeout(() => setCopiedCode(false), 2000);
     };
 
     const copyRoomLink = () => {
         navigator.clipboard.writeText(roomLink);
+        play('UI_SUCCESS');
         setCopiedLink(true);
         setTimeout(() => setCopiedLink(false), 2000);
     };

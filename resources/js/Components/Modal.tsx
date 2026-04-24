@@ -4,7 +4,8 @@ import {
     Transition,
     TransitionChild,
 } from '@headlessui/react';
-import { PropsWithChildren } from 'react';
+import { PropsWithChildren, useEffect, useRef } from 'react';
+import { useSfx } from '@/lib/sfx';
 
 export default function Modal({
     children,
@@ -18,6 +19,16 @@ export default function Modal({
     closeable?: boolean;
     onClose: CallableFunction;
 }>) {
+    const { play } = useSfx();
+    const prevShowRef = useRef(show);
+
+    useEffect(() => {
+        if (prevShowRef.current !== show) {
+            play(show ? 'UI_MODAL_OPEN' : 'UI_MODAL_CLOSE');
+            prevShowRef.current = show;
+        }
+    }, [show, play]);
+
     const close = () => {
         if (closeable) {
             onClose();

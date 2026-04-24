@@ -2,6 +2,7 @@ import { ChatMessage } from '@/types';
 import axios from 'axios';
 import { FormEventHandler, useCallback, useEffect, useRef, useState } from 'react';
 import GameIcon from '@/Components/GameIcon';
+import { useSfx } from '@/lib/sfx';
 
 interface Props {
     gameSlug: string;
@@ -17,6 +18,8 @@ export default function RoomChat({ gameSlug, roomCode, currentPlayerId }: Readon
     const [isMinimized, setIsMinimized] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const lastMessageIdRef = useRef(0);
+    const initialFetchDoneRef = useRef(false);
+    const { play } = useSfx();
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -35,11 +38,23 @@ export default function RoomChat({ gameSlug, roomCode, currentPlayerId }: Readon
                 setMessages((prev) => [...prev, ...newMessages]);
                 lastMessageIdRef.current = newMessages[newMessages.length - 1].id;
                 setTimeout(scrollToBottom, 100);
+
+                // Play notify sound only for messages from other players, and only after the
+                // initial fetch (so we don't chime once per historical message on mount).
+                if (initialFetchDoneRef.current) {
+                    const hasIncoming = newMessages.some(
+                        (m) => m.player.id !== currentPlayerId
+                    );
+                    if (hasIncoming) {
+                        play('UI_NOTIFY');
+                    }
+                }
             }
+            initialFetchDoneRef.current = true;
         } catch {
             // Silently fail - will retry on next poll
         }
-    }, [gameSlug, roomCode, currentPlayerId]);
+    }, [gameSlug, roomCode, currentPlayerId, play]);
 
     // Debug logging at component mount
     useEffect(() => {
@@ -80,6 +95,7 @@ export default function RoomChat({ gameSlug, roomCode, currentPlayerId }: Readon
                 lastMessageIdRef.current = msg.id;
                 setNewMessage('');
                 setTimeout(scrollToBottom, 100);
+                play('UI_CLICK');
             }
         } catch (err: any) {
             console.error('[Chat] Failed to send message:', err);

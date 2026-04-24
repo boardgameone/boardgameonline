@@ -6,6 +6,7 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import PWAUpdatePrompt from './Components/PWAUpdatePrompt';
 import { MusicProvider } from './Contexts/MusicContext';
+import { SoundProvider } from './Contexts/SoundContext';
 import { ThemeProvider } from './hooks/useTheme';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
@@ -23,8 +24,10 @@ createInertiaApp({
         root.render(
             <ThemeProvider>
                 <MusicProvider>
-                    <App {...props} />
-                    <PWAUpdatePrompt />
+                    <SoundProvider>
+                        <App {...props} />
+                        <PWAUpdatePrompt />
+                    </SoundProvider>
                 </MusicProvider>
             </ThemeProvider>
         );

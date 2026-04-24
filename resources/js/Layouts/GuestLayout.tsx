@@ -1,6 +1,5 @@
+import AudioControls from '@/Components/AudioControls';
 import GameIcon from '@/Components/GameIcon';
-import MusicToggle from '@/Components/MusicToggle';
-import MusicVolumeSlider from '@/Components/MusicVolumeSlider';
 import ThemeToggle from '@/Components/ThemeToggle';
 import { Link } from '@inertiajs/react';
 import { PropsWithChildren } from 'react';
@@ -23,11 +22,7 @@ export default function Guest({ children }: PropsWithChildren) {
                     </div>
                 </Link>
                 <div className="flex gap-2 sm:gap-3 items-center">
-                    <div className="hidden md:flex items-center gap-2 bg-white/60 dark:bg-gray-800/70 rounded-full px-3 py-1.5 shadow-lg border-b-4 border-yellow-500 dark:border-gray-700">
-                        <MusicToggle className="rounded-full bg-white dark:bg-gray-800 p-1.5 text-yellow-600 dark:text-yellow-300 hover:scale-105 transition" />
-                        <MusicVolumeSlider className="w-24 text-yellow-700 dark:text-yellow-300" />
-                    </div>
-                    <MusicToggle className="md:hidden rounded-full bg-white p-2 shadow-lg transition hover:scale-105 border-b-4 border-yellow-500 text-yellow-600 dark:bg-gray-800 dark:text-yellow-300 dark:border-gray-700" />
+                    <AudioControls variant="guest" />
                     <ThemeToggle />
                     <Link
                         href={route('login')}

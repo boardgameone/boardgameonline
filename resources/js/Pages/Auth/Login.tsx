@@ -2,6 +2,7 @@ import Checkbox from '@/Components/Checkbox';
 import GameIcon from '@/Components/GameIcon';
 import InputError from '@/Components/InputError';
 import GuestLayout from '@/Layouts/GuestLayout';
+import { useSfx } from '@/lib/sfx';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
 
@@ -17,11 +18,14 @@ export default function Login({
         password: '',
         remember: false as boolean,
     });
+    const { play } = useSfx();
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
 
         post(route('login'), {
+            onSuccess: () => play('UI_SUCCESS'),
+            onError: () => play('UI_ERROR'),
             onFinish: () => reset('password'),
         });
     };
