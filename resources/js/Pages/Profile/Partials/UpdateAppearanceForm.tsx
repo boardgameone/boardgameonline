@@ -16,15 +16,20 @@ export default function UpdateAppearanceForm({
                 </h2>
 
                 <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                    Toggle between light and dark mode. Your preference is saved
-                    in this browser.
+                    Cycle between light, dark, and grayscale mode. Your
+                    preference is saved in this browser.
                 </p>
             </header>
 
             <div className="mt-6 flex items-center gap-4">
                 <ThemeToggle />
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Currently: {theme === 'dark' ? 'Dark mode' : 'Light mode'}
+                    Currently:{' '}
+                    {theme === 'dark'
+                        ? 'Dark mode'
+                        : theme === 'grayscale'
+                          ? 'Grayscale mode'
+                          : 'Light mode'}
                 </span>
             </div>
         </section>

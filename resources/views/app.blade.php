@@ -30,9 +30,11 @@
                 try {
                     var stored = localStorage.getItem('theme');
                     var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                    var isDark = stored ? stored === 'dark' : prefersDark;
-                    if (isDark) {
+                    var theme = stored || (prefersDark ? 'dark' : 'light');
+                    if (theme === 'dark') {
                         document.documentElement.classList.add('dark');
+                    } else if (theme === 'grayscale') {
+                        document.documentElement.classList.add('grayscale');
                     }
                 } catch (e) {}
             })();
