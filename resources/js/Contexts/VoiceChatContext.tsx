@@ -129,39 +129,93 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
         }
     }, [gameSlug, roomCode]);
 
-    // Setup audio level detection for speaking indicator
+    // Setup audio level detection for speaking indicator.
+    //
+    // Tuned to be voice-specific rather than "any sound":
+    //   - higher FFT resolution (1024) so we can isolate the voice band
+    //   - analyse only ~85Hz–3400Hz where speech energy lives, ignoring
+    //     bass rumble, hiss, and fan/HVAC noise
+    //   - hysteresis: start threshold (38) higher than stop threshold (24),
+    //     so quiet syllables don't toggle the indicator on and off
+    //   - hold time (280ms): stay "speaking" briefly after voice drops, so
+    //     the indicator doesn't strobe between syllables
+    //   - throttled to ~20Hz updates and only re-renders when the boolean
+    //     for this player actually flips
     const setupAudioLevelDetection = useCallback((stream: MediaStream, playerId: number) => {
         try {
             const audioContext = new AudioContext();
             const source = audioContext.createMediaStreamSource(stream);
             const analyser = audioContext.createAnalyser();
-            analyser.fftSize = 256;
+            analyser.fftSize = 1024;
+            analyser.smoothingTimeConstant = 0.5;
             source.connect(analyser);
 
+            const binHz = audioContext.sampleRate / analyser.fftSize;
+            const startBin = Math.max(1, Math.floor(85 / binHz));
+            const endBin = Math.min(analyser.frequencyBinCount - 1, Math.ceil(3400 / binHz));
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
-            const checkLevel = () => {
+            const SPEAK_START = 38;
+            const SPEAK_STOP = 24;
+            const HOLD_MS = 280;
+            const TICK_MS = 50;
+
+            let speakingState = false;
+            let stopHoldUntil = 0;
+            let lastTickAt = 0;
+            let rafId: number | null = null;
+
+            const tick = () => {
                 if (!callsRef.current.has(playerId) && playerId !== currentPlayerId) {
-                    audioContext.close();
+                    if (rafId !== null) {
+                        cancelAnimationFrame(rafId);
+                    }
+                    audioContext.close().catch(() => undefined);
                     return;
                 }
 
+                const now = performance.now();
+                if (now - lastTickAt < TICK_MS) {
+                    rafId = requestAnimationFrame(tick);
+                    return;
+                }
+                lastTickAt = now;
+
                 analyser.getByteFrequencyData(dataArray);
-                const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
 
-                setSpeakingPlayers(prev => {
-                    const next = new Set(prev);
-                    if (average > 30) {
-                        next.add(playerId);
-                    } else {
-                        next.delete(playerId);
-                    }
-                    return next;
-                });
+                let sum = 0;
+                for (let i = startBin; i <= endBin; i++) {
+                    sum += dataArray[i];
+                }
+                const voiceLevel = sum / (endBin - startBin + 1);
 
-                requestAnimationFrame(checkLevel);
+                let nextSpeaking = speakingState;
+                if (voiceLevel >= SPEAK_START) {
+                    nextSpeaking = true;
+                    stopHoldUntil = now + HOLD_MS;
+                } else if (voiceLevel < SPEAK_STOP && now >= stopHoldUntil) {
+                    nextSpeaking = false;
+                }
+
+                if (nextSpeaking !== speakingState) {
+                    speakingState = nextSpeaking;
+                    setSpeakingPlayers(prev => {
+                        if (prev.has(playerId) === nextSpeaking) {
+                            return prev;
+                        }
+                        const next = new Set(prev);
+                        if (nextSpeaking) {
+                            next.add(playerId);
+                        } else {
+                            next.delete(playerId);
+                        }
+                        return next;
+                    });
+                }
+
+                rafId = requestAnimationFrame(tick);
             };
-            checkLevel();
+            rafId = requestAnimationFrame(tick);
         } catch (err) {
             console.error('Failed to setup audio level detection:', err);
         }
