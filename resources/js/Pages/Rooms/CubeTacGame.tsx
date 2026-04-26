@@ -11,6 +11,7 @@ import PlayingPhase from '@/Pages/Rooms/CubeTac/PlayingPhase';
 import FinishedPhase from '@/Pages/Rooms/CubeTac/FinishedPhase';
 import type { CubeSceneHandle } from '@/Pages/Rooms/CubeTac/CubeScene';
 import type { MegaminxSceneHandle } from '@/Pages/Rooms/CubeTac/MegaminxScene';
+import type { PyraminxSceneHandle } from '@/Pages/Rooms/CubeTac/PyraminxScene';
 import { VoiceChatProvider } from '@/Contexts/VoiceChatContext';
 import VoiceGalleryPanel from '@/Components/VoiceGalleryPanel';
 import { GamePlayer, GameRoom, PageProps } from '@/types';
@@ -18,6 +19,7 @@ import { Head, Link, router, useForm, usePoll } from '@inertiajs/react';
 import { FormEventHandler, ReactNode, useRef } from 'react';
 import { Marks, Move } from '@/lib/rubikCube';
 import type { Direction as MegaDirection } from '@/lib/megaminx';
+import type { Direction as PyraDirection } from '@/lib/pyraminx';
 
 interface CubeTacPlayer {
     id: number;
@@ -32,10 +34,10 @@ interface CubeTacPlayer {
 interface CubeTacGameState {
     status: 'playing' | 'finished';
     /** Which gameplay surface this room is using. Defaults to "cube" on legacy rows. */
-    variant: 'cube' | 'megaminx';
+    variant: 'cube' | 'megaminx' | 'pyraminx';
     /**
-     * Length is 54 for the cube variant and 132 for the megaminx variant —
-     * the consumer must read `variant` before indexing.
+     * Length depends on the variant: 54 for cube, 132 for megaminx, 36 for
+     * pyraminx — the consumer must read `variant` before indexing.
      */
     marks: Marks;
     current_turn: number;
@@ -44,7 +46,7 @@ interface CubeTacGameState {
     winner: number | 'draw' | null;
     /**
      * For the cube variant, `cells` are `[row, col]` pairs on a single face.
-     * For the megaminx variant, `cells` are 3 flat sticker indices on the same face.
+     * For megaminx & pyraminx, `cells` are 3 flat sticker indices on the same face.
      */
     winning_lines: Array<{
         face: number;
@@ -74,8 +76,10 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
 
     const cubeRef = useRef<CubeSceneHandle>(null);
     const megaRef = useRef<MegaminxSceneHandle>(null);
+    const pyraRef = useRef<PyraminxSceneHandle>(null);
 
-    const variant: 'cube' | 'megaminx' = gameState?.variant ?? (room.variant === 'megaminx' ? 'megaminx' : 'cube');
+    const variant: 'cube' | 'megaminx' | 'pyraminx' = gameState?.variant
+        ?? (room.variant === 'megaminx' ? 'megaminx' : room.variant === 'pyraminx' ? 'pyraminx' : 'cube');
 
     const gameSlug = room.game?.slug || 'cubetac';
     const isGuest = !auth.user;
@@ -125,6 +129,24 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
         // ref.current here.
         router.post(
             route('rooms.cubetac.megaRotate', [gameSlug, room.room_code]),
+            { face, direction },
+            { preserveScroll: true, preserveState: true },
+        );
+    };
+
+    const handlePyraMark = (face: number, slot: number) => {
+        router.post(
+            route('rooms.cubetac.pyraMark', [gameSlug, room.room_code]),
+            { face, slot },
+            { preserveScroll: true, preserveState: true },
+        );
+    };
+
+    const handlePyraRotate = (face: number, direction: PyraDirection) => {
+        // PlayingPhase calls pyraRef.current.playMove directly, so this
+        // handler only needs to fire the network request.
+        router.post(
+            route('rooms.cubetac.pyraRotate', [gameSlug, room.room_code]),
             { face, direction },
             { preserveScroll: true, preserveState: true },
         );
@@ -182,6 +204,7 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
         <PlayingPhase
             cubeRef={cubeRef}
             megaRef={megaRef}
+            pyraRef={pyraRef}
             variant={variant}
             marks={gameState.marks}
             currentTurn={gameState.current_turn}
@@ -197,6 +220,8 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
             onRotate={handleRotate}
             onMegaMark={handleMegaMark}
             onMegaRotate={handleMegaRotate}
+            onPyraMark={handlePyraMark}
+            onPyraRotate={handlePyraRotate}
             onEndTurn={handleEndTurn}
             onUndoMark={handleUndoMark}
             onLeave={handleLeave}

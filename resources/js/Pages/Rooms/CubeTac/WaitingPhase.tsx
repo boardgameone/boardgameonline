@@ -76,9 +76,10 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
         );
     };
 
-    const variant: 'cube' | 'megaminx' = room.variant === 'megaminx' ? 'megaminx' : 'cube';
+    const variant: 'cube' | 'megaminx' | 'pyraminx' =
+        room.variant === 'megaminx' ? 'megaminx' : room.variant === 'pyraminx' ? 'pyraminx' : 'cube';
 
-    const handlePickVariant = (next: 'cube' | 'megaminx') => {
+    const handlePickVariant = (next: 'cube' | 'megaminx' | 'pyraminx') => {
         if (next === variant) return;
         router.post(
             route('rooms.pickVariant', [gameSlug, room.room_code]),
@@ -165,10 +166,15 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
                     <div className="text-[10px] font-black uppercase tracking-[0.35em] text-yellow-900/70 dark:text-yellow-300/70">
                         Playing surface
                     </div>
-                    <div className="inline-flex rounded-full border-2 border-yellow-400 bg-white/80 p-1 shadow-md dark:bg-gray-800/80 dark:border-yellow-600/60">
-                        {(['cube', 'megaminx'] as const).map((v) => {
+                    <div className="inline-flex flex-wrap justify-center rounded-full border-2 border-yellow-400 bg-white/80 p-1 shadow-md dark:bg-gray-800/80 dark:border-yellow-600/60">
+                        {(['cube', 'megaminx', 'pyraminx'] as const).map((v) => {
                             const selected = v === variant;
-                            const label = v === 'cube' ? 'Cube · 6 faces' : 'Megaminx · 12 faces';
+                            const label =
+                                v === 'cube'
+                                    ? 'Cube · 6 faces'
+                                    : v === 'megaminx'
+                                        ? 'Megaminx · 12 faces'
+                                        : 'Pyraminx · 4 faces';
                             return (
                                 <button
                                     key={v}

@@ -10,12 +10,13 @@ import { Marks, indexOf } from '@/lib/rubikCube';
 
 const CubeScene = lazy(() => import('./CubeScene'));
 const MegaminxScene = lazy(() => import('./MegaminxScene'));
+const PyraminxScene = lazy(() => import('./PyraminxScene'));
 
 export interface WinningLineData {
     face: number;
     /**
      * Cube variant: list of `[row, col]` pairs (typically 3) on a single face.
-     * Megaminx variant: list of 3 flat sticker indices on a single face.
+     * Megaminx & Pyraminx variants: list of 3 flat sticker indices on a single face.
      */
     cells: Array<[number, number]> | number[];
     player: number;
@@ -42,7 +43,7 @@ export interface FinishedPhaseProps {
     onLeave?: () => void;
     leaveLabel?: string;
     /** Which playing surface to render. Defaults to 'cube'. */
-    variant?: 'cube' | 'megaminx';
+    variant?: 'cube' | 'megaminx' | 'pyraminx';
 }
 
 export default function FinishedPhase({
@@ -58,6 +59,7 @@ export default function FinishedPhase({
     variant = 'cube',
 }: FinishedPhaseProps) {
     const isMegaminx = variant === 'megaminx';
+    const isPyraminx = variant === 'pyraminx';
     const winningIndices = useMemo(() => {
         const set = new Set<number>();
         for (const line of winningLines) {
@@ -66,7 +68,7 @@ export default function FinishedPhase({
                     // Cube line: [row, col] pair on `line.face`.
                     set.add(indexOf(line.face, cell[0], cell[1]));
                 } else if (typeof cell === 'number') {
-                    // Megaminx line: cell is a flat sticker index already.
+                    // Megaminx / Pyraminx line: cell is a flat sticker index already.
                     set.add(cell);
                 }
             }
@@ -105,6 +107,14 @@ export default function FinishedPhase({
                 <Suspense fallback={<div className="h-full" />}>
                     {isMegaminx ? (
                         <MegaminxScene
+                            marks={marks}
+                            playerColors={playerColors}
+                            designs={playerDesigns}
+                            winningIndices={winningIndices}
+                            interactive={false}
+                        />
+                    ) : isPyraminx ? (
+                        <PyraminxScene
                             marks={marks}
                             playerColors={playerColors}
                             designs={playerDesigns}
