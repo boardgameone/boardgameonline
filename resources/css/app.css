@@ -180,6 +180,15 @@
   ::file-selector-button {
     border-color: var(--color-gray-200, currentcolor);
   }
+
+  /*
+    Grayscale theme — desaturates the entire page. Sits alongside light/dark
+    rather than replacing them. The filter applies to <html> so it covers
+    fixed/portaled UI too.
+  */
+  html.grayscale {
+    filter: grayscale(1);
+  }
 }
 
 @utility card-flip {
