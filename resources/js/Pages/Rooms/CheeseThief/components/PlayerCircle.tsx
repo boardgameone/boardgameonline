@@ -92,7 +92,7 @@ export default function PlayerCircle({
                         {showDice && (
                             <div className="mt-1">
                                 <DieDisplay
-                                    value={isSelf ? player.die_value : null}
+                                    value={player.die_value ?? null}
                                     size="sm"
                                 />
                             </div>

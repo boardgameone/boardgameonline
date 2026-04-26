@@ -197,6 +197,14 @@ class GameRoom extends Model
     }
 
     /**
+     * Did exactly one mouse wake up at this hour?
+     */
+    public function playerWokeUpAlone(int $hour): bool
+    {
+        return $this->playersAtHour($hour)->count() === 1;
+    }
+
+    /**
      * Check if all connected players have confirmed their die rolls.
      */
     public function allPlayersConfirmedRoll(): bool

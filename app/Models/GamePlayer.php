@@ -126,4 +126,43 @@ class GamePlayer extends Model
             'game_data' => array_merge($this->game_data ?? [], ['has_voted' => true]),
         ]);
     }
+
+    /**
+     * Map of player_id => die_value for players this mouse has peeked at.
+     *
+     * @return array<int, int>
+     */
+    public function getPeekedPlayers(): array
+    {
+        return $this->game_data['peeked_players'] ?? [];
+    }
+
+    /**
+     * Has this mouse already used their peek for the given night hour?
+     */
+    public function hasPeekedAtHour(int $hour): bool
+    {
+        return in_array($hour, $this->game_data['peeked_hours'] ?? [], true);
+    }
+
+    /**
+     * Record a peek result and the hour in which it was taken.
+     */
+    public function recordPeek(int $playerId, int $dieValue, int $hour): void
+    {
+        $peeked = $this->game_data['peeked_players'] ?? [];
+        $peeked[$playerId] = $dieValue;
+
+        $hours = $this->game_data['peeked_hours'] ?? [];
+        if (! in_array($hour, $hours, true)) {
+            $hours[] = $hour;
+        }
+
+        $this->update([
+            'game_data' => array_merge($this->game_data ?? [], [
+                'peeked_players' => $peeked,
+                'peeked_hours' => $hours,
+            ]),
+        ]);
+    }
 }

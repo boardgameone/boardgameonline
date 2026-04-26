@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\CreateGameRoomRequest;
 use App\Http\Requests\JoinGameRoomRequest;
+use App\Http\Requests\PeekRequest;
 use App\Http\Requests\SelectAccompliceRequest;
 use App\Http\Requests\VoteRequest;
 use App\Models\ChatMessage;
@@ -245,6 +246,51 @@ class GameRoomController extends Controller
         }
 
         $room->update(['cheese_stolen_at_hour' => $hour]);
+
+        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
+    }
+
+    /**
+     * A mouse who is awake alone at the current hour can peek at one
+     * other mouse to learn what hour they wake up.
+     */
+    public function peek(PeekRequest $request, Game $game, GameRoom $room): RedirectResponse
+    {
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
+        $currentPlayer = $this->findCurrentPlayer($room);
+
+        if (! $currentPlayer) {
+            abort(403, 'You are not a player in this room.');
+        }
+
+        $hour = $room->current_hour;
+        if (! $room->isPlaying() || $hour < 1 || $hour > 6) {
+            return back()->withErrors(['error' => 'You can only peek during the night.']);
+        }
+
+        if ($currentPlayer->die_value !== $hour) {
+            return back()->withErrors(['error' => 'You did not wake up at this hour.']);
+        }
+
+        if (! $room->playerWokeUpAlone($hour)) {
+            return back()->withErrors(['error' => 'You can only peek when alone.']);
+        }
+
+        if ($currentPlayer->hasPeekedAtHour($hour)) {
+            return back()->withErrors(['error' => 'You have already peeked this hour.']);
+        }
+
+        $targetPlayerId = (int) $request->validated('target_player_id');
+        $targetPlayer = $room->connectedPlayers()->find($targetPlayerId);
+
+        if (! $targetPlayer || $targetPlayer->id === $currentPlayer->id) {
+            return back()->withErrors(['error' => 'Invalid target mouse.']);
+        }
+
+        $currentPlayer->recordPeek($targetPlayer->id, (int) $targetPlayer->die_value, $hour);
 
         return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
     }
@@ -686,9 +732,25 @@ class GameRoomController extends Controller
         $isGameOver = $room->isFinished();
         $currentHour = $room->current_hour;
 
+        $peekedPlayers = $currentPlayer?->getPeekedPlayers() ?? [];
+
         // Build players array with visibility rules
-        $players = $connectedPlayers->map(function (GamePlayer $player) use ($currentPlayer, $isThief, $isAccomplice, $isGameOver) {
+        $players = $connectedPlayers->map(function (GamePlayer $player) use ($currentPlayer, $isThief, $isAccomplice, $isGameOver, $peekedPlayers) {
             $isSelf = $currentPlayer && $player->id === $currentPlayer->id;
+
+            // Die value: visible to self, anyone the player has peeked at, or at game end.
+            $dieValue = null;
+            if ($isSelf || $isGameOver) {
+                $dieValue = $player->die_value;
+            } elseif (isset($peekedPlayers[$player->id])) {
+                $dieValue = (int) $peekedPlayers[$player->id];
+            }
+
+            // Thief status: revealed to the thief themselves AND to a selected accomplice
+            // (after they're picked) AND at game end.
+            $thiefRevealed = $isGameOver
+                || ($isThief && $player->is_thief)
+                || ($isAccomplice && $player->is_thief);
 
             return [
                 'id' => $player->id,
@@ -697,10 +759,8 @@ class GameRoomController extends Controller
                 'is_host' => $player->is_host,
                 'is_connected' => $player->is_connected,
                 'turn_order' => $player->turn_order,
-                // Die value: visible to self only (or to everyone at game end).
-                'die_value' => ($isSelf || $isGameOver) ? $player->die_value : null,
-                // Thief status: only revealed to the thief themselves until game end.
-                'is_thief' => ($isGameOver || ($isThief && $player->is_thief)) ? $player->is_thief : null,
+                'die_value' => $dieValue,
+                'is_thief' => $thiefRevealed ? $player->is_thief : null,
                 // Accomplice status: visible to thief, accomplice, or at game end.
                 'is_accomplice' => ($isGameOver || $isThief || $isAccomplice) ? $player->is_accomplice : null,
                 'has_confirmed_roll' => $player->hasConfirmedRoll(),
@@ -746,6 +806,15 @@ class GameRoomController extends Controller
                 && $room->cheese_stolen_at_hour <= $currentPlayer->die_value;
         }
 
+        // A mouse can peek at one other mouse if they're awake alone tonight,
+        // and they haven't already peeked this hour.
+        $canPeek = $currentPlayer
+            && $currentHour >= 1
+            && $currentHour <= 6
+            && $currentPlayer->die_value === $currentHour
+            && $room->playerWokeUpAlone($currentHour)
+            && ! $currentPlayer->hasPeekedAtHour($currentHour);
+
         $canSelectAccomplice = $isThief && $currentHour === 7 && ! $room->accomplice_player_id;
         $canVote = $currentHour === 8 && $currentPlayer && ! $currentPlayer->hasVoted();
 
@@ -762,13 +831,18 @@ class GameRoomController extends Controller
             'players' => $players,
             'awake_player_ids' => $awakePlayers,
             'can_steal_cheese' => $canStealCheese,
+            'can_peek' => $canPeek,
             'cheese_visible_to_self' => $cheeseVisibleToSelf,
             'cheese_stolen' => $cheeseStolenKnown,
             'cheese_stolen_at_hour' => $isGameOver ? $room->cheese_stolen_at_hour : null,
             'can_select_accomplice' => $canSelectAccomplice,
             'can_vote' => $canVote,
             'winner' => $room->winner,
-            'thief_player_id' => $isGameOver ? $room->thief_player_id : null,
+            // Thief identity is revealed to the thief themselves (always),
+            // to a selected accomplice once chosen, and to everyone at game end.
+            'thief_player_id' => ($isGameOver || $isThief || $isAccomplice)
+                ? $room->thief_player_id
+                : null,
             'accomplice_player_id' => ($isGameOver || $isThief || $isAccomplice) ? $room->accomplice_player_id : null,
             'vote_counts' => $voteCounts,
             'total_votes_cast' => $room->votes->count(),
