@@ -66,10 +66,9 @@ export default function VotingPhase({ gameState, roomCode, gameSlug }: VotingPha
                 </p>
             </div>
 
-            {/* Cheese Stolen Alert */}
             {gameState.cheese_stolen && (
                 <div className="rounded-lg bg-yellow-100 px-6 py-3 text-yellow-800">
-                    {'\u{1F9C0}'} <strong>The cheese was stolen!</strong> The thief was caught peeking!
+                    🧀 <strong>The cheese was stolen during the night.</strong>
                 </div>
             )}
 

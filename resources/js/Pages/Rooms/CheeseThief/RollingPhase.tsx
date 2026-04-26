@@ -3,6 +3,9 @@ import { router } from '@inertiajs/react';
 import { useSound } from '@/hooks/useSound';
 import DieDisplay from './components/DieDisplay';
 import PlayerCircle from './components/PlayerCircle';
+import Stage from './components/Stage';
+import Cheese from './components/Cheese';
+import Curtains from './components/Curtains';
 
 interface RollingPhaseProps {
     gameState: GameState;
@@ -15,7 +18,6 @@ export default function RollingPhase({ gameState, roomCode, gameSlug }: RollingP
     const confirmedCount = gameState.players.filter((p) => p.has_confirmed_roll).length;
     const hasConfirmed = currentPlayer?.has_confirmed_roll ?? false;
 
-    // Sound effects
     const { play: playDieRoll } = useSound('/sounds/cheese-thief/die-roll.mp3', { volume: 0.7 });
 
     const handleConfirm = () => {
@@ -25,13 +27,22 @@ export default function RollingPhase({ gameState, roomCode, gameSlug }: RollingP
 
     return (
         <div className="flex flex-col items-center gap-8">
-            {/* Header */}
             <div className="text-center">
                 <h2 className="text-2xl font-bold text-gray-900">
-                    {'\u{1F3B2}'} Roll Your Die!
+                    🎲 Roll Your Die!
                 </h2>
                 <p className="mt-2 text-gray-600">
                     Your die determines when you wake up during the night
+                </p>
+            </div>
+
+            <div className="w-full max-w-xl">
+                <Stage height={220}>
+                    <Cheese present={true} />
+                    <Curtains open={true} />
+                </Stage>
+                <p className="mt-2 text-center text-sm italic text-slate-600">
+                    🧀 The cheese sits on the table tonight... but the curtains will close at dusk.
                 </p>
             </div>
 

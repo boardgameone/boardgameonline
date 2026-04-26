@@ -44,8 +44,7 @@ Route::post('/rooms/{game:slug}/{room:room_code}/reset', [GameRoomController::cl
 
 // Game action routes (Cheese Thief)
 Route::post('/rooms/{game:slug}/{room:room_code}/confirm-roll', [GameRoomController::class, 'confirmRoll'])->middleware('throttle:60,1')->name('rooms.confirmRoll');
-Route::post('/rooms/{game:slug}/{room:room_code}/peek', [GameRoomController::class, 'peek'])->middleware('throttle:60,1')->name('rooms.peek');
-Route::post('/rooms/{game:slug}/{room:room_code}/skip-peek', [GameRoomController::class, 'skipPeek'])->middleware('throttle:60,1')->name('rooms.skipPeek');
+Route::post('/rooms/{game:slug}/{room:room_code}/steal-cheese', [GameRoomController::class, 'stealCheese'])->middleware('throttle:60,1')->name('rooms.stealCheese');
 Route::post('/rooms/{game:slug}/{room:room_code}/select-accomplice', [GameRoomController::class, 'selectAccomplice'])->middleware('throttle:60,1')->name('rooms.selectAccomplice');
 Route::post('/rooms/{game:slug}/{room:room_code}/vote', [GameRoomController::class, 'vote'])->middleware('throttle:60,1')->name('rooms.vote');
 Route::post('/rooms/{game:slug}/{room:room_code}/chat', [GameRoomController::class, 'sendMessage'])->middleware('throttle:30,1')->name('rooms.chat');

@@ -4,12 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\CreateGameRoomRequest;
 use App\Http\Requests\JoinGameRoomRequest;
-use App\Http\Requests\PeekRequest;
 use App\Http\Requests\SelectAccompliceRequest;
 use App\Http\Requests\VoteRequest;
 use App\Models\ChatMessage;
 use App\Models\Game;
-use App\Models\GamePeek;
 use App\Models\GamePlayer;
 use App\Models\GameRoom;
 use App\Models\GameVote;
@@ -87,7 +85,6 @@ class GameRoomController extends Controller
                 $query->orderBy('created_at');
             },
             'votes',
-            'peeks',
         ]);
 
         // Find or auto-join current player FIRST (for all games)
@@ -118,10 +115,13 @@ class GameRoomController extends Controller
             return app(CubeTacGameController::class)->show($game, $room);
         }
 
-        // Auto-advance expired night hours (driven by frontend polling)
+        // Settle expired night hours (driven by frontend polling).
+        // Each request that lands on this page advances the clock if the timer
+        // for the current hour has run out.
         if ($room->isPlaying() && $room->current_hour >= 1 && $room->current_hour <= 6) {
-            $this->autoAdvanceNightHours($room);
+            $this->settleNight($room);
             $room->refresh();
+            $room->load(['players', 'votes']);
         }
 
         // Build game state with visibility rules
@@ -176,6 +176,7 @@ class GameRoomController extends Controller
             'started_at' => now(),
             'current_hour' => 0, // Rolling phase
             'thief_player_id' => $thiefPlayer->id,
+            'cheese_stolen_at_hour' => null,
         ]);
 
         return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
@@ -209,9 +210,13 @@ class GameRoomController extends Controller
         return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
     }
 
-    public function peek(PeekRequest $request, Game $game, GameRoom $room): RedirectResponse
+    /**
+     * Thief manually steals the cheese during their wake hour.
+     * If they don't tap, the cheese is auto-stolen when their hour expires
+     * (handled in settleNight()).
+     */
+    public function stealCheese(Game $game, GameRoom $room): RedirectResponse
     {
-        // Validate room belongs to this game
         if ($room->game_id !== $game->id) {
             abort(404, 'Room not found for this game.');
         }
@@ -222,98 +227,24 @@ class GameRoomController extends Controller
             abort(403, 'You are not a player in this room.');
         }
 
-        $hour = $room->current_hour;
-        if (! $room->isPlaying() || $hour < 1 || $hour > 6) {
-            return back()->withErrors(['error' => 'Cannot peek at this time.']);
-        }
-
-        // Check if the current player woke up at this hour
-        if ($currentPlayer->die_value !== $hour) {
-            return back()->withErrors(['error' => 'You did not wake up at this hour.']);
-        }
-
-        // Check if player is alone
-        if (! $room->playerWokeUpAlone($hour)) {
-            return back()->withErrors(['error' => 'You are not alone at this hour.']);
-        }
-
-        // Check if already completed this hour
-        if ($currentPlayer->hasCompletedHour($hour)) {
-            return back()->withErrors(['error' => 'You have already taken action this hour.']);
-        }
-
-        $targetPlayerId = $request->validated('target_player_id');
-        $targetPlayer = $room->connectedPlayers()->find($targetPlayerId);
-
-        if (! $targetPlayer || $targetPlayer->id === $currentPlayer->id) {
-            return back()->withErrors(['error' => 'Invalid target player.']);
-        }
-
-        // Record the peek
-        GamePeek::create([
-            'game_room_id' => $room->id,
-            'peeker_id' => $currentPlayer->id,
-            'peeked_at_id' => $targetPlayer->id,
-            'hour' => $hour,
-            'saw_thief' => $targetPlayer->is_thief,
-        ]);
-
-        // Store the peeked info in the player's game data
-        $currentPlayer->recordPeek($targetPlayer->id, $targetPlayer->die_value);
-
-        // If peeked at thief, mark that cheese is stolen
-        if ($targetPlayer->is_thief) {
-            $currentPlayer->update(['has_stolen_cheese' => true]);
-        }
-
-        // Mark hour as completed
-        $currentPlayer->completeHour($hour);
-
-        // Check if we should advance
-        $room->refresh();
-        if ($room->currentHourComplete()) {
-            $this->advanceToNextPhase($room);
-        }
-
-        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
-    }
-
-    public function skipPeek(Game $game, GameRoom $room): RedirectResponse
-    {
-        // Validate room belongs to this game
-        if ($room->game_id !== $game->id) {
-            abort(404, 'Room not found for this game.');
-        }
-
-        $currentPlayer = $this->findCurrentPlayer($room);
-
-        if (! $currentPlayer) {
-            abort(403, 'You are not a player in this room.');
+        if (! $currentPlayer->is_thief) {
+            return back()->withErrors(['error' => 'Only the thief can steal the cheese.']);
         }
 
         $hour = $room->current_hour;
         if (! $room->isPlaying() || $hour < 1 || $hour > 6) {
-            return back()->withErrors(['error' => 'Cannot skip peek at this time.']);
+            return back()->withErrors(['error' => 'Cannot steal at this time.']);
         }
 
-        // Check if the current player woke up at this hour
         if ($currentPlayer->die_value !== $hour) {
-            return back()->withErrors(['error' => 'You did not wake up at this hour.']);
+            return back()->withErrors(['error' => 'You can only steal during your wake hour.']);
         }
 
-        // Check if player is alone
-        if (! $room->playerWokeUpAlone($hour)) {
-            return back()->withErrors(['error' => 'You are not alone at this hour.']);
+        if (! is_null($room->cheese_stolen_at_hour)) {
+            return back()->withErrors(['error' => 'The cheese has already been stolen.']);
         }
 
-        // Mark hour as completed without peeking
-        $currentPlayer->completeHour($hour);
-
-        // Check if we should advance
-        $room->refresh();
-        if ($room->currentHourComplete()) {
-            $this->advanceToNextPhase($room);
-        }
+        $room->update(['cheese_stolen_at_hour' => $hour]);
 
         return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
     }
@@ -505,6 +436,8 @@ class GameRoomController extends Controller
             'current_hour' => 0,
             'thief_player_id' => null,
             'accomplice_player_id' => null,
+            'cheese_stolen_at_hour' => null,
+            'hour_started_at' => null,
             'winner' => null,
             'settings' => null,
             'started_at' => null,
@@ -517,14 +450,12 @@ class GameRoomController extends Controller
                 'is_thief' => false,
                 'is_accomplice' => false,
                 'die_value' => null,
-                'has_stolen_cheese' => false,
                 'turn_order' => null,
                 'game_data' => [],
             ]);
         }
 
         // Clear game-specific data
-        $room->peeks()->delete();
         $room->votes()->delete();
         $room->actions()->delete();
         $room->cardReveals()->delete();
@@ -676,67 +607,65 @@ class GameRoomController extends Controller
 
     /**
      * Advance the game to the next phase.
+     * Used for non-night transitions (rolling -> hour 1, accomplice -> voting).
+     * Night-hour transitions are handled by settleNight().
      */
     private function advanceToNextPhase(GameRoom $room): void
     {
         $currentHour = $room->current_hour;
 
         if ($currentHour === 0) {
-            // Rolling phase complete -> move to hour 1
             $room->update([
                 'current_hour' => 1,
                 'hour_started_at' => now(),
             ]);
-            $room->refresh();
-            // Auto-advance through empty night hours
-            $this->autoAdvanceNightHours($room);
-        } elseif ($currentHour >= 1 && $currentHour <= 5) {
-            // Night hour complete -> move to next hour
-            $room->update([
-                'current_hour' => $currentHour + 1,
-                'hour_started_at' => now(),
-            ]);
-            $room->refresh();
-            // Auto-advance through empty night hours
-            $this->autoAdvanceNightHours($room);
-        } elseif ($currentHour === 6) {
-            // Last night hour complete -> move to accomplice selection
-            $room->update([
-                'current_hour' => 7,
-                'hour_started_at' => null,
-            ]);
         } elseif ($currentHour === 7) {
-            // Accomplice selected -> move to voting
             $room->update(['current_hour' => 8]);
         }
-        // Hour 8 (voting) -> 9 (results) is handled in vote() when all votes are in
+        // Hour 8 (voting) -> 9 (results) is handled in vote() when all votes are in.
+        // Night hour transitions (1..6 -> 7) are handled by settleNight().
     }
 
     /**
-     * Auto-advance through night hours where no action is needed.
+     * Tick the night clock forward when the current hour's timer has expired.
+     *
+     * Each night hour runs for the full timer duration regardless of whether
+     * any mice are awake — like a narrator counting through the night. When
+     * the timer expires, this method:
+     *   1. Auto-steals the cheese if it's the thief's hour and they didn't tap.
+     *   2. Advances to the next hour (or to the accomplice phase after hour 6).
+     *
+     * The loop guards against an idle tab where multiple hours may have
+     * elapsed since the last poll.
      */
-    private function autoAdvanceNightHours(GameRoom $room): void
+    private function settleNight(GameRoom $room): void
     {
-        while ($room->current_hour >= 1 && $room->current_hour <= 6) {
-            if ($room->currentHourComplete()) {
-                if ($room->current_hour === 6) {
-                    // Move to accomplice selection
-                    $room->update([
-                        'current_hour' => 7,
-                        'hour_started_at' => null,
-                    ]);
+        while ($room->current_hour >= 1 && $room->current_hour <= 6 && $room->isHourTimerExpired()) {
+            $expiredHour = $room->current_hour;
+            $duration = $room->getHourTimerDuration();
+            $nextStartedAt = $room->hour_started_at?->copy()->addSeconds($duration) ?? now();
 
-                    return;
-                }
+            // Auto-steal: if the cheese was never grabbed and this was the thief's hour.
+            if (is_null($room->cheese_stolen_at_hour) && $room->thiefDieValue() === $expiredHour) {
+                $room->update(['cheese_stolen_at_hour' => $expiredHour]);
+            }
+
+            if ($expiredHour === 6) {
                 $room->update([
-                    'current_hour' => $room->current_hour + 1,
-                    'hour_started_at' => now(),
+                    'current_hour' => 7,
+                    'hour_started_at' => null,
                 ]);
-                $room->refresh();
-            } else {
-                // Hour not yet complete (timer still running or player needs to act)
+
                 return;
             }
+
+            $room->update([
+                'current_hour' => $expiredHour + 1,
+                // Step the clock forward by the full duration so that an idle tab
+                // whose poll lands several hours late will chain through them all.
+                'hour_started_at' => $nextStartedAt,
+            ]);
+            $room->refresh();
         }
     }
 
@@ -755,11 +684,11 @@ class GameRoomController extends Controller
         $isThief = $currentPlayer?->is_thief ?? false;
         $isAccomplice = $currentPlayer?->is_accomplice ?? false;
         $isGameOver = $room->isFinished();
+        $currentHour = $room->current_hour;
 
         // Build players array with visibility rules
         $players = $connectedPlayers->map(function (GamePlayer $player) use ($currentPlayer, $isThief, $isAccomplice, $isGameOver) {
             $isSelf = $currentPlayer && $player->id === $currentPlayer->id;
-            $peekedPlayers = $currentPlayer?->getPeekedPlayers() ?? [];
 
             return [
                 'id' => $player->id,
@@ -768,44 +697,58 @@ class GameRoomController extends Controller
                 'is_host' => $player->is_host,
                 'is_connected' => $player->is_connected,
                 'turn_order' => $player->turn_order,
-                // Die value: visible to self, or if peeked, or game over
-                'die_value' => ($isSelf || isset($peekedPlayers[$player->id]) || $isGameOver) ? $player->die_value : null,
-                // Thief status: visible to thief (self), or game over
+                // Die value: visible to self only (or to everyone at game end).
+                'die_value' => ($isSelf || $isGameOver) ? $player->die_value : null,
+                // Thief status: only revealed to the thief themselves until game end.
                 'is_thief' => ($isGameOver || ($isThief && $player->is_thief)) ? $player->is_thief : null,
-                // Accomplice status: visible to thief, accomplice, or game over
+                // Accomplice status: visible to thief, accomplice, or at game end.
                 'is_accomplice' => ($isGameOver || $isThief || $isAccomplice) ? $player->is_accomplice : null,
-                // Has confirmed roll
                 'has_confirmed_roll' => $player->hasConfirmedRoll(),
-                // Has voted
                 'has_voted' => $player->hasVoted(),
-                // Has stolen cheese (peeked at thief) - always public
-                'has_stolen_cheese' => $player->has_stolen_cheese,
             ];
         })->values()->all();
 
-        // Build awake players for current hour
+        // Mice awake at the current hour (their die value matches).
         $awakePlayers = [];
-        if ($room->current_hour >= 1 && $room->current_hour <= 6) {
-            $awakePlayers = $room->playersAtHour($room->current_hour)->pluck('id')->all();
+        if ($currentHour >= 1 && $currentHour <= 6) {
+            $awakePlayers = $room->playersAtHour($currentHour)->pluck('id')->all();
         }
 
-        // Determine if current player can peek
-        $canPeek = false;
-        $canSkipPeek = false;
-        if ($currentPlayer && $room->current_hour >= 1 && $room->current_hour <= 6) {
-            $canPeek = $currentPlayer->die_value === $room->current_hour
-                && $room->playerWokeUpAlone($room->current_hour)
-                && ! $currentPlayer->hasCompletedHour($room->current_hour);
-            $canSkipPeek = $canPeek;
+        // Thief's manual-steal button: only during their wake hour, before the cheese is stolen.
+        $canStealCheese = $isThief
+            && $currentPlayer
+            && $currentHour >= 1
+            && $currentHour <= 6
+            && $currentPlayer->die_value === $currentHour
+            && is_null($room->cheese_stolen_at_hour);
+
+        // Curtains opened? Only when the player's hour is now.
+        $isCurrentPlayerAwakeNow = $currentPlayer
+            && $currentHour >= 1
+            && $currentHour <= 6
+            && $currentPlayer->die_value === $currentHour;
+
+        // What the current player would see if their curtains are open.
+        $cheeseVisibleToSelf = 'hidden';
+        if ($isGameOver) {
+            $cheeseVisibleToSelf = is_null($room->cheese_stolen_at_hour) ? 'present' : 'gone';
+        } elseif ($isCurrentPlayerAwakeNow) {
+            $cheeseVisibleToSelf = is_null($room->cheese_stolen_at_hour) ? 'present' : 'gone';
         }
 
-        // Determine if current player can select accomplice
-        $canSelectAccomplice = $isThief && $room->current_hour === 7 && ! $room->accomplice_player_id;
+        // Whether the *fact* of theft is known to the current player. They only
+        // "know" once their own wake hour has passed (or has arrived now).
+        $cheeseStolenKnown = false;
+        if ($isGameOver) {
+            $cheeseStolenKnown = $room->isCheeseStolen();
+        } elseif ($currentPlayer && ! is_null($currentPlayer->die_value) && ! is_null($room->cheese_stolen_at_hour)) {
+            $cheeseStolenKnown = $currentHour >= $currentPlayer->die_value
+                && $room->cheese_stolen_at_hour <= $currentPlayer->die_value;
+        }
 
-        // Determine if current player can vote
-        $canVote = $room->current_hour === 8 && $currentPlayer && ! $currentPlayer->hasVoted();
+        $canSelectAccomplice = $isThief && $currentHour === 7 && ! $room->accomplice_player_id;
+        $canVote = $currentHour === 8 && $currentPlayer && ! $currentPlayer->hasVoted();
 
-        // Get vote counts (only visible when game is over)
         $voteCounts = [];
         if ($isGameOver) {
             foreach ($room->votes as $vote) {
@@ -815,14 +758,15 @@ class GameRoomController extends Controller
         }
 
         return [
-            'current_hour' => $room->current_hour,
+            'current_hour' => $currentHour,
             'players' => $players,
             'awake_player_ids' => $awakePlayers,
-            'can_peek' => $canPeek,
-            'can_skip_peek' => $canSkipPeek,
+            'can_steal_cheese' => $canStealCheese,
+            'cheese_visible_to_self' => $cheeseVisibleToSelf,
+            'cheese_stolen' => $cheeseStolenKnown,
+            'cheese_stolen_at_hour' => $isGameOver ? $room->cheese_stolen_at_hour : null,
             'can_select_accomplice' => $canSelectAccomplice,
             'can_vote' => $canVote,
-            'cheese_stolen' => $room->isCheeseStolen(),
             'winner' => $room->winner,
             'thief_player_id' => $isGameOver ? $room->thief_player_id : null,
             'accomplice_player_id' => ($isGameOver || $isThief || $isAccomplice) ? $room->accomplice_player_id : null,
@@ -834,9 +778,7 @@ class GameRoomController extends Controller
             'is_accomplice' => $isAccomplice,
             'isHost' => $currentPlayer?->is_host ?? false,
             'hour_started_at' => $room->hour_started_at?->toISOString(),
-            'hour_timer_duration' => ($room->current_hour >= 1 && $room->current_hour <= 6)
-                ? $room->getHourTimerDuration()
-                : (int) config('games.cheese_thief.night_hour_timer_seconds', 15),
+            'hour_timer_duration' => $room->getHourTimerDuration(),
         ];
     }
 
