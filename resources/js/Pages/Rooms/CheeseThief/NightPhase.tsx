@@ -1,6 +1,6 @@
-import { GameState } from '@/types';
+import { GameState, GameStatePlayer } from '@/types';
 import { router } from '@inertiajs/react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSound, useRandomSound } from '@/hooks/useSound';
 import PlayerCircle from './components/PlayerCircle';
 import Stage from './components/Stage';
@@ -15,6 +15,8 @@ interface NightPhaseProps {
 }
 
 export default function NightPhase({ gameState, roomCode, gameSlug }: NightPhaseProps) {
+    const [selectedPeekTarget, setSelectedPeekTarget] = useState<GameStatePlayer | null>(null);
+
     const currentPlayer = gameState.players.find((p) => p.id === gameState.current_player_id);
     const isAwake = gameState.awake_player_ids.includes(gameState.current_player_id ?? -1);
     const otherAwake = gameState.players.filter(
@@ -22,7 +24,11 @@ export default function NightPhase({ gameState, roomCode, gameSlug }: NightPhase
     );
     const cheesePresent = gameState.cheese_visible_to_self === 'present';
     const cheeseGone = gameState.cheese_visible_to_self === 'gone';
+    const peekablePlayerIds = gameState.can_peek
+        ? gameState.players.filter((p) => p.id !== gameState.current_player_id).map((p) => p.id)
+        : [];
 
+    const { play: playPeek } = useSound('/sounds/cheese-thief/peek.mp3', { volume: 0.7 });
     const { play: playCheeseMunch } = useSound('/sounds/cheese-thief/cheese-munch.mp3', { volume: 0.8 });
     const { play: playSneaking, stop: stopSneaking } = useSound('/sounds/cheese-thief/sneaking.mp3', {
         volume: 0.3,
@@ -65,6 +71,24 @@ export default function NightPhase({ gameState, roomCode, gameSlug }: NightPhase
     const handleSteal = () => {
         playCheeseMunch();
         router.post(route('rooms.stealCheese', [gameSlug, roomCode]));
+    };
+
+    const handlePlayerClick = (player: GameStatePlayer) => {
+        if (gameState.can_peek && player.id !== gameState.current_player_id) {
+            setSelectedPeekTarget(player);
+        }
+    };
+
+    const handlePeek = () => {
+        if (!selectedPeekTarget) return;
+        playPeek();
+        router.post(
+            route('rooms.peek', [gameSlug, roomCode]),
+            { target_player_id: selectedPeekTarget.id },
+            {
+                onSuccess: () => setSelectedPeekTarget(null),
+            },
+        );
     };
 
     const progress = (gameState.current_hour / 6) * 100;
@@ -129,6 +153,26 @@ export default function NightPhase({ gameState, roomCode, gameSlug }: NightPhase
                                 👀 Also awake: <strong>{otherAwake.map((p) => p.nickname).join(', ')}</strong>
                             </p>
                         )}
+
+                        {gameState.can_peek && (
+                            <div className="mt-4 rounded-lg bg-indigo-50 p-3 text-indigo-900">
+                                <p className="text-sm font-semibold">
+                                    👀 You're alone — peek at one mouse to learn their wake hour.
+                                </p>
+                                {selectedPeekTarget ? (
+                                    <button
+                                        onClick={handlePeek}
+                                        className="mt-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+                                    >
+                                        Peek at {selectedPeekTarget.nickname}
+                                    </button>
+                                ) : (
+                                    <p className="mt-1 text-xs italic text-indigo-700">
+                                        Tap a mouse below to select.
+                                    </p>
+                                )}
+                            </div>
+                        )}
                     </>
                 ) : (
                     <p className="text-slate-600">
@@ -148,6 +192,9 @@ export default function NightPhase({ gameState, roomCode, gameSlug }: NightPhase
                     currentPlayerId={gameState.current_player_id}
                     awakePlayerIds={gameState.awake_player_ids}
                     currentHour={gameState.current_hour}
+                    onPlayerClick={handlePlayerClick}
+                    clickablePlayerIds={peekablePlayerIds}
+                    showDice={true}
                 />
             </div>
         </div>
