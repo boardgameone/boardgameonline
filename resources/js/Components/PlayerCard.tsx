@@ -36,6 +36,9 @@ export default function PlayerCard({
     // Get voice state from context if available
     const isSpeaking = voiceChat?.speakingPlayers.has(player.id) ?? false;
     const remoteVideoStream = voiceChat?.remoteVideos.get(player.id);
+    // Default to true: until we've heard otherwise, treat the track as muted
+    // so we don't briefly render the black placeholder.
+    const remoteVideoMuted = voiceChat?.remoteVideoMuted.get(player.id) ?? true;
     const localVideoStream = voiceChat?.localVideoStream;
 
     // Get voice player data from context
@@ -47,8 +50,11 @@ export default function PlayerCard({
     const currentUserIsMuted = isCurrentUser ? (voiceChat?.isMuted ?? true) : playerIsMuted;
     const currentUserHasVideo = isCurrentUser ? (voiceChat?.isVideoEnabled ?? false) : playerHasVideo;
 
-    // Show video when we have a video stream (don't wait for backend flag - WebRTC is real-time)
-    const showRemoteVideo = !isCurrentUser && remoteVideoStream;
+    // Show video when we have a stream and the remote's video track is live.
+    // remoteVideoMuted is set from RTCRtpReceiver track mute/unmute events, so
+    // this stays accurate even though the connection always carries a video
+    // m-line for the silent placeholder track.
+    const showRemoteVideo = !isCurrentUser && remoteVideoStream && !remoteVideoMuted;
     const showLocalVideo = isCurrentUser && localVideoStream && currentUserHasVideo;
     const hasVideo = showRemoteVideo || showLocalVideo;
 
