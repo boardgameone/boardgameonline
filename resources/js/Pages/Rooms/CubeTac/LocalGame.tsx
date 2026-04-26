@@ -15,6 +15,7 @@ import PlayingPhase, { SLOT_CHARS } from '@/Pages/Rooms/CubeTac/PlayingPhase';
 import FinishedPhase from '@/Pages/Rooms/CubeTac/FinishedPhase';
 import type { CubeSceneHandle } from '@/Pages/Rooms/CubeTac/CubeScene';
 import type { MegaminxSceneHandle } from '@/Pages/Rooms/CubeTac/MegaminxScene';
+import type { PyraminxSceneHandle } from '@/Pages/Rooms/CubeTac/PyraminxScene';
 import { Head, router } from '@inertiajs/react';
 import { useReducer, useRef, useState, type CSSProperties } from 'react';
 import {
@@ -38,12 +39,22 @@ import {
     isComplete as megaIsComplete,
     winningLines as megaWinningLines,
 } from '@/lib/megaminx';
+import {
+    Direction as PyraDirection,
+    Marks as PyraMarks,
+    apply as pyraApply,
+    faceSlot as pyraFaceSlot,
+    indexOf as pyraIndexOf,
+    initialMarks as pyraInitialMarks,
+    isComplete as pyraIsComplete,
+    winningLines as pyraWinningLines,
+} from '@/lib/pyraminx';
 
 const MOVES_PER_PLAYER = 30;
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 6;
 
-type Variant = 'cube' | 'megaminx';
+type Variant = 'cube' | 'megaminx' | 'pyraminx';
 
 /** Palette mirrors the backend SLOT_COLORS in CubeTacGameController.php. */
 const PALETTE = ['#ff4d2e', '#3a90ff', '#16a34a', '#a855f7', '#f59e0b', '#c2813a'];
@@ -73,6 +84,12 @@ export default function LocalGame() {
                 />
             ) : variant === 'megaminx' ? (
                 <MegaminxLocalBoard
+                    playerCount={playerCount}
+                    onLeave={handleLeave}
+                    onChangeSetup={handleChangeSetup}
+                />
+            ) : variant === 'pyraminx' ? (
+                <PyraminxLocalBoard
                     playerCount={playerCount}
                     onLeave={handleLeave}
                     onChangeSetup={handleChangeSetup}
@@ -130,10 +147,15 @@ function Picker({ variant, onVariantChange, onPickCount, onLeave }: PickerProps)
                     <div className="text-[10px] font-black uppercase tracking-[0.35em] text-yellow-900/70">
                         Playing surface
                     </div>
-                    <div className="inline-flex rounded-full border-2 border-yellow-400 bg-white/80 p-1 shadow-md">
-                        {(['cube', 'megaminx'] as const).map((v) => {
+                    <div className="inline-flex flex-wrap justify-center rounded-full border-2 border-yellow-400 bg-white/80 p-1 shadow-md">
+                        {(['cube', 'megaminx', 'pyraminx'] as const).map((v) => {
                             const selected = v === variant;
-                            const label = v === 'cube' ? 'Cube · 6 faces' : 'Megaminx · 12 faces';
+                            const label =
+                                v === 'cube'
+                                    ? 'Cube · 6 faces'
+                                    : v === 'megaminx'
+                                        ? 'Megaminx · 12 faces'
+                                        : 'Pyraminx · 4 faces';
                             return (
                                 <button
                                     key={v}
@@ -648,6 +670,241 @@ function MegaminxLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps)
             ) : (
                 <FinishedPhase
                     variant="megaminx"
+                    marks={state.marks}
+                    winner={state.winner}
+                    winningLines={state.winningLines}
+                    players={players}
+                    mySlot={null}
+                    canRematch={true}
+                    onRematch={handleReset}
+                    onLeave={onLeave}
+                    leaveLabel="Main menu"
+                />
+            )}
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Pyraminx hotseat — parallel reducer using the lib/pyraminx primitives.
+// ---------------------------------------------------------------------------
+
+type PyraWinningLine = { face: number; cells: [number, number, number]; player: number };
+
+interface PyraLocalState {
+    marks: PyraMarks;
+    currentTurn: number;
+    moveCount: number;
+    moveLimit: number;
+    winner: number | 'draw' | null;
+    winningLines: PyraWinningLine[];
+    playerCount: number;
+    pendingAction: boolean;
+    pendingMarkIndex: number | null;
+    wins: number[];
+    gamesPlayed: number;
+}
+
+type PyraLocalAction =
+    | { type: 'MARK'; face: number; slot: number }
+    | { type: 'UNDO_MARK' }
+    | { type: 'ROTATE'; face: number; direction: PyraDirection }
+    | { type: 'END_TURN' }
+    | { type: 'RESET' };
+
+function freshPyraState(playerCount: number): PyraLocalState {
+    return {
+        marks: pyraInitialMarks(),
+        currentTurn: 0,
+        moveCount: 0,
+        moveLimit: MOVES_PER_PLAYER * playerCount,
+        winner: null,
+        winningLines: [],
+        playerCount,
+        pendingAction: false,
+        pendingMarkIndex: null,
+        wins: Array(playerCount).fill(0),
+        gamesPlayed: 0,
+    };
+}
+
+function pyraReducer(state: PyraLocalState, action: PyraLocalAction): PyraLocalState {
+    if (action.type === 'RESET') {
+        return {
+            ...freshPyraState(state.playerCount),
+            wins: state.wins,
+            gamesPlayed: state.gamesPlayed,
+        };
+    }
+
+    if (state.winner !== null) return state;
+
+    if (action.type === 'END_TURN') {
+        if (!state.pendingAction) return state;
+        return {
+            ...state,
+            currentTurn: (state.currentTurn + 1) % state.playerCount,
+            pendingAction: false,
+            pendingMarkIndex: null,
+        };
+    }
+
+    if (action.type === 'UNDO_MARK') {
+        if (!state.pendingAction || state.pendingMarkIndex === null) return state;
+        const clearedMarks: PyraMarks = [...state.marks];
+        clearedMarks[state.pendingMarkIndex] = null;
+        return {
+            ...state,
+            marks: clearedMarks,
+            moveCount: Math.max(0, state.moveCount - 1),
+            pendingAction: false,
+            pendingMarkIndex: null,
+        };
+    }
+
+    if (state.pendingAction) return state;
+
+    let newMarks: PyraMarks;
+    if (action.type === 'MARK') {
+        const idx = pyraIndexOf(action.face, action.slot);
+        if (state.marks[idx] !== null) return state;
+        newMarks = [...state.marks];
+        newMarks[idx] = state.currentTurn;
+    } else {
+        newMarks = pyraApply(action.face, action.direction, state.marks);
+    }
+
+    const nextCount = state.moveCount + 1;
+    const allLines: PyraWinningLine[] = pyraWinningLines(newMarks).map((l) => ({
+        face: l.face,
+        cells: l.cells,
+        player: l.player,
+    }));
+
+    if (allLines.length > 0) {
+        const mine = allLines.filter((l) => l.player === state.currentTurn);
+        const nextWins = [...state.wins];
+        nextWins[state.currentTurn] = (nextWins[state.currentTurn] ?? 0) + 1;
+        return {
+            ...state,
+            marks: newMarks,
+            moveCount: nextCount,
+            winner: state.currentTurn,
+            winningLines: mine.length > 0 ? mine : allLines,
+            pendingAction: false,
+            pendingMarkIndex: null,
+            wins: nextWins,
+            gamesPlayed: state.gamesPlayed + 1,
+        };
+    }
+
+    if (nextCount >= state.moveLimit || pyraIsComplete(newMarks)) {
+        return {
+            ...state,
+            marks: newMarks,
+            moveCount: nextCount,
+            winner: 'draw',
+            winningLines: [],
+            pendingAction: false,
+            pendingMarkIndex: null,
+            gamesPlayed: state.gamesPlayed + 1,
+        };
+    }
+
+    if (action.type === 'MARK') {
+        return {
+            ...state,
+            marks: newMarks,
+            moveCount: nextCount,
+            pendingAction: true,
+            pendingMarkIndex: pyraIndexOf(action.face, action.slot),
+        };
+    }
+
+    return {
+        ...state,
+        marks: newMarks,
+        currentTurn: (state.currentTurn + 1) % state.playerCount,
+        moveCount: nextCount,
+        pendingAction: false,
+        pendingMarkIndex: null,
+    };
+}
+
+function PyraminxLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps) {
+    const [state, dispatch] = useReducer(pyraReducer, playerCount, freshPyraState);
+    const pyraRef = useRef<PyraminxSceneHandle>(null);
+
+    const players = Array.from({ length: playerCount }, (_, slot) => ({
+        id: null as number | null,
+        nickname: `Player ${slot + 1}`,
+        avatar_color: PALETTE[slot] ?? '#5b9bd5',
+        design: slot,
+        wins: state.wins[slot] ?? 0,
+    }));
+
+    const handlePyraMark = (face: number, slot: number) => {
+        dispatch({ type: 'MARK', face, slot });
+    };
+    const handlePyraRotate = (face: number, direction: PyraDirection) => {
+        dispatch({ type: 'ROTATE', face, direction });
+    };
+    const handleEndTurn = () => dispatch({ type: 'END_TURN' });
+    const handleUndoMark = () => dispatch({ type: 'UNDO_MARK' });
+    const handleReset = () => dispatch({ type: 'RESET' });
+
+    const lastAction = state.pendingMarkIndex !== null
+        ? (() => {
+            const [face, slot] = pyraFaceSlot(state.pendingMarkIndex);
+            return { type: 'pyra_mark' as const, face, slot };
+        })()
+        : null;
+
+    const canChangeSetup = state.moveCount === 0 && state.winner === null;
+    const changeSetupStyle: CSSProperties = { zIndex: 20 };
+
+    return (
+        <div className="relative flex h-full flex-col">
+            {state.winner === null ? (
+                <>
+                    <PlayingPhase
+                        variant="pyraminx"
+                        pyraRef={pyraRef}
+                        marks={state.marks}
+                        currentTurn={state.currentTurn}
+                        moveCount={state.moveCount}
+                        moveLimit={state.moveLimit}
+                        players={players}
+                        mySlot={null}
+                        isMyTurn={true}
+                        pendingAction={state.pendingAction}
+                        lastAction={lastAction}
+                        // Cube callbacks are unused in this branch but PlayingPhase
+                        // requires them as non-optional props — pass no-ops.
+                        onMark={() => {}}
+                        onRotate={() => {}}
+                        onPyraMark={handlePyraMark}
+                        onPyraRotate={handlePyraRotate}
+                        onEndTurn={handleEndTurn}
+                        onUndoMark={handleUndoMark}
+                        turnLabelOverride={`${players[state.currentTurn]?.nickname ?? 'Player'}'s Turn`}
+                        onLeave={onLeave}
+                        gamesPlayed={state.gamesPlayed}
+                    />
+                    {canChangeSetup && (
+                        <button
+                            type="button"
+                            onClick={onChangeSetup}
+                            className="absolute right-4 top-16 rounded-full bg-white/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-yellow-900 shadow-md backdrop-blur-xs transition hover:bg-white"
+                            style={changeSetupStyle}
+                        >
+                            Pyraminx · {playerCount} players — change
+                        </button>
+                    )}
+                </>
+            ) : (
+                <FinishedPhase
+                    variant="pyraminx"
                     marks={state.marks}
                     winner={state.winner}
                     winningLines={state.winningLines}

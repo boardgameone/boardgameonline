@@ -2,6 +2,7 @@ import { GameStatePlayer } from '@/types';
 import { ReactNode } from 'react';
 import Mouse from './Mouse';
 import DieDisplay from './DieDisplay';
+import WoodenCup from './WoodenCup';
 import PlayerAvatarWithVoice from '@/Components/PlayerAvatarWithVoice';
 
 interface GameTableProps {
@@ -49,15 +50,35 @@ export default function GameTable({
 
     return (
         <div className="relative mx-auto aspect-square w-full max-w-[640px]">
-            {/* Table backdrop — soft wood-toned felt circle */}
+            {/* Table backdrop — top-down view of a warm-wood circular tabletop.
+                Outer wooden ring (concentric grain), inner felt-style playing surface. */}
             <div
                 aria-hidden
-                className="absolute inset-[6%] rounded-full"
+                className="absolute inset-0 rounded-full"
                 style={{
                     background:
-                        'radial-gradient(circle at 50% 38%, rgba(255, 233, 200, 0.10) 0%, rgba(0,0,0,0) 55%), radial-gradient(circle at 50% 50%, #2f3a2c 0%, #1f2a1c 70%, #15201a 100%)',
+                        'repeating-radial-gradient(circle at 50% 50%, #6b3a18 0px, #8a4f25 8px, #6b3a18 16px, #5a2f12 24px)',
+                    boxShadow: '0 18px 40px rgba(0,0,0,0.45), inset 0 0 24px rgba(0,0,0,0.45)',
+                }}
+            />
+            {/* Inner playing felt — warm cream/oak top-down surface */}
+            <div
+                aria-hidden
+                className="absolute inset-[8%] rounded-full"
+                style={{
+                    background:
+                        'radial-gradient(circle at 50% 38%, rgba(255, 245, 220, 0.18) 0%, rgba(0,0,0,0) 55%), radial-gradient(circle at 50% 50%, #c9a47a 0%, #a07a52 60%, #6b4424 100%)',
                     boxShadow:
-                        'inset 0 0 0 4px rgba(120, 80, 40, 0.55), inset 0 0 0 8px rgba(60, 40, 20, 0.55), inset 0 30px 60px rgba(0,0,0,0.5)',
+                        'inset 0 0 0 3px rgba(80, 45, 20, 0.55), inset 0 30px 50px rgba(60, 30, 10, 0.45)',
+                }}
+            />
+            {/* Faint wood-grain texture overlay */}
+            <div
+                aria-hidden
+                className="absolute inset-[8%] rounded-full mix-blend-multiply opacity-25"
+                style={{
+                    backgroundImage:
+                        'repeating-linear-gradient(115deg, rgba(60,30,10,0.0) 0px, rgba(60,30,10,0.18) 2px, rgba(60,30,10,0.0) 6px, rgba(60,30,10,0.0) 14px)',
                 }}
             />
 
@@ -161,10 +182,13 @@ export default function GameTable({
                         />
 
                         {/* Nickname */}
-                        <span className="block w-full truncate text-center text-[11px] font-semibold leading-tight text-slate-100/90">
+                        <span
+                            className="block w-full truncate text-center text-[11px] font-semibold leading-tight text-amber-950"
+                            style={{ textShadow: '0 1px 0 rgba(255,255,255,0.4)' }}
+                        >
                             {player.nickname}
                             {isSelf && (
-                                <span className="ml-0.5 text-amber-300/90"> (you)</span>
+                                <span className="ml-0.5 text-rose-700"> (you)</span>
                             )}
                         </span>
 
@@ -176,10 +200,24 @@ export default function GameTable({
                             </span>
                         )}
 
-                        {/* Die */}
-                        {showDice && player.die_value !== null && player.die_value !== undefined && (
+                        {/* Wooden cup hiding the die — tilted up when revealed (self / peeked / endgame).
+                            Closed cups symbolise dice that haven't been seen yet, matching the physical game. */}
+                        {showDice && (
                             <div className={`relative ${dieIsPeeked ? 'rounded-md ring-1 ring-indigo-300/70' : ''}`}>
-                                <DieDisplay value={player.die_value} size="sm" />
+                                <WoodenCup
+                                    revealed={
+                                        player.die_value !== null
+                                        && player.die_value !== undefined
+                                    }
+                                    bandColor={player.avatar_color}
+                                    size={48}
+                                >
+                                    <DieDisplay
+                                        value={player.die_value ?? null}
+                                        size="sm"
+                                        showQuestion={false}
+                                    />
+                                </WoodenCup>
                                 {dieIsPeeked && (
                                     <span
                                         aria-hidden
@@ -194,12 +232,12 @@ export default function GameTable({
 
                         {/* Phase status chips */}
                         {currentHour === 0 && (
-                            <span className={`text-[9px] font-bold uppercase tracking-wide ${player.has_confirmed_roll ? 'text-emerald-300' : 'text-slate-400'}`}>
+                            <span className={`text-[9px] font-bold uppercase tracking-wide ${player.has_confirmed_roll ? 'text-emerald-700' : 'text-amber-900/70'}`}>
                                 {player.has_confirmed_roll ? '✓ Ready' : 'Rolling…'}
                             </span>
                         )}
                         {currentHour === 8 && (
-                            <span className={`text-[9px] font-bold uppercase tracking-wide ${player.has_voted ? 'text-emerald-300' : 'text-slate-400'}`}>
+                            <span className={`text-[9px] font-bold uppercase tracking-wide ${player.has_voted ? 'text-emerald-700' : 'text-amber-900/70'}`}>
                                 {player.has_voted ? '✓ Voted' : 'Voting…'}
                             </span>
                         )}
@@ -222,7 +260,7 @@ export default function GameTable({
 
             {/* Tap-to-action hint — single steady label (no per-mouse popping badge) */}
             {clickablePlayerIds.length > 0 && !selectedPlayerId && (
-                <div className="absolute inset-x-0 -bottom-7 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-300/90">
+                <div className="absolute inset-x-0 -bottom-7 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-100/90">
                     {'\u{1F447}'} Tap a glowing mouse
                 </div>
             )}

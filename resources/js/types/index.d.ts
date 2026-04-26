@@ -29,7 +29,7 @@ export interface GameRoom {
     status: 'waiting' | 'playing' | 'finished';
     is_public: boolean;
     current_hour: number;
-    variant: 'cube' | 'megaminx' | null;
+    variant: 'cube' | 'megaminx' | 'pyraminx' | null;
     started_at: string | null;
     ended_at: string | null;
     games_played: number;
