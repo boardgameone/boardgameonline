@@ -76,10 +76,18 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
         );
     };
 
-    const variant: 'cube' | 'megaminx' | 'pyraminx' =
-        room.variant === 'megaminx' ? 'megaminx' : room.variant === 'pyraminx' ? 'pyraminx' : 'cube';
+    const variant: 'cube' | 'megaminx' | 'pyraminx' | 'octahedron' | 'icosahedron' =
+        room.variant === 'megaminx'
+            ? 'megaminx'
+            : room.variant === 'pyraminx'
+                ? 'pyraminx'
+                : room.variant === 'octahedron'
+                    ? 'octahedron'
+                    : room.variant === 'icosahedron'
+                        ? 'icosahedron'
+                        : 'cube';
 
-    const handlePickVariant = (next: 'cube' | 'megaminx' | 'pyraminx') => {
+    const handlePickVariant = (next: 'cube' | 'megaminx' | 'pyraminx' | 'octahedron' | 'icosahedron') => {
         if (next === variant) return;
         router.post(
             route('rooms.pickVariant', [gameSlug, room.room_code]),
@@ -167,14 +175,18 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
                         Playing surface
                     </div>
                     <div className="inline-flex flex-wrap justify-center rounded-full border-2 border-yellow-400 bg-white/80 p-1 shadow-md dark:bg-gray-800/80 dark:border-yellow-600/60">
-                        {(['cube', 'megaminx', 'pyraminx'] as const).map((v) => {
+                        {(['cube', 'megaminx', 'pyraminx', 'octahedron', 'icosahedron'] as const).map((v) => {
                             const selected = v === variant;
                             const label =
                                 v === 'cube'
                                     ? 'Cube · 6 faces'
                                     : v === 'megaminx'
                                         ? 'Megaminx · 12 faces'
-                                        : 'Pyraminx · 4 faces';
+                                        : v === 'pyraminx'
+                                            ? 'Pyraminx · 4 faces'
+                                            : v === 'octahedron'
+                                                ? 'Octahedron · 8 faces'
+                                                : 'Icosahedron · 20 faces';
                             return (
                                 <button
                                     key={v}

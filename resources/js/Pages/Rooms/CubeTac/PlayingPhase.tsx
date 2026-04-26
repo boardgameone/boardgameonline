@@ -14,11 +14,17 @@ import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSPropertie
 import { Marks, Move, indexOf } from '@/lib/rubikCube';
 import { indexOf as megaIndexOf, type Direction as MegaDirection } from '@/lib/megaminx';
 import { indexOf as pyraIndexOf, type Direction as PyraDirection } from '@/lib/pyraminx';
+import { indexOf as octaIndexOf, type Direction as OctaDirection } from '@/lib/octahedron';
+import { indexOf as icosaIndexOf, type Direction as IcosaDirection } from '@/lib/icosahedron';
 import RotateControls from './components/RotateControls';
 import PyraRotateControls from './components/PyraRotateControls';
+import OctaRotateControls from './components/OctaRotateControls';
+import IcosaRotateControls from './components/IcosaRotateControls';
 import type { CubeSceneHandle } from './CubeScene';
 import type { MegaminxSceneHandle } from './MegaminxScene';
 import type { PyraminxSceneHandle } from './PyraminxScene';
+import type { OctahedronSceneHandle } from './OctahedronScene';
+import type { IcosahedronSceneHandle } from './IcosahedronScene';
 import { useVoiceChatOptional } from '@/Contexts/VoiceChatContext';
 import VideoModal from '@/Components/VideoModal';
 import { useSound } from '@/hooks/useSound';
@@ -26,6 +32,8 @@ import { useSound } from '@/hooks/useSound';
 const CubeScene = lazy(() => import('./CubeScene'));
 const MegaminxScene = lazy(() => import('./MegaminxScene'));
 const PyraminxScene = lazy(() => import('./PyraminxScene'));
+const OctahedronScene = lazy(() => import('./OctahedronScene'));
+const IcosahedronScene = lazy(() => import('./IcosahedronScene'));
 
 export interface CubeTacPlayerInfo {
     id: number | null;
@@ -65,7 +73,7 @@ export interface PlayingPhaseProps {
      * Which playing surface this room uses. Defaults to 'cube' for callers
      * that predate the variant feature (and for the local hotseat page).
      */
-    variant?: 'cube' | 'megaminx' | 'pyraminx';
+    variant?: 'cube' | 'megaminx' | 'pyraminx' | 'octahedron' | 'icosahedron';
     onMark: (face: number, row: number, col: number) => void;
     onRotate: (move: Move) => void;
     /** Megaminx mark handler — required when variant === 'megaminx'. */
@@ -76,6 +84,14 @@ export interface PlayingPhaseProps {
     onPyraMark?: (face: number, slot: number) => void;
     /** Pyraminx rotate handler — required when variant === 'pyraminx'. */
     onPyraRotate?: (face: number, direction: PyraDirection) => void;
+    /** Octahedron mark handler — required when variant === 'octahedron'. */
+    onOctaMark?: (face: number, slot: number) => void;
+    /** Octahedron rotate handler — required when variant === 'octahedron'. */
+    onOctaRotate?: (face: number, direction: OctaDirection) => void;
+    /** Icosahedron mark handler — required when variant === 'icosahedron'. */
+    onIcosaMark?: (face: number, slot: number) => void;
+    /** Icosahedron rotate handler — required when variant === 'icosahedron'. */
+    onIcosaRotate?: (face: number, direction: IcosaDirection) => void;
     onEndTurn: () => void;
     onUndoMark: () => void;
     /** Banner override — used by local mode to show "Player 1's turn" etc. */
@@ -88,6 +104,10 @@ export interface PlayingPhaseProps {
     megaRef?: Ref<MegaminxSceneHandle>;
     /** Ref for the pyraminx scene's imperative handle. */
     pyraRef?: Ref<PyraminxSceneHandle>;
+    /** Ref for the octahedron scene's imperative handle. */
+    octaRef?: Ref<OctahedronSceneHandle>;
+    /** Ref for the icosahedron scene's imperative handle. */
+    icosaRef?: Ref<IcosahedronSceneHandle>;
     /**
      * Total completed games in this lobby (wins + draws). Feeds the round
      * indicator in the leaderboard — a round is one game per player.
@@ -116,6 +136,10 @@ export default function PlayingPhase({
     onMegaRotate,
     onPyraMark,
     onPyraRotate,
+    onOctaMark,
+    onOctaRotate,
+    onIcosaMark,
+    onIcosaRotate,
     onEndTurn,
     onUndoMark,
     turnLabelOverride,
@@ -123,6 +147,8 @@ export default function PlayingPhase({
     cubeRef,
     megaRef,
     pyraRef,
+    octaRef,
+    icosaRef,
     gamesPlayed,
 }: PlayingPhaseProps) {
     const voiceChat = useVoiceChatOptional();
@@ -156,6 +182,8 @@ export default function PlayingPhase({
     // three so the scene components can highlight it uniformly.
     const isMegaminx = variant === 'megaminx';
     const isPyraminx = variant === 'pyraminx';
+    const isOctahedron = variant === 'octahedron';
+    const isIcosahedron = variant === 'icosahedron';
     const pendingCubeMark = variant === 'cube' && pendingAction && lastAction && lastAction.type === 'mark'
         ? {
             face: lastAction.face as number,
@@ -175,20 +203,36 @@ export default function PlayingPhase({
             slot: lastAction.slot as number,
         }
         : null;
+    const pendingOctaMark = isOctahedron && pendingAction && lastAction && lastAction.type === 'octa_mark'
+        ? {
+            face: lastAction.face as number,
+            slot: lastAction.slot as number,
+        }
+        : null;
+    const pendingIcosaMark = isIcosahedron && pendingAction && lastAction && lastAction.type === 'icosa_mark'
+        ? {
+            face: lastAction.face as number,
+            slot: lastAction.slot as number,
+        }
+        : null;
     const pendingIndex = pendingCubeMark
         ? indexOf(pendingCubeMark.face, pendingCubeMark.row, pendingCubeMark.col)
         : pendingMegaMark
             ? megaIndexOf(pendingMegaMark.face, pendingMegaMark.slot)
             : pendingPyraMark
                 ? pyraIndexOf(pendingPyraMark.face, pendingPyraMark.slot)
-                : null;
-    const hasPending = pendingCubeMark !== null || pendingMegaMark !== null || pendingPyraMark !== null;
+                : pendingOctaMark
+                    ? octaIndexOf(pendingOctaMark.face, pendingOctaMark.slot)
+                    : pendingIcosaMark
+                        ? icosaIndexOf(pendingIcosaMark.face, pendingIcosaMark.slot)
+                        : null;
+    const hasPending = pendingCubeMark !== null || pendingMegaMark !== null || pendingPyraMark !== null || pendingOctaMark !== null || pendingIcosaMark !== null;
     const subLabel = pendingAction && isMyTurn
         ? 'Confirm · or tap your mark to undo'
         : canAct || turnLabelOverride
             ? isMegaminx
                 ? 'Tap a cell · or use a face center to rotate ↺ ↻'
-                : isPyraminx
+                : isPyraminx || isOctahedron || isIcosahedron
                     ? 'Tap a perimeter cell · or rotate a face below'
                     : 'Tap a sticker · or rotate a face'
             : 'Waiting…';
@@ -249,6 +293,46 @@ export default function PlayingPhase({
         onPyraRotate?.(face, direction);
     };
 
+    // Octahedron click: same shape as pyraminx, with 8 faces instead of 4.
+    const handleOctaCellClick = (face: number, slot: number) => {
+        if (pendingOctaMark && pendingOctaMark.face === face && pendingOctaMark.slot === slot) {
+            onUndoMark();
+            return;
+        }
+        if (canAct && marks[octaIndexOf(face, slot)] === null) {
+            onOctaMark?.(face, slot);
+        }
+    };
+
+    const handleOctaRotateWithSound = (face: number, direction: OctaDirection) => {
+        if (!canAct) return;
+        playRotateSound();
+        if (octaRef && typeof octaRef === 'object' && 'current' in octaRef) {
+            octaRef.current?.playMove(face, direction);
+        }
+        onOctaRotate?.(face, direction);
+    };
+
+    // Icosahedron click: same shape as pyraminx, with 20 faces instead of 4.
+    const handleIcosaCellClick = (face: number, slot: number) => {
+        if (pendingIcosaMark && pendingIcosaMark.face === face && pendingIcosaMark.slot === slot) {
+            onUndoMark();
+            return;
+        }
+        if (canAct && marks[icosaIndexOf(face, slot)] === null) {
+            onIcosaMark?.(face, slot);
+        }
+    };
+
+    const handleIcosaRotateWithSound = (face: number, direction: IcosaDirection) => {
+        if (!canAct) return;
+        playRotateSound();
+        if (icosaRef && typeof icosaRef === 'object' && 'current' in icosaRef) {
+            icosaRef.current?.playMove(face, direction);
+        }
+        onIcosaRotate?.(face, direction);
+    };
+
     const stickerClickActive = isMyTurn && (canAct || hasPending);
 
     return (
@@ -301,7 +385,11 @@ export default function PlayingPhase({
                                     ? 'Loading megaminx…'
                                     : isPyraminx
                                         ? 'Loading pyraminx…'
-                                        : 'Loading cube…'}
+                                        : isOctahedron
+                                            ? 'Loading octahedron…'
+                                            : isIcosahedron
+                                                ? 'Loading icosahedron…'
+                                                : 'Loading cube…'}
                             </div>
                         </div>
                     }
@@ -325,6 +413,26 @@ export default function PlayingPhase({
                             designs={playerDesigns}
                             pendingIndex={pendingIndex}
                             onCellClick={stickerClickActive ? handlePyraCellClick : undefined}
+                            interactive={stickerClickActive}
+                        />
+                    ) : isOctahedron ? (
+                        <OctahedronScene
+                            ref={octaRef}
+                            marks={marks}
+                            playerColors={playerColors}
+                            designs={playerDesigns}
+                            pendingIndex={pendingIndex}
+                            onCellClick={stickerClickActive ? handleOctaCellClick : undefined}
+                            interactive={stickerClickActive}
+                        />
+                    ) : isIcosahedron ? (
+                        <IcosahedronScene
+                            ref={icosaRef}
+                            marks={marks}
+                            playerColors={playerColors}
+                            designs={playerDesigns}
+                            pendingIndex={pendingIndex}
+                            onCellClick={stickerClickActive ? handleIcosaCellClick : undefined}
                             interactive={stickerClickActive}
                         />
                     ) : (
@@ -398,8 +506,10 @@ export default function PlayingPhase({
                     )}
                 </div>
 
-                {!isMegaminx && !isPyraminx && <RotateControls onRotate={handleRotateWithSound} disabled={!canAct} />}
+                {!isMegaminx && !isPyraminx && !isOctahedron && !isIcosahedron && <RotateControls onRotate={handleRotateWithSound} disabled={!canAct} />}
                 {isPyraminx && <PyraRotateControls onRotate={handlePyraRotateWithSound} disabled={!canAct} />}
+                {isOctahedron && <OctaRotateControls onRotate={handleOctaRotateWithSound} disabled={!canAct} />}
+                {isIcosahedron && <IcosaRotateControls onRotate={handleIcosaRotateWithSound} disabled={!canAct} />}
 
                 {isMyTurn && pendingAction && (
                     <div className="flex justify-center pt-1">
@@ -670,7 +780,7 @@ function countMarksBySlot(marks: Marks, n: number): number[] {
  * mobile where keyboard input isn't available; pointer-events-none so it
  * never intercepts cube drags.
  */
-function ShortcutHints({ variant }: { variant: 'cube' | 'megaminx' | 'pyraminx' }) {
+function ShortcutHints({ variant }: { variant: 'cube' | 'megaminx' | 'pyraminx' | 'octahedron' | 'icosahedron' }) {
     return (
         <div
             className="pointer-events-none absolute bottom-3 left-3 hidden rounded-lg bg-white/80 px-3 py-2 shadow-md backdrop-blur-xs sm:block"
@@ -716,6 +826,47 @@ function ShortcutHints({ variant }: { variant: 'cube' | 'megaminx' | 'pyraminx' 
                     </div>
                     <div className="mt-1 text-[9px] font-semibold tracking-wide text-gray-400">
                         +Shift for counter-clockwise
+                    </div>
+                </>
+            )}
+            {variant === 'octahedron' && (
+                <>
+                    <div className="mt-1.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-700">
+                        <span className="inline-flex items-center gap-0.5">
+                            <Kbd>1</Kbd>
+                            <Kbd>2</Kbd>
+                            <Kbd>3</Kbd>
+                            <Kbd>4</Kbd>
+                            <Kbd>5</Kbd>
+                            <Kbd>6</Kbd>
+                            <Kbd>7</Kbd>
+                            <Kbd>8</Kbd>
+                        </span>
+                        <span className="text-gray-500">rotate face</span>
+                    </div>
+                    <div className="mt-1 text-[9px] font-semibold tracking-wide text-gray-400">
+                        +Shift for counter-clockwise
+                    </div>
+                </>
+            )}
+            {variant === 'icosahedron' && (
+                <>
+                    <div className="mt-1.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-700">
+                        <span className="inline-flex items-center gap-0.5">
+                            <Kbd>1</Kbd>
+                            <Kbd>2</Kbd>
+                            <Kbd>3</Kbd>
+                            <Kbd>4</Kbd>
+                            <Kbd>5</Kbd>
+                            <Kbd>6</Kbd>
+                            <Kbd>7</Kbd>
+                            <Kbd>8</Kbd>
+                            <Kbd>9</Kbd>
+                        </span>
+                        <span className="text-gray-500">rotate face 1–9</span>
+                    </div>
+                    <div className="mt-1 text-[9px] font-semibold tracking-wide text-gray-400">
+                        +Shift for counter-clockwise · faces 10–20 use buttons
                     </div>
                 </>
             )}

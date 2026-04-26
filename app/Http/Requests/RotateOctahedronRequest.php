@@ -5,10 +5,8 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class PickRoomVariantRequest extends FormRequest
+class RotateOctahedronRequest extends FormRequest
 {
-    public const VARIANTS = ['cube', 'megaminx', 'pyraminx', 'octahedron', 'icosahedron'];
-
     public function authorize(): bool
     {
         return true;
@@ -20,7 +18,8 @@ class PickRoomVariantRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'variant' => ['required', 'string', Rule::in(self::VARIANTS)],
+            'face' => ['required', 'integer', 'between:0,7'],
+            'direction' => ['required', 'string', Rule::in(['cw', 'ccw'])],
         ];
     }
 
@@ -30,7 +29,8 @@ class PickRoomVariantRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'variant.in' => 'Variant must be one of: '.implode(', ', self::VARIANTS),
+            'face.between' => 'Face must be between 0 and 7.',
+            'direction.in' => 'Direction must be "cw" or "ccw".',
         ];
     }
 }
