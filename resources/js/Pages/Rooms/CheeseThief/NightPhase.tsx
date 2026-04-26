@@ -192,6 +192,7 @@ export default function NightPhase({ gameState, roomCode, gameSlug }: NightPhase
                     onPlayerClick={handlePlayerClick}
                     clickablePlayerIds={peekablePlayerIds}
                     selectedPlayerId={selectedPeekTarget?.id ?? null}
+                    actionLabel="peek"
                     showDice={true}
                 />
             </div>

@@ -12,13 +12,16 @@
 
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type Ref } from 'react';
 import { Marks, Move, indexOf } from '@/lib/rubikCube';
+import { indexOf as megaIndexOf, type Direction as MegaDirection } from '@/lib/megaminx';
 import RotateControls from './components/RotateControls';
 import type { CubeSceneHandle } from './CubeScene';
+import type { MegaminxSceneHandle } from './MegaminxScene';
 import { useVoiceChatOptional } from '@/Contexts/VoiceChatContext';
 import VideoModal from '@/Components/VideoModal';
 import { useSound } from '@/hooks/useSound';
 
 const CubeScene = lazy(() => import('./CubeScene'));
+const MegaminxScene = lazy(() => import('./MegaminxScene'));
 
 export interface CubeTacPlayerInfo {
     id: number | null;
@@ -50,12 +53,21 @@ export interface PlayingPhaseProps {
     pendingAction: boolean;
     /**
      * Most recent action's metadata. When `pendingAction` is true and this
-     * is a mark, its `{face,row,col}` identifies the sticker the current
-     * player can click again to undo.
+     * is a mark, its `{face,row,col}` (cube) or `{face,slot}` (megaminx)
+     * identifies the cell the current player can click again to undo.
      */
     lastAction?: Record<string, unknown> | null;
+    /**
+     * Which playing surface this room uses. Defaults to 'cube' for callers
+     * that predate the variant feature (and for the local hotseat page).
+     */
+    variant?: 'cube' | 'megaminx';
     onMark: (face: number, row: number, col: number) => void;
     onRotate: (move: Move) => void;
+    /** Megaminx mark handler — required when variant === 'megaminx'. */
+    onMegaMark?: (face: number, slot: number) => void;
+    /** Megaminx rotate handler — required when variant === 'megaminx'. */
+    onMegaRotate?: (face: number, direction: MegaDirection) => void;
     onEndTurn: () => void;
     onUndoMark: () => void;
     /** Banner override — used by local mode to show "Player 1's turn" etc. */
@@ -64,6 +76,8 @@ export interface PlayingPhaseProps {
     onLeave?: () => void;
     /** Ref for the cube scene's imperative handle (drives rotation animation). */
     cubeRef?: Ref<CubeSceneHandle>;
+    /** Ref for the megaminx scene's imperative handle. */
+    megaRef?: Ref<MegaminxSceneHandle>;
     /**
      * Total completed games in this lobby (wins + draws). Feeds the round
      * indicator in the leaderboard — a round is one game per player.
@@ -85,13 +99,17 @@ export default function PlayingPhase({
     isMyTurn,
     pendingAction,
     lastAction,
+    variant = 'cube',
     onMark,
     onRotate,
+    onMegaMark,
+    onMegaRotate,
     onEndTurn,
     onUndoMark,
     turnLabelOverride,
     onLeave,
     cubeRef,
+    megaRef,
     gamesPlayed,
 }: PlayingPhaseProps) {
     const voiceChat = useVoiceChatOptional();
@@ -118,30 +136,45 @@ export default function PlayingPhase({
                 : `${currentPlayer?.nickname ?? 'Opponent'}'s Turn`);
 
     const canAct = isMyTurn && !pendingAction;
-    const pendingMark = pendingAction && lastAction && lastAction.type === 'mark'
+
+    // Pending mark — different lastAction.type per variant. The cube
+    // identifies the pending sticker by (face, row, col); the megaminx by
+    // (face, slot). We compute a single flat index for both so the scene
+    // components can highlight it uniformly.
+    const isMegaminx = variant === 'megaminx';
+    const pendingCubeMark = !isMegaminx && pendingAction && lastAction && lastAction.type === 'mark'
         ? {
             face: lastAction.face as number,
             row: lastAction.row as number,
             col: lastAction.col as number,
         }
         : null;
-    const pendingIndex = pendingMark
-        ? indexOf(pendingMark.face, pendingMark.row, pendingMark.col)
+    const pendingMegaMark = isMegaminx && pendingAction && lastAction && lastAction.type === 'mega_mark'
+        ? {
+            face: lastAction.face as number,
+            slot: lastAction.slot as number,
+        }
         : null;
+    const pendingIndex = pendingCubeMark
+        ? indexOf(pendingCubeMark.face, pendingCubeMark.row, pendingCubeMark.col)
+        : pendingMegaMark
+            ? megaIndexOf(pendingMegaMark.face, pendingMegaMark.slot)
+            : null;
+    const hasPending = pendingCubeMark !== null || pendingMegaMark !== null;
     const subLabel = pendingAction && isMyTurn
         ? 'Confirm · or tap your mark to undo'
         : canAct || turnLabelOverride
-            ? 'Tap a sticker · or rotate a face'
+            ? isMegaminx
+                ? 'Tap a cell · or use a face center to rotate ↺ ↻'
+                : 'Tap a sticker · or rotate a face'
             : 'Waiting…';
 
-    // One click handler, two behaviors: clicking an empty sticker marks it;
-    // clicking the pending mark (same face/row/col) undoes it. Any other
-    // click (already-marked stickers, etc.) is ignored.
+    // Cube click: tap the pending mark to undo, otherwise mark an empty cell.
     const handleStickerClick = (face: number, row: number, col: number) => {
-        if (pendingMark
-            && pendingMark.face === face
-            && pendingMark.row === row
-            && pendingMark.col === col) {
+        if (pendingCubeMark
+            && pendingCubeMark.face === face
+            && pendingCubeMark.row === row
+            && pendingCubeMark.col === col) {
             onUndoMark();
             return;
         }
@@ -149,7 +182,29 @@ export default function PlayingPhase({
             onMark(face, row, col);
         }
     };
-    const stickerClickActive = isMyTurn && (canAct || pendingMark !== null);
+
+    // Megaminx click: same shape, with (face, slot) instead of (face, row, col).
+    const handleCellClick = (face: number, slot: number) => {
+        if (pendingMegaMark && pendingMegaMark.face === face && pendingMegaMark.slot === slot) {
+            onUndoMark();
+            return;
+        }
+        if (canAct && marks[megaIndexOf(face, slot)] === null) {
+            onMegaMark?.(face, slot);
+        }
+    };
+
+    const handleMegaRotateWithSound = (face: number, direction: MegaDirection) => {
+        if (!canAct) return;
+        playRotateSound();
+        // Trigger the local animation; the network round-trip runs in parallel.
+        if (megaRef && typeof megaRef === 'object' && 'current' in megaRef) {
+            megaRef.current?.playMove(face, direction);
+        }
+        onMegaRotate?.(face, direction);
+    };
+
+    const stickerClickActive = isMyTurn && (canAct || hasPending);
 
     return (
         <div className="relative flex h-full w-full flex-col overflow-hidden">
@@ -191,26 +246,39 @@ export default function PlayingPhase({
                 </div>
             </div>
 
-            {/* Cube canvas */}
+            {/* 3D canvas — cube or dodecahedron depending on variant */}
             <div className="relative flex-1 min-h-0">
                 <Suspense
                     fallback={
                         <div className="flex h-full items-center justify-center">
                             <div className="text-xs font-bold uppercase tracking-[0.4em] text-gray-500">
-                                Loading cube…
+                                {isMegaminx ? 'Loading megaminx…' : 'Loading cube…'}
                             </div>
                         </div>
                     }
                 >
-                    <CubeScene
-                        ref={cubeRef}
-                        marks={marks}
-                        playerColors={playerColors}
-                        designs={playerDesigns}
-                        pendingIndex={pendingIndex}
-                        onStickerClick={stickerClickActive ? handleStickerClick : undefined}
-                        interactive={stickerClickActive}
-                    />
+                    {isMegaminx ? (
+                        <MegaminxScene
+                            ref={megaRef}
+                            marks={marks}
+                            playerColors={playerColors}
+                            designs={playerDesigns}
+                            pendingIndex={pendingIndex}
+                            onCellClick={stickerClickActive ? handleCellClick : undefined}
+                            onRotate={canAct ? handleMegaRotateWithSound : undefined}
+                            interactive={stickerClickActive || canAct}
+                        />
+                    ) : (
+                        <CubeScene
+                            ref={cubeRef}
+                            marks={marks}
+                            playerColors={playerColors}
+                            designs={playerDesigns}
+                            pendingIndex={pendingIndex}
+                            onStickerClick={stickerClickActive ? handleStickerClick : undefined}
+                            interactive={stickerClickActive}
+                        />
+                    )}
                 </Suspense>
 
                 {!isMyTurn && !turnLabelOverride && (
@@ -271,7 +339,7 @@ export default function PlayingPhase({
                     )}
                 </div>
 
-                <RotateControls onRotate={handleRotateWithSound} disabled={!canAct} />
+                {!isMegaminx && <RotateControls onRotate={handleRotateWithSound} disabled={!canAct} />}
 
                 {isMyTurn && pendingAction && (
                     <div className="flex justify-center pt-1">
