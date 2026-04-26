@@ -18,7 +18,9 @@ export default function NightPhase({ gameState, roomCode, gameSlug }: NightPhase
     const [selectedPeekTarget, setSelectedPeekTarget] = useState<GameStatePlayer | null>(null);
 
     const currentPlayer = gameState.players.find((p) => p.id === gameState.current_player_id);
-    const isAwake = gameState.awake_player_ids.includes(gameState.current_player_id ?? -1);
+    // Canonical awake check: my die matches the current hour. Doesn't depend on
+    // awake_player_ids, which the server intentionally hides from sleeping viewers.
+    const isAwake = !!currentPlayer?.die_value && currentPlayer.die_value === gameState.current_hour;
     const otherAwake = gameState.players.filter(
         (p) => gameState.awake_player_ids.includes(p.id) && p.id !== gameState.current_player_id,
     );
