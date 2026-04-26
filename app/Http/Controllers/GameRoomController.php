@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\CreateGameRoomRequest;
 use App\Http\Requests\JoinGameRoomRequest;
 use App\Http\Requests\PeekRequest;
+use App\Http\Requests\PickRoomVariantRequest;
 use App\Http\Requests\SelectAccompliceRequest;
 use App\Http\Requests\VoteRequest;
 use App\Models\ChatMessage;
@@ -450,6 +451,35 @@ class GameRoomController extends Controller
         }
 
         $target->update(['is_connected' => false]);
+
+        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
+    }
+
+    /**
+     * Pick a gameplay variant for the room (e.g. CubeTac's "cube" vs
+     * "megaminx"). Host-only; locked once the room leaves the waiting phase.
+     * Variants are interpreted by each game's own controller; this endpoint
+     * just persists the choice on the room.
+     */
+    public function pickVariant(PickRoomVariantRequest $request, Game $game, GameRoom $room): RedirectResponse
+    {
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
+        $currentPlayer = $this->findCurrentPlayer($room);
+
+        if (! $currentPlayer?->is_host) {
+            abort(403, 'Only the host can change the variant.');
+        }
+
+        if (! $room->isWaiting()) {
+            return back()->withErrors(['error' => 'The variant is locked once the game starts.']);
+        }
+
+        $room->update([
+            'variant' => $request->validated('variant'),
+        ]);
 
         return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
     }

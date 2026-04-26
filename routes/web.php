@@ -41,6 +41,7 @@ Route::post('/rooms/{game:slug}/{room:room_code}/start', [GameRoomController::cl
 Route::post('/rooms/{game:slug}/{room:room_code}/leave', [GameRoomController::class, 'leave'])->middleware('throttle:20,1')->name('rooms.leave');
 Route::post('/rooms/{game:slug}/{room:room_code}/kick', [GameRoomController::class, 'kick'])->middleware('throttle:20,1')->name('rooms.kick');
 Route::post('/rooms/{game:slug}/{room:room_code}/reset', [GameRoomController::class, 'reset'])->middleware('throttle:20,1')->name('rooms.resetGame');
+Route::post('/rooms/{game:slug}/{room:room_code}/variant', [GameRoomController::class, 'pickVariant'])->middleware('throttle:30,1')->name('rooms.pickVariant');
 
 // Game action routes (Cheese Thief)
 Route::post('/rooms/{game:slug}/{room:room_code}/confirm-roll', [GameRoomController::class, 'confirmRoll'])->middleware('throttle:60,1')->name('rooms.confirmRoll');
@@ -80,6 +81,8 @@ Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/end-turn', [CubeTacGame
 Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/undo-mark', [CubeTacGameController::class, 'undoMark'])->middleware('throttle:60,1')->name('rooms.cubetac.undoMark');
 Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/reset', [CubeTacGameController::class, 'reset'])->middleware('throttle:20,1')->name('rooms.cubetac.reset');
 Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/pick-design', [CubeTacGameController::class, 'pickDesign'])->middleware('throttle:30,1')->name('rooms.cubetac.pickDesign');
+Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/mega-mark', [CubeTacGameController::class, 'megaMark'])->middleware('throttle:60,1')->name('rooms.cubetac.megaMark');
+Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/mega-rotate', [CubeTacGameController::class, 'megaRotate'])->middleware('throttle:60,1')->name('rooms.cubetac.megaRotate');
 Route::get('/play/cubetac/local', [CubeTacGameController::class, 'local'])->name('cubetac.local');
 
 Route::middleware('auth')->group(function () {

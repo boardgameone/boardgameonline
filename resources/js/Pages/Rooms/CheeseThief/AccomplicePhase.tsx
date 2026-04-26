@@ -3,6 +3,7 @@ import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import { useSound } from '@/hooks/useSound';
 import PlayerCircle from './components/PlayerCircle';
+import MouseNotes from './components/MouseNotes';
 
 interface AccomplicePhaseProps {
     gameState: GameState;
@@ -81,6 +82,8 @@ export default function AccomplicePhase({ gameState, roomCode, gameSlug }: Accom
                 </div>
             )}
 
+            <MouseNotes gameState={gameState} />
+
             {/* Players */}
             <div className="w-full">
                 <h3 className="mb-4 text-center text-lg font-semibold text-gray-700">
@@ -93,6 +96,7 @@ export default function AccomplicePhase({ gameState, roomCode, gameSlug }: Accom
                     currentHour={gameState.current_hour}
                     onPlayerClick={handlePlayerClick}
                     clickablePlayerIds={canSelectAccomplice ? selectablePlayerIds : []}
+                    selectedPlayerId={selectedPlayer?.id ?? null}
                     showDice={true}
                 />
             </div>

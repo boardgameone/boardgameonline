@@ -1,6 +1,7 @@
 import GameIcon from '@/Components/GameIcon';
 import PlayerCard from '@/Components/PlayerCard';
 import RoomChat from '@/Components/RoomChat';
+import VoiceGalleryPanel from '@/Components/VoiceGalleryPanel';
 import { VoiceChatProvider } from '@/Contexts/VoiceChatContext';
 import GameLayout from '@/Layouts/GameLayout';
 import { useSfx } from '@/lib/sfx';
@@ -396,7 +397,10 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
 
             {/* Overlay Chat Component */}
             {currentPlayer && (
-                <RoomChat gameSlug={gameSlug} roomCode={room.room_code} currentPlayerId={currentPlayer.id} />
+                <>
+                    <RoomChat gameSlug={gameSlug} roomCode={room.room_code} currentPlayerId={currentPlayer.id} />
+                    <VoiceGalleryPanel currentPlayerId={currentPlayer.id} />
+                </>
             )}
         </>
     );

@@ -10,6 +10,7 @@ interface PlayerCircleProps {
     onPlayerClick?: (player: GameStatePlayer) => void;
     clickablePlayerIds?: number[];
     showDice?: boolean;
+    selectedPlayerId?: number | null;
 }
 
 export default function PlayerCircle({
@@ -20,6 +21,7 @@ export default function PlayerCircle({
     onPlayerClick,
     clickablePlayerIds = [],
     showDice = false,
+    selectedPlayerId = null,
 }: PlayerCircleProps) {
     const isNightPhase = currentHour >= 1 && currentHour <= 6;
     const isAwake = (playerId: number) => awakePlayerIds.includes(playerId);
@@ -27,14 +29,17 @@ export default function PlayerCircle({
     const isClickable = (playerId: number) => clickablePlayerIds.includes(playerId);
 
     return (
-        <div className="flex flex-wrap justify-center gap-4">
+        <div className="flex flex-wrap justify-center gap-3">
             {players.map((player) => {
                 const isSelf = player.id === currentPlayerId;
                 const awake = isAwake(player.id);
                 const clickable = isClickable(player.id);
+                const isSelected = selectedPlayerId === player.id;
                 // Awake-state markers are only meaningful when the viewer is awake too
                 // (the server already empties awakePlayerIds for sleeping viewers).
                 const showAwakeMarker = isNightPhase && awake && (isSelf || currentPlayerIsAwake);
+                // The die is "peeked" if the server revealed it for someone other than us.
+                const dieIsPeeked = !isSelf && player.die_value !== null && player.die_value !== undefined;
 
                 return (
                     <button
@@ -42,20 +47,31 @@ export default function PlayerCircle({
                         onClick={() => clickable && onPlayerClick?.(player)}
                         disabled={!clickable}
                         className={`
-                            relative flex flex-col items-center gap-2 rounded-xl p-4 transition-all
-                            ${isSelf ? 'ring-2 ring-blue-500 bg-blue-50' : 'bg-white'}
-                            ${clickable ? 'cursor-pointer hover:bg-gray-100 hover:scale-105' : 'cursor-default'}
+                            relative flex flex-col items-center gap-2 rounded-2xl p-3 pt-5 transition-all
+                            ${isSelf ? 'bg-gradient-to-b from-sky-50 to-white ring-2 ring-sky-400' : 'bg-white ring-1 ring-slate-200'}
+                            ${isSelected ? 'ring-4 ring-indigo-500 shadow-lg scale-105' : ''}
+                            ${clickable && !isSelected ? 'cursor-pointer ring-2 ring-indigo-300 ring-dashed hover:scale-105 hover:ring-indigo-500 hover:shadow-md' : ''}
+                            ${!clickable ? 'cursor-default' : ''}
                         `}
                     >
                         {showAwakeMarker && (
                             <span
-                                className="absolute right-2 top-2 text-xs opacity-70"
-                                title="Awake"
+                                className="absolute -top-2 right-2 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-amber-900 shadow"
                                 aria-hidden
                             >
-                                🌙
+                                {'\u{1F319}'} AWAKE
                             </span>
                         )}
+
+                        {clickable && !isSelected && (
+                            <span
+                                className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-indigo-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow"
+                                aria-hidden
+                            >
+                                tap to peek
+                            </span>
+                        )}
+
                         <PlayerAvatarWithVoice
                             playerId={player.id}
                             nickname={player.nickname}
@@ -72,45 +88,37 @@ export default function PlayerCircle({
                         </span>
 
                         <div className="flex items-center gap-1 text-xs">
-                            {isNightPhase && awake && (isSelf || currentPlayerIsAwake) && (
-                                <span className="text-yellow-600" title="Awake">
-                                    {'\u{1F441}'}
-                                </span>
-                            )}
-                            {isNightPhase && !awake && (isSelf || currentPlayerIsAwake) && (
-                                <span className="text-gray-400" title="Sleeping">
-                                    {'\u{1F4A4}'}
-                                </span>
-                            )}
                             {player.is_thief && (
-                                <span title="Thief">
-                                    {'\u{1F977}'}
-                                </span>
+                                <span title="Thief">{'\u{1F977}'}</span>
                             )}
                             {player.is_accomplice && (
-                                <span title="Accomplice">
-                                    {'\u{1F91D}'}
-                                </span>
+                                <span title="Accomplice">{'\u{1F91D}'}</span>
                             )}
                         </div>
 
-                        {showDice && (
-                            <div className="mt-1">
-                                <DieDisplay
-                                    value={player.die_value ?? null}
-                                    size="sm"
-                                />
+                        {showDice && player.die_value && (
+                            <div
+                                className={`
+                                    relative mt-1 rounded-lg p-1
+                                    ${dieIsPeeked ? 'bg-indigo-100 ring-1 ring-indigo-300' : ''}
+                                `}
+                                title={dieIsPeeked ? 'You peeked at this mouse' : undefined}
+                            >
+                                <DieDisplay value={player.die_value} size="sm" />
+                                {dieIsPeeked && (
+                                    <span className="absolute -top-1 -right-1 text-[10px]">{'\u{1F441}'}</span>
+                                )}
                             </div>
                         )}
 
                         {currentHour === 0 && (
                             <span className={`text-xs ${player.has_confirmed_roll ? 'text-green-600' : 'text-gray-400'}`}>
-                                {player.has_confirmed_roll ? '\u2713 Ready' : 'Waiting...'}
+                                {player.has_confirmed_roll ? '✓ Ready' : 'Waiting...'}
                             </span>
                         )}
                         {currentHour === 8 && (
                             <span className={`text-xs ${player.has_voted ? 'text-green-600' : 'text-gray-400'}`}>
-                                {player.has_voted ? '\u2713 Voted' : 'Voting...'}
+                                {player.has_voted ? '✓ Voted' : 'Voting...'}
                             </span>
                         )}
                     </button>
