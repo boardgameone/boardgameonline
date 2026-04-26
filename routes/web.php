@@ -85,6 +85,10 @@ Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/mega-mark', [CubeTacGam
 Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/mega-rotate', [CubeTacGameController::class, 'megaRotate'])->middleware('throttle:60,1')->name('rooms.cubetac.megaRotate');
 Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/pyra-mark', [CubeTacGameController::class, 'pyraMark'])->middleware('throttle:60,1')->name('rooms.cubetac.pyraMark');
 Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/pyra-rotate', [CubeTacGameController::class, 'pyraRotate'])->middleware('throttle:60,1')->name('rooms.cubetac.pyraRotate');
+Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/octa-mark', [CubeTacGameController::class, 'octaMark'])->middleware('throttle:60,1')->name('rooms.cubetac.octaMark');
+Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/octa-rotate', [CubeTacGameController::class, 'octaRotate'])->middleware('throttle:60,1')->name('rooms.cubetac.octaRotate');
+Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/icosa-mark', [CubeTacGameController::class, 'icosaMark'])->middleware('throttle:60,1')->name('rooms.cubetac.icosaMark');
+Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/icosa-rotate', [CubeTacGameController::class, 'icosaRotate'])->middleware('throttle:60,1')->name('rooms.cubetac.icosaRotate');
 Route::get('/play/cubetac/local', [CubeTacGameController::class, 'local'])->name('cubetac.local');
 
 Route::middleware('auth')->group(function () {

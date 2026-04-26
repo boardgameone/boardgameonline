@@ -16,6 +16,8 @@ import FinishedPhase from '@/Pages/Rooms/CubeTac/FinishedPhase';
 import type { CubeSceneHandle } from '@/Pages/Rooms/CubeTac/CubeScene';
 import type { MegaminxSceneHandle } from '@/Pages/Rooms/CubeTac/MegaminxScene';
 import type { PyraminxSceneHandle } from '@/Pages/Rooms/CubeTac/PyraminxScene';
+import type { OctahedronSceneHandle } from '@/Pages/Rooms/CubeTac/OctahedronScene';
+import type { IcosahedronSceneHandle } from '@/Pages/Rooms/CubeTac/IcosahedronScene';
 import { Head, router } from '@inertiajs/react';
 import { useReducer, useRef, useState, type CSSProperties } from 'react';
 import {
@@ -49,12 +51,32 @@ import {
     isComplete as pyraIsComplete,
     winningLines as pyraWinningLines,
 } from '@/lib/pyraminx';
+import {
+    Direction as OctaDirection,
+    Marks as OctaMarks,
+    apply as octaApply,
+    faceSlot as octaFaceSlot,
+    indexOf as octaIndexOf,
+    initialMarks as octaInitialMarks,
+    isComplete as octaIsComplete,
+    winningLines as octaWinningLines,
+} from '@/lib/octahedron';
+import {
+    Direction as IcosaDirection,
+    Marks as IcosaMarks,
+    apply as icosaApply,
+    faceSlot as icosaFaceSlot,
+    indexOf as icosaIndexOf,
+    initialMarks as icosaInitialMarks,
+    isComplete as icosaIsComplete,
+    winningLines as icosaWinningLines,
+} from '@/lib/icosahedron';
 
 const MOVES_PER_PLAYER = 30;
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 6;
 
-type Variant = 'cube' | 'megaminx' | 'pyraminx';
+type Variant = 'cube' | 'megaminx' | 'pyraminx' | 'octahedron' | 'icosahedron';
 
 /** Palette mirrors the backend SLOT_COLORS in CubeTacGameController.php. */
 const PALETTE = ['#ff4d2e', '#3a90ff', '#16a34a', '#a855f7', '#f59e0b', '#c2813a'];
@@ -90,6 +112,18 @@ export default function LocalGame() {
                 />
             ) : variant === 'pyraminx' ? (
                 <PyraminxLocalBoard
+                    playerCount={playerCount}
+                    onLeave={handleLeave}
+                    onChangeSetup={handleChangeSetup}
+                />
+            ) : variant === 'octahedron' ? (
+                <OctahedronLocalBoard
+                    playerCount={playerCount}
+                    onLeave={handleLeave}
+                    onChangeSetup={handleChangeSetup}
+                />
+            ) : variant === 'icosahedron' ? (
+                <IcosahedronLocalBoard
                     playerCount={playerCount}
                     onLeave={handleLeave}
                     onChangeSetup={handleChangeSetup}
@@ -148,14 +182,18 @@ function Picker({ variant, onVariantChange, onPickCount, onLeave }: PickerProps)
                         Playing surface
                     </div>
                     <div className="inline-flex flex-wrap justify-center rounded-full border-2 border-yellow-400 bg-white/80 p-1 shadow-md">
-                        {(['cube', 'megaminx', 'pyraminx'] as const).map((v) => {
+                        {(['cube', 'megaminx', 'pyraminx', 'octahedron', 'icosahedron'] as const).map((v) => {
                             const selected = v === variant;
                             const label =
                                 v === 'cube'
                                     ? 'Cube · 6 faces'
                                     : v === 'megaminx'
                                         ? 'Megaminx · 12 faces'
-                                        : 'Pyraminx · 4 faces';
+                                        : v === 'pyraminx'
+                                            ? 'Pyraminx · 4 faces'
+                                            : v === 'octahedron'
+                                                ? 'Octahedron · 8 faces'
+                                                : 'Icosahedron · 20 faces';
                             return (
                                 <button
                                     key={v}
@@ -905,6 +943,476 @@ function PyraminxLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps)
             ) : (
                 <FinishedPhase
                     variant="pyraminx"
+                    marks={state.marks}
+                    winner={state.winner}
+                    winningLines={state.winningLines}
+                    players={players}
+                    mySlot={null}
+                    canRematch={true}
+                    onRematch={handleReset}
+                    onLeave={onLeave}
+                    leaveLabel="Main menu"
+                />
+            )}
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Octahedron hotseat — parallel reducer using the lib/octahedron primitives.
+// ---------------------------------------------------------------------------
+
+type OctaWinningLine = { face: number; cells: [number, number, number]; player: number };
+
+interface OctaLocalState {
+    marks: OctaMarks;
+    currentTurn: number;
+    moveCount: number;
+    moveLimit: number;
+    winner: number | 'draw' | null;
+    winningLines: OctaWinningLine[];
+    playerCount: number;
+    pendingAction: boolean;
+    pendingMarkIndex: number | null;
+    wins: number[];
+    gamesPlayed: number;
+}
+
+type OctaLocalAction =
+    | { type: 'MARK'; face: number; slot: number }
+    | { type: 'UNDO_MARK' }
+    | { type: 'ROTATE'; face: number; direction: OctaDirection }
+    | { type: 'END_TURN' }
+    | { type: 'RESET' };
+
+function freshOctaState(playerCount: number): OctaLocalState {
+    return {
+        marks: octaInitialMarks(),
+        currentTurn: 0,
+        moveCount: 0,
+        moveLimit: MOVES_PER_PLAYER * playerCount,
+        winner: null,
+        winningLines: [],
+        playerCount,
+        pendingAction: false,
+        pendingMarkIndex: null,
+        wins: Array(playerCount).fill(0),
+        gamesPlayed: 0,
+    };
+}
+
+function octaReducer(state: OctaLocalState, action: OctaLocalAction): OctaLocalState {
+    if (action.type === 'RESET') {
+        return {
+            ...freshOctaState(state.playerCount),
+            wins: state.wins,
+            gamesPlayed: state.gamesPlayed,
+        };
+    }
+
+    if (state.winner !== null) return state;
+
+    if (action.type === 'END_TURN') {
+        if (!state.pendingAction) return state;
+        return {
+            ...state,
+            currentTurn: (state.currentTurn + 1) % state.playerCount,
+            pendingAction: false,
+            pendingMarkIndex: null,
+        };
+    }
+
+    if (action.type === 'UNDO_MARK') {
+        if (!state.pendingAction || state.pendingMarkIndex === null) return state;
+        const clearedMarks: OctaMarks = [...state.marks];
+        clearedMarks[state.pendingMarkIndex] = null;
+        return {
+            ...state,
+            marks: clearedMarks,
+            moveCount: Math.max(0, state.moveCount - 1),
+            pendingAction: false,
+            pendingMarkIndex: null,
+        };
+    }
+
+    if (state.pendingAction) return state;
+
+    let newMarks: OctaMarks;
+    if (action.type === 'MARK') {
+        const idx = octaIndexOf(action.face, action.slot);
+        if (state.marks[idx] !== null) return state;
+        newMarks = [...state.marks];
+        newMarks[idx] = state.currentTurn;
+    } else {
+        newMarks = octaApply(action.face, action.direction, state.marks);
+    }
+
+    const nextCount = state.moveCount + 1;
+    const allLines: OctaWinningLine[] = octaWinningLines(newMarks).map((l) => ({
+        face: l.face,
+        cells: l.cells,
+        player: l.player,
+    }));
+
+    if (allLines.length > 0) {
+        const mine = allLines.filter((l) => l.player === state.currentTurn);
+        const nextWins = [...state.wins];
+        nextWins[state.currentTurn] = (nextWins[state.currentTurn] ?? 0) + 1;
+        return {
+            ...state,
+            marks: newMarks,
+            moveCount: nextCount,
+            winner: state.currentTurn,
+            winningLines: mine.length > 0 ? mine : allLines,
+            pendingAction: false,
+            pendingMarkIndex: null,
+            wins: nextWins,
+            gamesPlayed: state.gamesPlayed + 1,
+        };
+    }
+
+    if (nextCount >= state.moveLimit || octaIsComplete(newMarks)) {
+        return {
+            ...state,
+            marks: newMarks,
+            moveCount: nextCount,
+            winner: 'draw',
+            winningLines: [],
+            pendingAction: false,
+            pendingMarkIndex: null,
+            gamesPlayed: state.gamesPlayed + 1,
+        };
+    }
+
+    if (action.type === 'MARK') {
+        return {
+            ...state,
+            marks: newMarks,
+            moveCount: nextCount,
+            pendingAction: true,
+            pendingMarkIndex: octaIndexOf(action.face, action.slot),
+        };
+    }
+
+    return {
+        ...state,
+        marks: newMarks,
+        currentTurn: (state.currentTurn + 1) % state.playerCount,
+        moveCount: nextCount,
+        pendingAction: false,
+        pendingMarkIndex: null,
+    };
+}
+
+function OctahedronLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps) {
+    const [state, dispatch] = useReducer(octaReducer, playerCount, freshOctaState);
+    const octaRef = useRef<OctahedronSceneHandle>(null);
+
+    const players = Array.from({ length: playerCount }, (_, slot) => ({
+        id: null as number | null,
+        nickname: `Player ${slot + 1}`,
+        avatar_color: PALETTE[slot] ?? '#5b9bd5',
+        design: slot,
+        wins: state.wins[slot] ?? 0,
+    }));
+
+    const handleOctaMark = (face: number, slot: number) => {
+        dispatch({ type: 'MARK', face, slot });
+    };
+    const handleOctaRotate = (face: number, direction: OctaDirection) => {
+        dispatch({ type: 'ROTATE', face, direction });
+    };
+    const handleEndTurn = () => dispatch({ type: 'END_TURN' });
+    const handleUndoMark = () => dispatch({ type: 'UNDO_MARK' });
+    const handleReset = () => dispatch({ type: 'RESET' });
+
+    const lastAction = state.pendingMarkIndex !== null
+        ? (() => {
+            const [face, slot] = octaFaceSlot(state.pendingMarkIndex);
+            return { type: 'octa_mark' as const, face, slot };
+        })()
+        : null;
+
+    const canChangeSetup = state.moveCount === 0 && state.winner === null;
+    const changeSetupStyle: CSSProperties = { zIndex: 20 };
+
+    return (
+        <div className="relative flex h-full flex-col">
+            {state.winner === null ? (
+                <>
+                    <PlayingPhase
+                        variant="octahedron"
+                        octaRef={octaRef}
+                        marks={state.marks}
+                        currentTurn={state.currentTurn}
+                        moveCount={state.moveCount}
+                        moveLimit={state.moveLimit}
+                        players={players}
+                        mySlot={null}
+                        isMyTurn={true}
+                        pendingAction={state.pendingAction}
+                        lastAction={lastAction}
+                        // Cube callbacks are unused in this branch but PlayingPhase
+                        // requires them as non-optional props — pass no-ops.
+                        onMark={() => {}}
+                        onRotate={() => {}}
+                        onOctaMark={handleOctaMark}
+                        onOctaRotate={handleOctaRotate}
+                        onEndTurn={handleEndTurn}
+                        onUndoMark={handleUndoMark}
+                        turnLabelOverride={`${players[state.currentTurn]?.nickname ?? 'Player'}'s Turn`}
+                        onLeave={onLeave}
+                        gamesPlayed={state.gamesPlayed}
+                    />
+                    {canChangeSetup && (
+                        <button
+                            type="button"
+                            onClick={onChangeSetup}
+                            className="absolute right-4 top-16 rounded-full bg-white/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-yellow-900 shadow-md backdrop-blur-xs transition hover:bg-white"
+                            style={changeSetupStyle}
+                        >
+                            Octahedron · {playerCount} players — change
+                        </button>
+                    )}
+                </>
+            ) : (
+                <FinishedPhase
+                    variant="octahedron"
+                    marks={state.marks}
+                    winner={state.winner}
+                    winningLines={state.winningLines}
+                    players={players}
+                    mySlot={null}
+                    canRematch={true}
+                    onRematch={handleReset}
+                    onLeave={onLeave}
+                    leaveLabel="Main menu"
+                />
+            )}
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Icosahedron hotseat — parallel reducer using the lib/icosahedron primitives.
+// ---------------------------------------------------------------------------
+
+type IcosaWinningLine = { face: number; cells: [number, number, number]; player: number };
+
+interface IcosaLocalState {
+    marks: IcosaMarks;
+    currentTurn: number;
+    moveCount: number;
+    moveLimit: number;
+    winner: number | 'draw' | null;
+    winningLines: IcosaWinningLine[];
+    playerCount: number;
+    pendingAction: boolean;
+    pendingMarkIndex: number | null;
+    wins: number[];
+    gamesPlayed: number;
+}
+
+type IcosaLocalAction =
+    | { type: 'MARK'; face: number; slot: number }
+    | { type: 'UNDO_MARK' }
+    | { type: 'ROTATE'; face: number; direction: IcosaDirection }
+    | { type: 'END_TURN' }
+    | { type: 'RESET' };
+
+function freshIcosaState(playerCount: number): IcosaLocalState {
+    return {
+        marks: icosaInitialMarks(),
+        currentTurn: 0,
+        moveCount: 0,
+        moveLimit: MOVES_PER_PLAYER * playerCount,
+        winner: null,
+        winningLines: [],
+        playerCount,
+        pendingAction: false,
+        pendingMarkIndex: null,
+        wins: Array(playerCount).fill(0),
+        gamesPlayed: 0,
+    };
+}
+
+function icosaReducer(state: IcosaLocalState, action: IcosaLocalAction): IcosaLocalState {
+    if (action.type === 'RESET') {
+        return {
+            ...freshIcosaState(state.playerCount),
+            wins: state.wins,
+            gamesPlayed: state.gamesPlayed,
+        };
+    }
+
+    if (state.winner !== null) return state;
+
+    if (action.type === 'END_TURN') {
+        if (!state.pendingAction) return state;
+        return {
+            ...state,
+            currentTurn: (state.currentTurn + 1) % state.playerCount,
+            pendingAction: false,
+            pendingMarkIndex: null,
+        };
+    }
+
+    if (action.type === 'UNDO_MARK') {
+        if (!state.pendingAction || state.pendingMarkIndex === null) return state;
+        const clearedMarks: IcosaMarks = [...state.marks];
+        clearedMarks[state.pendingMarkIndex] = null;
+        return {
+            ...state,
+            marks: clearedMarks,
+            moveCount: Math.max(0, state.moveCount - 1),
+            pendingAction: false,
+            pendingMarkIndex: null,
+        };
+    }
+
+    if (state.pendingAction) return state;
+
+    let newMarks: IcosaMarks;
+    if (action.type === 'MARK') {
+        const idx = icosaIndexOf(action.face, action.slot);
+        if (state.marks[idx] !== null) return state;
+        newMarks = [...state.marks];
+        newMarks[idx] = state.currentTurn;
+    } else {
+        newMarks = icosaApply(action.face, action.direction, state.marks);
+    }
+
+    const nextCount = state.moveCount + 1;
+    const allLines: IcosaWinningLine[] = icosaWinningLines(newMarks).map((l) => ({
+        face: l.face,
+        cells: l.cells,
+        player: l.player,
+    }));
+
+    if (allLines.length > 0) {
+        const mine = allLines.filter((l) => l.player === state.currentTurn);
+        const nextWins = [...state.wins];
+        nextWins[state.currentTurn] = (nextWins[state.currentTurn] ?? 0) + 1;
+        return {
+            ...state,
+            marks: newMarks,
+            moveCount: nextCount,
+            winner: state.currentTurn,
+            winningLines: mine.length > 0 ? mine : allLines,
+            pendingAction: false,
+            pendingMarkIndex: null,
+            wins: nextWins,
+            gamesPlayed: state.gamesPlayed + 1,
+        };
+    }
+
+    if (nextCount >= state.moveLimit || icosaIsComplete(newMarks)) {
+        return {
+            ...state,
+            marks: newMarks,
+            moveCount: nextCount,
+            winner: 'draw',
+            winningLines: [],
+            pendingAction: false,
+            pendingMarkIndex: null,
+            gamesPlayed: state.gamesPlayed + 1,
+        };
+    }
+
+    if (action.type === 'MARK') {
+        return {
+            ...state,
+            marks: newMarks,
+            moveCount: nextCount,
+            pendingAction: true,
+            pendingMarkIndex: icosaIndexOf(action.face, action.slot),
+        };
+    }
+
+    return {
+        ...state,
+        marks: newMarks,
+        currentTurn: (state.currentTurn + 1) % state.playerCount,
+        moveCount: nextCount,
+        pendingAction: false,
+        pendingMarkIndex: null,
+    };
+}
+
+function IcosahedronLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps) {
+    const [state, dispatch] = useReducer(icosaReducer, playerCount, freshIcosaState);
+    const icosaRef = useRef<IcosahedronSceneHandle>(null);
+
+    const players = Array.from({ length: playerCount }, (_, slot) => ({
+        id: null as number | null,
+        nickname: `Player ${slot + 1}`,
+        avatar_color: PALETTE[slot] ?? '#5b9bd5',
+        design: slot,
+        wins: state.wins[slot] ?? 0,
+    }));
+
+    const handleIcosaMark = (face: number, slot: number) => {
+        dispatch({ type: 'MARK', face, slot });
+    };
+    const handleIcosaRotate = (face: number, direction: IcosaDirection) => {
+        dispatch({ type: 'ROTATE', face, direction });
+    };
+    const handleEndTurn = () => dispatch({ type: 'END_TURN' });
+    const handleUndoMark = () => dispatch({ type: 'UNDO_MARK' });
+    const handleReset = () => dispatch({ type: 'RESET' });
+
+    const lastAction = state.pendingMarkIndex !== null
+        ? (() => {
+            const [face, slot] = icosaFaceSlot(state.pendingMarkIndex);
+            return { type: 'icosa_mark' as const, face, slot };
+        })()
+        : null;
+
+    const canChangeSetup = state.moveCount === 0 && state.winner === null;
+    const changeSetupStyle: CSSProperties = { zIndex: 20 };
+
+    return (
+        <div className="relative flex h-full flex-col">
+            {state.winner === null ? (
+                <>
+                    <PlayingPhase
+                        variant="icosahedron"
+                        icosaRef={icosaRef}
+                        marks={state.marks}
+                        currentTurn={state.currentTurn}
+                        moveCount={state.moveCount}
+                        moveLimit={state.moveLimit}
+                        players={players}
+                        mySlot={null}
+                        isMyTurn={true}
+                        pendingAction={state.pendingAction}
+                        lastAction={lastAction}
+                        // Cube callbacks are unused in this branch but PlayingPhase
+                        // requires them as non-optional props — pass no-ops.
+                        onMark={() => {}}
+                        onRotate={() => {}}
+                        onIcosaMark={handleIcosaMark}
+                        onIcosaRotate={handleIcosaRotate}
+                        onEndTurn={handleEndTurn}
+                        onUndoMark={handleUndoMark}
+                        turnLabelOverride={`${players[state.currentTurn]?.nickname ?? 'Player'}'s Turn`}
+                        onLeave={onLeave}
+                        gamesPlayed={state.gamesPlayed}
+                    />
+                    {canChangeSetup && (
+                        <button
+                            type="button"
+                            onClick={onChangeSetup}
+                            className="absolute right-4 top-16 rounded-full bg-white/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-yellow-900 shadow-md backdrop-blur-xs transition hover:bg-white"
+                            style={changeSetupStyle}
+                        >
+                            Icosahedron · {playerCount} players — change
+                        </button>
+                    )}
+                </>
+            ) : (
+                <FinishedPhase
+                    variant="icosahedron"
                     marks={state.marks}
                     winner={state.winner}
                     winningLines={state.winningLines}

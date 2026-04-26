@@ -2,17 +2,23 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\MarkIcosahedronCellRequest;
 use App\Http\Requests\MarkMegaminxCellRequest;
+use App\Http\Requests\MarkOctahedronCellRequest;
 use App\Http\Requests\MarkPyraminxCellRequest;
 use App\Http\Requests\MarkStickerRequest;
 use App\Http\Requests\PickCubeTacDesignRequest;
 use App\Http\Requests\RotateCubeRequest;
+use App\Http\Requests\RotateIcosahedronRequest;
 use App\Http\Requests\RotateMegaminxRequest;
+use App\Http\Requests\RotateOctahedronRequest;
 use App\Http\Requests\RotatePyraminxRequest;
 use App\Models\Game;
 use App\Models\GamePlayer;
 use App\Models\GameRoom;
+use App\Services\IcosahedronCube;
 use App\Services\MegaminxCube;
+use App\Services\OctahedronCube;
 use App\Services\PyraminxCube;
 use App\Services\RubikCube;
 use Illuminate\Database\Eloquent\Builder;
@@ -38,6 +44,10 @@ class CubeTacGameController extends Controller
     private const VARIANT_MEGAMINX = 'megaminx';
 
     private const VARIANT_PYRAMINX = 'pyraminx';
+
+    private const VARIANT_OCTAHEDRON = 'octahedron';
+
+    private const VARIANT_ICOSAHEDRON = 'icosahedron';
 
     /**
      * Per-slot avatar color palette. Joiner N gets $colors[N]. Must be kept
@@ -425,6 +435,8 @@ class CubeTacGameController extends Controller
         $emptyMarks = match ($variant) {
             self::VARIANT_MEGAMINX => MegaminxCube::initialMarks(),
             self::VARIANT_PYRAMINX => PyraminxCube::initialMarks(),
+            self::VARIANT_OCTAHEDRON => OctahedronCube::initialMarks(),
+            self::VARIANT_ICOSAHEDRON => IcosahedronCube::initialMarks(),
             default => RubikCube::initialMarks(),
         };
 
@@ -525,9 +537,59 @@ class CubeTacGameController extends Controller
     }
 
     /**
+     * Initial state for an Octahedron-variant game. 72-cell marks array (8 faces ×
+     * 9 cells), with the 3 down-triangles per face — slots 6,7,8 — never marked.
+     *
+     * @param  list<int>  $playerIds
+     * @return array<string, mixed>
+     */
+    private function freshOctahedronState(array $playerIds): array
+    {
+        $count = count($playerIds);
+
+        return [
+            'marks' => OctahedronCube::initialMarks(),
+            'current_turn' => 0,
+            'move_count' => 0,
+            'move_limit' => self::MOVES_PER_PLAYER * max(1, $count),
+            'winner' => null,
+            'winning_lines' => [],
+            'last_action' => null,
+            'move_history' => [],
+            'pending_action' => false,
+            'player_ids' => array_values($playerIds),
+        ];
+    }
+
+    /**
+     * Initial state for an Icosahedron-variant game. 180-cell marks array (20 faces ×
+     * 9 cells), with the 3 down-triangles per face — slots 6,7,8 — never marked.
+     *
+     * @param  list<int>  $playerIds
+     * @return array<string, mixed>
+     */
+    private function freshIcosahedronState(array $playerIds): array
+    {
+        $count = count($playerIds);
+
+        return [
+            'marks' => IcosahedronCube::initialMarks(),
+            'current_turn' => 0,
+            'move_count' => 0,
+            'move_limit' => self::MOVES_PER_PLAYER * max(1, $count),
+            'winner' => null,
+            'winning_lines' => [],
+            'last_action' => null,
+            'move_history' => [],
+            'pending_action' => false,
+            'player_ids' => array_values($playerIds),
+        ];
+    }
+
+    /**
      * Build the fresh-game settings payload for the variant in play.
      *
-     * @param  self::VARIANT_CUBE|self::VARIANT_MEGAMINX|self::VARIANT_PYRAMINX  $variant
+     * @param  self::VARIANT_CUBE|self::VARIANT_MEGAMINX|self::VARIANT_PYRAMINX|self::VARIANT_OCTAHEDRON|self::VARIANT_ICOSAHEDRON  $variant
      * @param  list<int>  $playerIds
      * @return array<string, mixed>
      */
@@ -536,6 +598,8 @@ class CubeTacGameController extends Controller
         return match ($variant) {
             self::VARIANT_MEGAMINX => $this->freshMegaminxState($playerIds),
             self::VARIANT_PYRAMINX => $this->freshPyraminxState($playerIds),
+            self::VARIANT_OCTAHEDRON => $this->freshOctahedronState($playerIds),
+            self::VARIANT_ICOSAHEDRON => $this->freshIcosahedronState($playerIds),
             default => $this->freshGameState($playerIds),
         };
     }
@@ -845,16 +909,322 @@ class CubeTacGameController extends Controller
     }
 
     /**
+     * Mark a perimeter cell on the Octahedron with the current player's slot
+     * index. Same flow as `mark()` but for the 8-face × 9-cell octahedron,
+     * and only legal in rooms whose `variant` is `octahedron`.
+     */
+    public function octaMark(MarkOctahedronCellRequest $request, Game $game, GameRoom $room): RedirectResponse
+    {
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
+        if ($this->variantOf($room) !== self::VARIANT_OCTAHEDRON) {
+            return back()->withErrors(['error' => 'This room is not playing the octahedron variant.']);
+        }
+
+        $currentPlayer = $this->findCurrentPlayer($room);
+
+        if (! $currentPlayer) {
+            abort(403, 'You are not a player in this room.');
+        }
+
+        if (! $room->isPlaying()) {
+            return back()->withErrors(['error' => 'Game is not in progress.']);
+        }
+
+        $settings = $room->settings ?? [];
+
+        if (($settings['winner'] ?? null) !== null) {
+            return back()->withErrors(['error' => 'Game is already over.']);
+        }
+
+        $expectedPlayerId = $this->expectedPlayerId($settings);
+        if ($expectedPlayerId !== $currentPlayer->id) {
+            return back()->withErrors(['error' => 'It is not your turn.']);
+        }
+
+        if ($settings['pending_action'] ?? false) {
+            return back()->withErrors(['error' => 'Confirm your turn before taking another action.']);
+        }
+
+        $face = (int) $request->validated('face');
+        $slot = (int) $request->validated('slot');
+        $idx = OctahedronCube::indexOf($face, $slot);
+
+        /** @var array<int, int|null> $marks */
+        $marks = $settings['marks'];
+        if ($marks[$idx] !== null) {
+            return back()->withErrors(['error' => 'That cell is already marked.']);
+        }
+
+        $playerSlot = (int) $settings['current_turn'];
+        $marks[$idx] = $playerSlot;
+        $settings['marks'] = $marks;
+        $settings['move_count'] = ($settings['move_count'] ?? 0) + 1;
+
+        $action = [
+            'type' => 'octa_mark',
+            'player' => $playerSlot,
+            'face' => $face,
+            'slot' => $slot,
+            'move_id' => $settings['move_count'],
+        ];
+        $settings['last_action'] = $action;
+        $settings = $this->appendHistory($settings, $action);
+
+        $settings = $this->finalizeAfterAction($settings, self::VARIANT_OCTAHEDRON, requireConfirm: true);
+
+        $room->update([
+            'settings' => $settings,
+            'winner' => $settings['winner'] !== null ? (string) $settings['winner'] : null,
+            'status' => $settings['winner'] !== null ? 'finished' : 'playing',
+            'ended_at' => $settings['winner'] !== null ? now() : null,
+        ]);
+
+        $this->recordGameEnd($room, $settings);
+
+        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
+    }
+
+    /**
+     * Rotate an Octahedron face 120° in the requested direction. Auto-advances
+     * the turn (no Confirm Turn step), mirroring `rotate()` for the cube.
+     */
+    public function octaRotate(RotateOctahedronRequest $request, Game $game, GameRoom $room): RedirectResponse
+    {
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
+        if ($this->variantOf($room) !== self::VARIANT_OCTAHEDRON) {
+            return back()->withErrors(['error' => 'This room is not playing the octahedron variant.']);
+        }
+
+        $currentPlayer = $this->findCurrentPlayer($room);
+
+        if (! $currentPlayer) {
+            abort(403, 'You are not a player in this room.');
+        }
+
+        if (! $room->isPlaying()) {
+            return back()->withErrors(['error' => 'Game is not in progress.']);
+        }
+
+        $settings = $room->settings ?? [];
+
+        if (($settings['winner'] ?? null) !== null) {
+            return back()->withErrors(['error' => 'Game is already over.']);
+        }
+
+        $expectedPlayerId = $this->expectedPlayerId($settings);
+        if ($expectedPlayerId !== $currentPlayer->id) {
+            return back()->withErrors(['error' => 'It is not your turn.']);
+        }
+
+        if ($settings['pending_action'] ?? false) {
+            return back()->withErrors(['error' => 'Confirm your turn before taking another action.']);
+        }
+
+        $face = (int) $request->validated('face');
+        /** @var 'cw'|'ccw' $direction */
+        $direction = $request->validated('direction');
+
+        /** @var array<int, int|null> $marks */
+        $marks = $settings['marks'];
+
+        $settings['marks'] = OctahedronCube::apply($face, $direction, $marks);
+        $settings['move_count'] = ($settings['move_count'] ?? 0) + 1;
+
+        $action = [
+            'type' => 'octa_rotate',
+            'player' => (int) $settings['current_turn'],
+            'face' => $face,
+            'direction' => $direction,
+            'move_id' => $settings['move_count'],
+        ];
+        $settings['last_action'] = $action;
+        $settings = $this->appendHistory($settings, $action);
+
+        $settings = $this->finalizeAfterAction($settings, self::VARIANT_OCTAHEDRON, requireConfirm: false);
+
+        $room->update([
+            'settings' => $settings,
+            'winner' => $settings['winner'] !== null ? (string) $settings['winner'] : null,
+            'status' => $settings['winner'] !== null ? 'finished' : 'playing',
+            'ended_at' => $settings['winner'] !== null ? now() : null,
+        ]);
+
+        $this->recordGameEnd($room, $settings);
+
+        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
+    }
+
+    /**
+     * Mark a perimeter cell on the Icosahedron with the current player's slot
+     * index. Same flow as `mark()` but for the 20-face × 9-cell icosahedron,
+     * and only legal in rooms whose `variant` is `icosahedron`.
+     */
+    public function icosaMark(MarkIcosahedronCellRequest $request, Game $game, GameRoom $room): RedirectResponse
+    {
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
+        if ($this->variantOf($room) !== self::VARIANT_ICOSAHEDRON) {
+            return back()->withErrors(['error' => 'This room is not playing the icosahedron variant.']);
+        }
+
+        $currentPlayer = $this->findCurrentPlayer($room);
+
+        if (! $currentPlayer) {
+            abort(403, 'You are not a player in this room.');
+        }
+
+        if (! $room->isPlaying()) {
+            return back()->withErrors(['error' => 'Game is not in progress.']);
+        }
+
+        $settings = $room->settings ?? [];
+
+        if (($settings['winner'] ?? null) !== null) {
+            return back()->withErrors(['error' => 'Game is already over.']);
+        }
+
+        $expectedPlayerId = $this->expectedPlayerId($settings);
+        if ($expectedPlayerId !== $currentPlayer->id) {
+            return back()->withErrors(['error' => 'It is not your turn.']);
+        }
+
+        if ($settings['pending_action'] ?? false) {
+            return back()->withErrors(['error' => 'Confirm your turn before taking another action.']);
+        }
+
+        $face = (int) $request->validated('face');
+        $slot = (int) $request->validated('slot');
+        $idx = IcosahedronCube::indexOf($face, $slot);
+
+        /** @var array<int, int|null> $marks */
+        $marks = $settings['marks'];
+        if ($marks[$idx] !== null) {
+            return back()->withErrors(['error' => 'That cell is already marked.']);
+        }
+
+        $playerSlot = (int) $settings['current_turn'];
+        $marks[$idx] = $playerSlot;
+        $settings['marks'] = $marks;
+        $settings['move_count'] = ($settings['move_count'] ?? 0) + 1;
+
+        $action = [
+            'type' => 'icosa_mark',
+            'player' => $playerSlot,
+            'face' => $face,
+            'slot' => $slot,
+            'move_id' => $settings['move_count'],
+        ];
+        $settings['last_action'] = $action;
+        $settings = $this->appendHistory($settings, $action);
+
+        $settings = $this->finalizeAfterAction($settings, self::VARIANT_ICOSAHEDRON, requireConfirm: true);
+
+        $room->update([
+            'settings' => $settings,
+            'winner' => $settings['winner'] !== null ? (string) $settings['winner'] : null,
+            'status' => $settings['winner'] !== null ? 'finished' : 'playing',
+            'ended_at' => $settings['winner'] !== null ? now() : null,
+        ]);
+
+        $this->recordGameEnd($room, $settings);
+
+        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
+    }
+
+    /**
+     * Rotate an Icosahedron face 120° in the requested direction. Auto-advances
+     * the turn (no Confirm Turn step), mirroring `rotate()` for the cube.
+     */
+    public function icosaRotate(RotateIcosahedronRequest $request, Game $game, GameRoom $room): RedirectResponse
+    {
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
+        if ($this->variantOf($room) !== self::VARIANT_ICOSAHEDRON) {
+            return back()->withErrors(['error' => 'This room is not playing the icosahedron variant.']);
+        }
+
+        $currentPlayer = $this->findCurrentPlayer($room);
+
+        if (! $currentPlayer) {
+            abort(403, 'You are not a player in this room.');
+        }
+
+        if (! $room->isPlaying()) {
+            return back()->withErrors(['error' => 'Game is not in progress.']);
+        }
+
+        $settings = $room->settings ?? [];
+
+        if (($settings['winner'] ?? null) !== null) {
+            return back()->withErrors(['error' => 'Game is already over.']);
+        }
+
+        $expectedPlayerId = $this->expectedPlayerId($settings);
+        if ($expectedPlayerId !== $currentPlayer->id) {
+            return back()->withErrors(['error' => 'It is not your turn.']);
+        }
+
+        if ($settings['pending_action'] ?? false) {
+            return back()->withErrors(['error' => 'Confirm your turn before taking another action.']);
+        }
+
+        $face = (int) $request->validated('face');
+        /** @var 'cw'|'ccw' $direction */
+        $direction = $request->validated('direction');
+
+        /** @var array<int, int|null> $marks */
+        $marks = $settings['marks'];
+
+        $settings['marks'] = IcosahedronCube::apply($face, $direction, $marks);
+        $settings['move_count'] = ($settings['move_count'] ?? 0) + 1;
+
+        $action = [
+            'type' => 'icosa_rotate',
+            'player' => (int) $settings['current_turn'],
+            'face' => $face,
+            'direction' => $direction,
+            'move_id' => $settings['move_count'],
+        ];
+        $settings['last_action'] = $action;
+        $settings = $this->appendHistory($settings, $action);
+
+        $settings = $this->finalizeAfterAction($settings, self::VARIANT_ICOSAHEDRON, requireConfirm: false);
+
+        $room->update([
+            'settings' => $settings,
+            'winner' => $settings['winner'] !== null ? (string) $settings['winner'] : null,
+            'status' => $settings['winner'] !== null ? 'finished' : 'playing',
+            'ended_at' => $settings['winner'] !== null ? now() : null,
+        ]);
+
+        $this->recordGameEnd($room, $settings);
+
+        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
+    }
+
+    /**
      * Resolve the active variant for a room. Defaults to "cube" for rows
      * created before the variant column existed.
      *
-     * @return self::VARIANT_CUBE|self::VARIANT_MEGAMINX|self::VARIANT_PYRAMINX
+     * @return self::VARIANT_CUBE|self::VARIANT_MEGAMINX|self::VARIANT_PYRAMINX|self::VARIANT_OCTAHEDRON|self::VARIANT_ICOSAHEDRON
      */
     private function variantOf(GameRoom $room): string
     {
         return match ($room->variant) {
             self::VARIANT_MEGAMINX => self::VARIANT_MEGAMINX,
             self::VARIANT_PYRAMINX => self::VARIANT_PYRAMINX,
+            self::VARIANT_OCTAHEDRON => self::VARIANT_OCTAHEDRON,
+            self::VARIANT_ICOSAHEDRON => self::VARIANT_ICOSAHEDRON,
             default => self::VARIANT_CUBE,
         };
     }
@@ -865,7 +1235,7 @@ class CubeTacGameController extends Controller
      * so the UI shows a Confirm Turn button (mark).
      *
      * @param  array<string, mixed>  $settings
-     * @param  self::VARIANT_CUBE|self::VARIANT_MEGAMINX|self::VARIANT_PYRAMINX  $variant
+     * @param  self::VARIANT_CUBE|self::VARIANT_MEGAMINX|self::VARIANT_PYRAMINX|self::VARIANT_OCTAHEDRON|self::VARIANT_ICOSAHEDRON  $variant
      * @return array<string, mixed>
      */
     private function finalizeAfterAction(array $settings, string $variant, bool $requireConfirm): array
@@ -875,6 +1245,8 @@ class CubeTacGameController extends Controller
         $lines = match ($variant) {
             self::VARIANT_MEGAMINX => MegaminxCube::winningLines($marks),
             self::VARIANT_PYRAMINX => PyraminxCube::winningLines($marks),
+            self::VARIANT_OCTAHEDRON => OctahedronCube::winningLines($marks),
+            self::VARIANT_ICOSAHEDRON => IcosahedronCube::winningLines($marks),
             default => RubikCube::winningLines($marks),
         };
         $currentSlot = (int) $settings['current_turn'];
@@ -901,6 +1273,8 @@ class CubeTacGameController extends Controller
         $isFull = match ($variant) {
             self::VARIANT_MEGAMINX => MegaminxCube::isComplete($marks),
             self::VARIANT_PYRAMINX => PyraminxCube::isComplete($marks),
+            self::VARIANT_OCTAHEDRON => OctahedronCube::isComplete($marks),
+            self::VARIANT_ICOSAHEDRON => IcosahedronCube::isComplete($marks),
             default => RubikCube::isComplete($marks),
         };
         if (($settings['move_count'] ?? 0) >= $moveLimit || $isFull) {
