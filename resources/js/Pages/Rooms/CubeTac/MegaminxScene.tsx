@@ -30,9 +30,9 @@ import {
     Direction,
     FACES,
     Marks,
-    PLAYABLE_PER_FACE,
     Vec3,
-    cellPosition,
+    cellCentroid,
+    cellPolygon,
     faceCenters,
     faceNormals,
     faceVertices,
@@ -425,8 +425,10 @@ function FaceMesh({
     excludeIndices,
     renderBackdrop = true,
 }: FaceMeshProps) {
-    // Build a flat pentagon mesh by fan-triangulating from the center.
-    const geometry = useMemo(() => {
+    // Black "grout" pentagon — sits just below the tiled pieces and shows
+    // through the inset gaps between them, matching the look of a real
+    // Megaminx puzzle where the piece edges expose the puzzle core.
+    const backdropGeometry = useMemo(() => {
         const geo = new THREE.BufferGeometry();
         const positions: number[] = [];
         for (let i = 0; i < polygon.length; i++) {
@@ -442,58 +444,62 @@ function FaceMesh({
     }, [polygon, center]);
 
     const includeAll = !includeOnlyIndices;
-    const showCenterButton = includeAll && !excludeIndices?.has(indexOf(face, 0));
+    const centerSlotFlat = indexOf(face, 0);
+    const showCenterButton = includeAll && !excludeIndices?.has(centerSlotFlat);
+    const faceColor = FACE_COLORS[face % FACE_COLORS.length];
 
     return (
         <group>
             {renderBackdrop && (
-                <mesh geometry={geometry}>
-                    <meshStandardMaterial
-                        color={FACE_COLORS[face % FACE_COLORS.length]}
-                        side={THREE.DoubleSide}
-                        roughness={0.6}
-                        metalness={0.05}
-                    />
+                <mesh geometry={backdropGeometry}>
+                    <meshStandardMaterial color="#0f172a" side={THREE.DoubleSide} roughness={0.85} />
                 </mesh>
             )}
 
-            {/* Cell markers — each playable slot 1..10 */}
-            {Array.from({ length: PLAYABLE_PER_FACE }, (_, i) => {
-                const slot = i + 1;
+            {/* 11 polygonal pieces — center pentagon + 5 corners + 5 edges */}
+            {Array.from({ length: CELLS_PER_FACE }, (_, slot) => {
                 const flat = indexOf(face, slot);
                 if (includeOnlyIndices && !includeOnlyIndices.has(flat)) return null;
                 if (excludeIndices?.has(flat)) return null;
-                const mark = marks[flat] ?? null;
-                const pos = cellPosition(face, slot);
-                const liftedPos = liftAlongNormal(pos, normal, 0.02);
+
+                const isCenter = slot === 0;
+                const mark = isCenter ? null : marks[flat] ?? null;
                 const isWin = winningIndices?.has(flat) ?? false;
                 const isPending = pendingIndex === flat;
                 const designIdx = mark !== null ? designs?.[mark] ?? mark : null;
                 const glyph = designIdx !== null ? SLOT_GLYPHS[designIdx % SLOT_GLYPHS.length] : null;
-                const color = mark !== null ? playerColors[mark] ?? FALLBACK_GLYPH_COLOR : '#ffffff';
-                const isCorner = slot % 2 === 1;
+
+                // Empty pieces show the face color (so users can tell the 12 faces apart);
+                // marked pieces show the player's avatar color over it. Center always gets
+                // the face color since it's never playable.
+                const baseColor = isCenter
+                    ? faceColor
+                    : mark !== null
+                        ? playerColors[mark] ?? FALLBACK_GLYPH_COLOR
+                        : faceColor;
 
                 return (
-                    <CellMarker
-                        key={`cell-${face}-${slot}`}
-                        position={liftedPos}
+                    <PieceTile
+                        key={`piece-${face}-${slot}`}
+                        face={face}
+                        slot={slot}
                         normal={normal}
-                        color={color}
+                        color={baseColor}
                         glyph={glyph}
-                        isCorner={isCorner}
+                        glyphColor={mark !== null ? '#0f172a' : '#ffffff'}
                         isWin={isWin}
                         isPending={isPending}
                         isMarked={mark !== null}
-                        clickable={interactive && (mark === null || isPending)}
+                        clickable={!isCenter && interactive && (mark === null || isPending)}
                         onClick={() => onCellClick?.(face, slot)}
                     />
                 );
             })}
 
-            {/* Center rotation buttons */}
+            {/* Center rotation buttons — overlay on top of the center pentagon piece */}
             {showCenterButton && (
                 <CenterButton
-                    position={liftAlongNormal(center, normal, 0.02)}
+                    position={liftAlongNormal(center, normal, 0.025)}
                     normal={normal}
                     interactive={interactive}
                     onCcw={() => onRotate?.(face, 'ccw')}
@@ -506,12 +512,13 @@ function FaceMesh({
 
 // ---------------------------------------------------------------------------
 
-interface CellMarkerProps {
-    position: Vec3;
+interface PieceTileProps {
+    face: number;
+    slot: number;
     normal: Vec3;
     color: string;
     glyph: string | null;
-    isCorner: boolean;
+    glyphColor: string;
     isWin: boolean;
     isPending: boolean;
     isMarked: boolean;
@@ -519,52 +526,93 @@ interface CellMarkerProps {
     onClick: () => void;
 }
 
-function CellMarker({
-    position,
+/**
+ * One Megaminx piece (center pentagon, corner quad, or edge quad). Built from
+ * the polygon returned by `cellPolygon(face, slot)` and lifted slightly along
+ * the face's outward normal so it floats above the black grout backdrop.
+ */
+function PieceTile({
+    face,
+    slot,
     normal,
     color,
     glyph,
-    isCorner,
+    glyphColor,
     isWin,
     isPending,
     isMarked,
     clickable,
     onClick,
-}: CellMarkerProps) {
-    const radius = isCorner ? 0.18 : 0.16;
+}: PieceTileProps) {
+    const polygon = useMemo(() => cellPolygon(face, slot), [face, slot]);
+    const centroid = useMemo(() => cellCentroid(face, slot), [face, slot]);
+
+    // Fan-triangulate the (possibly 4- or 5-vertex) polygon from its centroid.
+    // Lift the whole tile along the face's outward normal so it sits above
+    // the black backdrop. Without this lift the tile and backdrop z-fight.
+    const geometry = useMemo(() => {
+        const lift = 0.018;
+        const lifted = polygon.map((v) => liftAlongNormal(v, normal, lift));
+        const centroidLifted = liftAlongNormal(centroid, normal, lift);
+        const geo = new THREE.BufferGeometry();
+        const positions: number[] = [];
+        for (let i = 0; i < lifted.length; i++) {
+            const a = lifted[i];
+            const b = lifted[(i + 1) % lifted.length];
+            positions.push(centroidLifted[0], centroidLifted[1], centroidLifted[2]);
+            positions.push(a[0], a[1], a[2]);
+            positions.push(b[0], b[1], b[2]);
+        }
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geo.computeVertexNormals();
+        return geo;
+    }, [polygon, centroid, normal[0], normal[1], normal[2]]);
 
     const handleClick = (e: ThreeEvent<MouseEvent>) => {
         e.stopPropagation();
         if (clickable) onClick();
     };
 
-    // Use a flat circle facing the face's outward normal.
-    const quaternion = useMemo(() => {
+    // Glyph orientation: flat plane in the face's tangent plane, facing outward.
+    const glyphQuaternion = useMemo(() => {
         const q = new THREE.Quaternion();
         q.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...normal));
         return q;
     }, [normal[0], normal[1], normal[2]]);
+    const glyphPosition = useMemo(() => liftAlongNormal(centroid, normal, 0.025), [centroid, normal[0], normal[1], normal[2]]);
+
+    // Glyph size scales with the piece's "radius" (distance from centroid to
+    // the closest polygon vertex) so corners and edges get equally legible glyphs.
+    const glyphSize = useMemo(() => {
+        let minDistSq = Infinity;
+        for (const v of polygon) {
+            const dx = v[0] - centroid[0];
+            const dy = v[1] - centroid[1];
+            const dz = v[2] - centroid[2];
+            const d2 = dx * dx + dy * dy + dz * dz;
+            if (d2 < minDistSq) minDistSq = d2;
+        }
+        return Math.sqrt(minDistSq) * 1.1;
+    }, [polygon, centroid]);
 
     return (
-        <group position={position} quaternion={quaternion}>
-            <mesh onPointerDown={handleClick}>
-                <circleGeometry args={[radius, 24]} />
+        <group>
+            <mesh geometry={geometry} onPointerDown={handleClick}>
                 <meshStandardMaterial
-                    color={isMarked ? color : '#ffffff'}
-                    transparent
-                    opacity={isMarked ? (isPending ? 0.55 : 1) : 0.35}
-                    roughness={0.4}
+                    color={color}
+                    side={THREE.DoubleSide}
+                    transparent={isPending}
+                    opacity={isPending ? 0.7 : 1}
+                    roughness={0.42}
+                    metalness={0.04}
                     emissive={isWin ? color : '#000000'}
-                    emissiveIntensity={isWin ? 0.7 : 0}
+                    emissiveIntensity={isWin ? 0.55 : 0}
                 />
             </mesh>
-            {/* Outline ring */}
-            <mesh position={[0, 0, 0.001]}>
-                <ringGeometry args={[radius * 0.92, radius, 24]} />
-                <meshBasicMaterial color={isWin ? '#fbbf24' : '#1f2937'} />
-            </mesh>
-            {glyph && (
-                <GlyphSprite glyph={glyph} color={isMarked ? '#0f172a' : color} size={radius * 1.4} />
+            {glyph && isMarked && (
+                <group position={glyphPosition} quaternion={glyphQuaternion}>
+                    <GlyphSprite glyph={glyph} color={glyphColor} size={glyphSize} />
+                </group>
             )}
         </group>
     );
