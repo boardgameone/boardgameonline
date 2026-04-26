@@ -1,6 +1,6 @@
 import axios from 'axios';
 import Peer, { MediaConnection } from 'peerjs';
-import { createContext, ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 export interface VoicePlayer {
     id: number;
@@ -88,6 +88,10 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
     const peerPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const autoConnectAttempted = useRef(false);
     const silentAudioContextRef = useRef<AudioContext | null>(null);
+    // Per-player analyser bookkeeping. setupAudioLevelDetection is called both
+    // from incoming-stream handling and from toggleMute; without dedup we'd
+    // race multiple rAF loops + AudioContexts for the same playerId.
+    const analysersRef = useRef<Map<number, { ctx: AudioContext; rafId: number | null }>>(new Map());
 
     // Generate unique peer ID for this player in this room
     const getPeerId = useCallback((playerId: number) => `${roomCode}-player-${playerId}`, [roomCode]);
@@ -141,7 +145,22 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
     //     the indicator doesn't strobe between syllables
     //   - throttled to ~20Hz updates and only re-renders when the boolean
     //     for this player actually flips
+    const teardownAnalyser = useCallback((playerId: number) => {
+        const existing = analysersRef.current.get(playerId);
+        if (!existing) {
+            return;
+        }
+        analysersRef.current.delete(playerId);
+        if (existing.rafId !== null) {
+            cancelAnimationFrame(existing.rafId);
+        }
+        existing.ctx.close().catch(() => undefined);
+    }, []);
+
     const setupAudioLevelDetection = useCallback((stream: MediaStream, playerId: number) => {
+        // Stop any prior analyser for this player before installing a new one.
+        teardownAnalyser(playerId);
+
         try {
             const audioContext = new AudioContext();
             const source = audioContext.createMediaStreamSource(stream);
@@ -160,23 +179,26 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
             const HOLD_MS = 280;
             const TICK_MS = 50;
 
+            const entry: { ctx: AudioContext; rafId: number | null } = { ctx: audioContext, rafId: null };
+            analysersRef.current.set(playerId, entry);
+
             let speakingState = false;
             let stopHoldUntil = 0;
             let lastTickAt = 0;
-            let rafId: number | null = null;
 
             const tick = () => {
+                // If this analyser was retired (replaced or torn down), stop ticking.
+                if (analysersRef.current.get(playerId) !== entry) {
+                    return;
+                }
                 if (!callsRef.current.has(playerId) && playerId !== currentPlayerId) {
-                    if (rafId !== null) {
-                        cancelAnimationFrame(rafId);
-                    }
-                    audioContext.close().catch(() => undefined);
+                    teardownAnalyser(playerId);
                     return;
                 }
 
                 const now = performance.now();
                 if (now - lastTickAt < TICK_MS) {
-                    rafId = requestAnimationFrame(tick);
+                    entry.rafId = requestAnimationFrame(tick);
                     return;
                 }
                 lastTickAt = now;
@@ -213,13 +235,13 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
                     });
                 }
 
-                rafId = requestAnimationFrame(tick);
+                entry.rafId = requestAnimationFrame(tick);
             };
-            rafId = requestAnimationFrame(tick);
+            entry.rafId = requestAnimationFrame(tick);
         } catch (err) {
             console.error('Failed to setup audio level detection:', err);
         }
-    }, [currentPlayerId]);
+    }, [currentPlayerId, teardownAnalyser]);
 
     // Handle incoming stream
     const handleStream = useCallback((stream: MediaStream, playerId: number) => {
@@ -315,13 +337,15 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
             existingAudio.remove();
         }
 
+        teardownAnalyser(playerId);
+
         // Remove remote video
         setRemoteVideos(prev => {
             const next = new Map(prev);
             next.delete(playerId);
             return next;
         });
-    }, []);
+    }, [teardownAnalyser]);
 
     // Call another player. Only called from the polite-peer initiator side;
     // glare cannot happen. Existing-call check and retry decisions are made
@@ -750,6 +774,10 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
             cleanupCall(playerId);
         });
 
+        // Tear down any analysers still alive (e.g., the local-mic one for
+        // currentPlayerId, which has no entry in callsRef).
+        Array.from(analysersRef.current.keys()).forEach(teardownAnalyser);
+
         if (peerRef.current) {
             peerRef.current.destroy();
             peerRef.current = null;
@@ -781,7 +809,7 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
         setConnectionStates(new Map());
         setRemoteVideos(new Map());
         setLocalVideoStream(null);
-    }, [cleanupCall]);
+    }, [cleanupCall, teardownAnalyser]);
 
     // Re-establish all calls (used when video state changes)
     const reestablishCalls = useCallback(() => {
@@ -1015,7 +1043,7 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
         };
     }, []);
 
-    const value: VoiceChatContextValue = {
+    const value = useMemo<VoiceChatContextValue>(() => ({
         isConnected,
         isConnecting,
         error,
@@ -1032,7 +1060,24 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
         localVideoStream,
         connect,
         disconnect,
-    };
+    }), [
+        isConnected,
+        isConnecting,
+        error,
+        isMuted,
+        isVideoEnabled,
+        hasMicrophoneAccess,
+        hasCameraAccess,
+        toggleMute,
+        toggleVideo,
+        players,
+        speakingPlayers,
+        remoteVideos,
+        connectionStates,
+        localVideoStream,
+        connect,
+        disconnect,
+    ]);
 
     return (
         <VoiceChatContext.Provider value={value}>

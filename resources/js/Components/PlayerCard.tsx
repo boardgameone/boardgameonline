@@ -52,19 +52,35 @@ export default function PlayerCard({
     const showLocalVideo = isCurrentUser && localVideoStream && currentUserHasVideo;
     const hasVideo = showRemoteVideo || showLocalVideo;
 
-    // Set video srcObject for remote video
+    // Keep video elements mounted; toggle visibility via class so the playback
+    // pipeline isn't torn down on every stream-availability flick.
     useEffect(() => {
-        if (videoRef.current && remoteVideoStream && showRemoteVideo) {
-            videoRef.current.srcObject = remoteVideoStream;
+        const el = videoRef.current;
+        if (!el) {
+            return;
         }
-    }, [remoteVideoStream, showRemoteVideo]);
+        if (remoteVideoStream) {
+            if (el.srcObject !== remoteVideoStream) {
+                el.srcObject = remoteVideoStream;
+            }
+        } else if (el.srcObject) {
+            el.srcObject = null;
+        }
+    }, [remoteVideoStream]);
 
-    // Set video srcObject for local video
     useEffect(() => {
-        if (localVideoRef.current && localVideoStream && showLocalVideo) {
-            localVideoRef.current.srcObject = localVideoStream;
+        const el = localVideoRef.current;
+        if (!el) {
+            return;
         }
-    }, [localVideoStream, showLocalVideo]);
+        if (localVideoStream) {
+            if (el.srcObject !== localVideoStream) {
+                el.srcObject = localVideoStream;
+            }
+        } else if (el.srcObject) {
+            el.srcObject = null;
+        }
+    }, [localVideoStream]);
 
     const handleToggleMute = async (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -113,42 +129,33 @@ export default function PlayerCard({
                     onClick={handleVideoClick}
                     title={hasVideo ? 'Click to maximize' : undefined}
                 >
-                    {/* Remote Video Feed */}
-                    {showRemoteVideo && (
-                        <>
-                            <video
-                                ref={videoRef}
-                                autoPlay
-                                playsInline
-                                muted
-                                className={`absolute inset-0 object-cover rounded-full scale-x-[-1] ${
-                                    compact ? 'h-10 w-10' : 'h-12 w-12'
-                                }`}
-                            />
-                            {/* Maximize overlay on hover */}
-                            <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                <MaximizeIcon className="h-5 w-5 text-white" />
-                            </div>
-                        </>
-                    )}
+                    {/* Remote Video Feed (always mounted; visibility toggled) */}
+                    <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className={`absolute inset-0 object-cover rounded-full scale-x-[-1] ${
+                            compact ? 'h-10 w-10' : 'h-12 w-12'
+                        } ${showRemoteVideo ? '' : 'hidden'}`}
+                    />
 
-                    {/* Local Video Preview (for current user) */}
-                    {showLocalVideo && (
-                        <>
-                            <video
-                                ref={localVideoRef}
-                                autoPlay
-                                playsInline
-                                muted
-                                className={`absolute inset-0 object-cover rounded-full scale-x-[-1] ${
-                                    compact ? 'h-10 w-10' : 'h-12 w-12'
-                                }`}
-                            />
-                            {/* Maximize overlay on hover */}
-                            <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                <MaximizeIcon className="h-5 w-5 text-white" />
-                            </div>
-                        </>
+                    {/* Local Video Preview for current user (always mounted; visibility toggled) */}
+                    <video
+                        ref={localVideoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className={`absolute inset-0 object-cover rounded-full scale-x-[-1] ${
+                            compact ? 'h-10 w-10' : 'h-12 w-12'
+                        } ${showLocalVideo ? '' : 'hidden'}`}
+                    />
+
+                    {/* Hover overlay (only shown over a visible video) */}
+                    {hasVideo && (
+                        <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                            <MaximizeIcon className="h-5 w-5 text-white" />
+                        </div>
                     )}
 
                     {/* Avatar (shown when no video) */}
