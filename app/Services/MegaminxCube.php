@@ -260,8 +260,11 @@ final class MegaminxCube
         $normals = self::faceNormals();
         $params = [];
         foreach ($normals as $f => $axis) {
-            $params[self::moveKey($f, 'cw')] = [$axis, $angle];
-            $params[self::moveKey($f, 'ccw')] = [$axis, -$angle];
+            // Right-hand rule about an OUTWARD face normal: positive angle is
+            // counter-clockwise as seen from outside the polyhedron. So the
+            // "CW" move (clockwise to the player) is a negative rotation.
+            $params[self::moveKey($f, 'cw')] = [$axis, -$angle];
+            $params[self::moveKey($f, 'ccw')] = [$axis, $angle];
         }
 
         return $params;
@@ -278,8 +281,11 @@ final class MegaminxCube
 
         $perms = [];
         for ($f = 0; $f < self::FACES; $f++) {
-            $perms[self::moveKey($f, 'cw')] = self::buildFacePermutation($f, 1);
-            $perms[self::moveKey($f, 'ccw')] = self::buildFacePermutation($f, -1);
+            // Face vertices are stored CCW from outside, so vertex (i+1)%5 is
+            // CCW of vertex i. CW (clockwise to the viewer) therefore needs
+            // shift = -1: vertex i moves to where vertex (i-1) used to be.
+            $perms[self::moveKey($f, 'cw')] = self::buildFacePermutation($f, -1);
+            $perms[self::moveKey($f, 'ccw')] = self::buildFacePermutation($f, 1);
         }
 
         return $perms;

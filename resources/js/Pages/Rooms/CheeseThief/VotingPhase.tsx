@@ -119,6 +119,7 @@ export default function VotingPhase({ gameState, roomCode, gameSlug }: VotingPha
                     onPlayerClick={handlePlayerClick}
                     clickablePlayerIds={canVote ? votablePlayerIds : []}
                     selectedPlayerId={selectedPlayer?.id ?? null}
+                    actionLabel={canVote ? 'vote' : undefined}
                     showDice={true}
                 />
             </div>

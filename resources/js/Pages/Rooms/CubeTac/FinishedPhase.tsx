@@ -9,10 +9,15 @@ import { Suspense, lazy, useMemo, type CSSProperties } from 'react';
 import { Marks, indexOf } from '@/lib/rubikCube';
 
 const CubeScene = lazy(() => import('./CubeScene'));
+const MegaminxScene = lazy(() => import('./MegaminxScene'));
 
 export interface WinningLineData {
     face: number;
-    cells: Array<[number, number]>;
+    /**
+     * Cube variant: list of `[row, col]` pairs (typically 3) on a single face.
+     * Megaminx variant: list of 3 flat sticker indices on a single face.
+     */
+    cells: Array<[number, number]> | number[];
     player: number;
 }
 
@@ -36,6 +41,8 @@ export interface FinishedPhaseProps {
     onRematch?: () => void;
     onLeave?: () => void;
     leaveLabel?: string;
+    /** Which playing surface to render. Defaults to 'cube'. */
+    variant?: 'cube' | 'megaminx';
 }
 
 export default function FinishedPhase({
@@ -48,12 +55,20 @@ export default function FinishedPhase({
     onRematch,
     onLeave,
     leaveLabel = 'Back to menu',
+    variant = 'cube',
 }: FinishedPhaseProps) {
+    const isMegaminx = variant === 'megaminx';
     const winningIndices = useMemo(() => {
         const set = new Set<number>();
         for (const line of winningLines) {
-            for (const [r, c] of line.cells) {
-                set.add(indexOf(line.face, r, c));
+            for (const cell of line.cells) {
+                if (Array.isArray(cell)) {
+                    // Cube line: [row, col] pair on `line.face`.
+                    set.add(indexOf(line.face, cell[0], cell[1]));
+                } else if (typeof cell === 'number') {
+                    // Megaminx line: cell is a flat sticker index already.
+                    set.add(cell);
+                }
             }
         }
         return set;
@@ -88,13 +103,23 @@ export default function FinishedPhase({
         <div className="relative flex h-full w-full flex-col overflow-hidden">
             <div className="relative flex-1 min-h-0">
                 <Suspense fallback={<div className="h-full" />}>
-                    <CubeScene
-                        marks={marks}
-                        playerColors={playerColors}
-                        designs={playerDesigns}
-                        winningIndices={winningIndices}
-                        interactive={false}
-                    />
+                    {isMegaminx ? (
+                        <MegaminxScene
+                            marks={marks}
+                            playerColors={playerColors}
+                            designs={playerDesigns}
+                            winningIndices={winningIndices}
+                            interactive={false}
+                        />
+                    ) : (
+                        <CubeScene
+                            marks={marks}
+                            playerColors={playerColors}
+                            designs={playerDesigns}
+                            winningIndices={winningIndices}
+                            interactive={false}
+                        />
+                    )}
                 </Suspense>
 
                 {/* Reveal overlay */}

@@ -97,6 +97,7 @@ export default function AccomplicePhase({ gameState, roomCode, gameSlug }: Accom
                     onPlayerClick={handlePlayerClick}
                     clickablePlayerIds={canSelectAccomplice ? selectablePlayerIds : []}
                     selectedPlayerId={selectedPlayer?.id ?? null}
+                    actionLabel={canSelectAccomplice ? 'pick' : undefined}
                     showDice={true}
                 />
             </div>
