@@ -241,12 +241,21 @@ export default function VoiceGalleryPanel({ currentPlayerId }: VoiceGalleryPanel
         return null;
     }
 
-    const orderedPlayers: VoicePlayer[] = [
-        ...voiceChat.players.filter((p) => p.id === currentPlayerId),
-        ...voiceChat.players.filter((p) => p.id !== currentPlayerId),
-    ];
+    const isPlayerSpeaking = (p: VoicePlayer): boolean => {
+        const muted = p.id === currentPlayerId ? voiceChat.isMuted : p.is_muted;
+        return !muted && voiceChat.speakingPlayers.has(p.id);
+    };
 
-    const anyoneSpeaking = orderedPlayers.some((p) => voiceChat.speakingPlayers.has(p.id));
+    const self = voiceChat.players.filter((p) => p.id === currentPlayerId);
+    const otherSpeaking = voiceChat.players.filter(
+        (p) => p.id !== currentPlayerId && isPlayerSpeaking(p),
+    );
+    const otherQuiet = voiceChat.players.filter(
+        (p) => p.id !== currentPlayerId && !isPlayerSpeaking(p),
+    );
+    const orderedPlayers: VoicePlayer[] = [...self, ...otherSpeaking, ...otherQuiet];
+
+    const anyoneSpeaking = orderedPlayers.some(isPlayerSpeaking);
 
     const modalPlayer = modalPlayerId !== null ? orderedPlayers.find((p) => p.id === modalPlayerId) : null;
     const modalIsLocal = modalPlayerId === currentPlayerId;
@@ -274,7 +283,11 @@ export default function VoiceGalleryPanel({ currentPlayerId }: VoiceGalleryPanel
                 onPointerUp={handleHeaderPointerUp}
                 onPointerCancel={handleHeaderPointerUp}
                 style={positionStyle}
-                className="fixed z-30 flex cursor-move touch-none flex-col items-center gap-2 rounded-l-xl rounded-r-md bg-gray-900/85 px-2 py-3 text-white shadow-xl backdrop-blur-sm"
+                className={`fixed z-30 flex cursor-move touch-none flex-col items-center gap-2 rounded-l-xl rounded-r-md bg-gray-900/85 px-2 py-3 text-white shadow-xl backdrop-blur-sm transition ${
+                    anyoneSpeaking
+                        ? 'ring-2 ring-green-400 shadow-[0_0_18px_rgba(74,222,128,0.7)]'
+                        : ''
+                }`}
                 title="Drag to move • click chevron to expand"
             >
                 <button
@@ -292,7 +305,7 @@ export default function VoiceGalleryPanel({ currentPlayerId }: VoiceGalleryPanel
                     </span>
                 </div>
                 {anyoneSpeaking && (
-                    <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.9)]" />
+                    <span className="h-3 w-3 animate-pulse rounded-full bg-green-400 shadow-[0_0_10px_rgba(74,222,128,1)]" />
                 )}
             </div>
         );
@@ -336,7 +349,7 @@ export default function VoiceGalleryPanel({ currentPlayerId }: VoiceGalleryPanel
                             key={player.id}
                             player={player}
                             isCurrentUser={player.id === currentPlayerId}
-                            isSpeaking={voiceChat.speakingPlayers.has(player.id)}
+                            isSpeaking={isPlayerSpeaking(player)}
                             remoteStream={voiceChat.remoteVideos.get(player.id) ?? null}
                             localStream={voiceChat.localVideoStream}
                             currentUserMuted={voiceChat.isMuted}
@@ -414,9 +427,11 @@ function VoiceTile({
 
     return (
         <div
-            className={`relative aspect-video w-full shrink-0 overflow-hidden rounded-xl bg-gray-800 ${
-                tileClickable ? 'cursor-pointer' : ''
-            }`}
+            className={`relative aspect-video w-full shrink-0 overflow-hidden rounded-xl bg-gray-800 transition-transform duration-150 ${
+                isSpeaking
+                    ? 'z-10 scale-[1.04] shadow-[0_0_28px_6px_rgba(74,222,128,0.65)]'
+                    : ''
+            } ${tileClickable ? 'cursor-pointer' : ''}`}
             onClick={tileClickable ? onMaximize : undefined}
             title={tileClickable ? 'Click to maximize' : undefined}
         >
@@ -431,7 +446,9 @@ function VoiceTile({
             ) : (
                 <div className="flex h-full w-full items-center justify-center">
                     <div
-                        className="flex h-16 w-16 items-center justify-center rounded-full text-2xl font-bold text-white shadow-md"
+                        className={`flex items-center justify-center rounded-full text-2xl font-bold text-white shadow-md transition-all duration-150 ${
+                            isSpeaking ? 'h-20 w-20 ring-4 ring-green-300/80' : 'h-16 w-16'
+                        }`}
                         style={{ backgroundColor: player.avatar_color }}
                     >
                         {player.nickname.charAt(0).toUpperCase()}
@@ -440,7 +457,10 @@ function VoiceTile({
             )}
 
             {isSpeaking && (
-                <div className="pointer-events-none absolute inset-0 animate-pulse rounded-xl ring-4 ring-green-400 shadow-[0_0_18px_rgba(74,222,128,0.7)_inset]" />
+                <>
+                    <div className="pointer-events-none absolute inset-0 rounded-xl ring-[5px] ring-green-400" />
+                    <div className="pointer-events-none absolute inset-0 animate-ping rounded-xl ring-2 ring-green-300/70" />
+                </>
             )}
 
             <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 to-transparent px-2 pb-1 pt-3">
