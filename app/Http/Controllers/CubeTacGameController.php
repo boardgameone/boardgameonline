@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\MarkMegaminxCellRequest;
 use App\Http\Requests\MarkStickerRequest;
 use App\Http\Requests\PickCubeTacDesignRequest;
 use App\Http\Requests\RotateCubeRequest;
+use App\Http\Requests\RotateMegaminxRequest;
 use App\Models\Game;
 use App\Models\GamePlayer;
 use App\Models\GameRoom;
+use App\Services\MegaminxCube;
 use App\Services\RubikCube;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -26,6 +29,10 @@ class CubeTacGameController extends Controller
     private const MOVES_PER_PLAYER = 30;
 
     private const HISTORY_CAP = 20;
+
+    private const VARIANT_CUBE = 'cube';
+
+    private const VARIANT_MEGAMINX = 'megaminx';
 
     /**
      * Per-slot avatar color palette. Joiner N gets $colors[N]. Must be kept
@@ -122,7 +129,9 @@ class CubeTacGameController extends Controller
         /** @var list<int> $playerIds */
         $playerIds = $connectedPlayers->pluck('id')->values()->all();
 
-        $settings = $this->freshGameState($playerIds);
+        $settings = $this->variantOf($room) === self::VARIANT_MEGAMINX
+            ? $this->freshMegaminxState($playerIds)
+            : $this->freshGameState($playerIds);
 
         $room->update([
             'status' => 'playing',
@@ -142,6 +151,10 @@ class CubeTacGameController extends Controller
     {
         if ($room->game_id !== $game->id) {
             abort(404, 'Room not found for this game.');
+        }
+
+        if ($this->variantOf($room) !== self::VARIANT_CUBE) {
+            return back()->withErrors(['error' => 'This room is not playing the cube variant.']);
         }
 
         $currentPlayer = $this->findCurrentPlayer($room);
@@ -196,7 +209,7 @@ class CubeTacGameController extends Controller
         $settings['last_action'] = $action;
         $settings = $this->appendHistory($settings, $action);
 
-        $settings = $this->finalizeAfterAction($settings, requireConfirm: true);
+        $settings = $this->finalizeAfterAction($settings, self::VARIANT_CUBE, requireConfirm: true);
 
         $room->update([
             'settings' => $settings,
@@ -217,6 +230,10 @@ class CubeTacGameController extends Controller
     {
         if ($room->game_id !== $game->id) {
             abort(404, 'Room not found for this game.');
+        }
+
+        if ($this->variantOf($room) !== self::VARIANT_CUBE) {
+            return back()->withErrors(['error' => 'This room is not playing the cube variant.']);
         }
 
         $currentPlayer = $this->findCurrentPlayer($room);
@@ -261,7 +278,7 @@ class CubeTacGameController extends Controller
         $settings['last_action'] = $action;
         $settings = $this->appendHistory($settings, $action);
 
-        $settings = $this->finalizeAfterAction($settings, requireConfirm: false);
+        $settings = $this->finalizeAfterAction($settings, self::VARIANT_CUBE, requireConfirm: false);
 
         $room->update([
             'settings' => $settings,
@@ -305,7 +322,9 @@ class CubeTacGameController extends Controller
             ? array_merge(array_slice($previousIds, 1), [$previousIds[0]])
             : $previousIds;
 
-        $newSettings = $this->freshGameState($rotated);
+        $newSettings = $this->variantOf($room) === self::VARIANT_MEGAMINX
+            ? $this->freshMegaminxState($rotated)
+            : $this->freshGameState($rotated);
 
         $room->update([
             'status' => 'playing',
@@ -401,9 +420,15 @@ class CubeTacGameController extends Controller
         $moveLimit = $settings['move_limit']
             ?? (count($playerIds) > 0 ? self::MOVES_PER_PLAYER * count($playerIds) : self::MOVES_PER_PLAYER * 2);
 
+        $variant = $this->variantOf($room);
+        $emptyMarks = $variant === self::VARIANT_MEGAMINX
+            ? MegaminxCube::initialMarks()
+            : RubikCube::initialMarks();
+
         return [
             'status' => $room->status,
-            'marks' => $settings['marks'] ?? RubikCube::initialMarks(),
+            'variant' => $variant,
+            'marks' => $settings['marks'] ?? $emptyMarks,
             'current_turn' => $settings['current_turn'] ?? 0,
             'move_count' => $settings['move_count'] ?? 0,
             'move_limit' => $moveLimit,
@@ -446,18 +471,212 @@ class CubeTacGameController extends Controller
     }
 
     /**
+     * Initial state for a Megaminx-variant game. Same shape as the cube
+     * variant but the marks array is 132 cells instead of 54 (12 faces ×
+     * 11 cells, with the centers — slot 0 of each face — never marked).
+     *
+     * @param  list<int>  $playerIds
+     * @return array<string, mixed>
+     */
+    private function freshMegaminxState(array $playerIds): array
+    {
+        $count = count($playerIds);
+
+        return [
+            'marks' => MegaminxCube::initialMarks(),
+            'current_turn' => 0,
+            'move_count' => 0,
+            'move_limit' => self::MOVES_PER_PLAYER * max(1, $count),
+            'winner' => null,
+            'winning_lines' => [],
+            'last_action' => null,
+            'move_history' => [],
+            'pending_action' => false,
+            'player_ids' => array_values($playerIds),
+        ];
+    }
+
+    /**
+     * Mark a cell on the Megaminx with the current player's slot index.
+     * Same flow as `mark()` but for the 12-face × 11-cell shape, and only
+     * legal in rooms whose `variant` is `megaminx`.
+     */
+    public function megaMark(MarkMegaminxCellRequest $request, Game $game, GameRoom $room): RedirectResponse
+    {
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
+        if ($this->variantOf($room) !== self::VARIANT_MEGAMINX) {
+            return back()->withErrors(['error' => 'This room is not playing the megaminx variant.']);
+        }
+
+        $currentPlayer = $this->findCurrentPlayer($room);
+
+        if (! $currentPlayer) {
+            abort(403, 'You are not a player in this room.');
+        }
+
+        if (! $room->isPlaying()) {
+            return back()->withErrors(['error' => 'Game is not in progress.']);
+        }
+
+        $settings = $room->settings ?? [];
+
+        if (($settings['winner'] ?? null) !== null) {
+            return back()->withErrors(['error' => 'Game is already over.']);
+        }
+
+        $expectedPlayerId = $this->expectedPlayerId($settings);
+        if ($expectedPlayerId !== $currentPlayer->id) {
+            return back()->withErrors(['error' => 'It is not your turn.']);
+        }
+
+        if ($settings['pending_action'] ?? false) {
+            return back()->withErrors(['error' => 'Confirm your turn before taking another action.']);
+        }
+
+        $face = (int) $request->validated('face');
+        $slot = (int) $request->validated('slot');
+        $idx = MegaminxCube::indexOf($face, $slot);
+
+        /** @var array<int, int|null> $marks */
+        $marks = $settings['marks'];
+        if ($marks[$idx] !== null) {
+            return back()->withErrors(['error' => 'That cell is already marked.']);
+        }
+
+        $playerSlot = (int) $settings['current_turn'];
+        $marks[$idx] = $playerSlot;
+        $settings['marks'] = $marks;
+        $settings['move_count'] = ($settings['move_count'] ?? 0) + 1;
+
+        $action = [
+            'type' => 'mega_mark',
+            'player' => $playerSlot,
+            'face' => $face,
+            'slot' => $slot,
+            'move_id' => $settings['move_count'],
+        ];
+        $settings['last_action'] = $action;
+        $settings = $this->appendHistory($settings, $action);
+
+        $settings = $this->finalizeAfterAction($settings, self::VARIANT_MEGAMINX, requireConfirm: true);
+
+        $room->update([
+            'settings' => $settings,
+            'winner' => $settings['winner'] !== null ? (string) $settings['winner'] : null,
+            'status' => $settings['winner'] !== null ? 'finished' : 'playing',
+            'ended_at' => $settings['winner'] !== null ? now() : null,
+        ]);
+
+        $this->recordGameEnd($room, $settings);
+
+        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
+    }
+
+    /**
+     * Rotate a Megaminx face 72° in the requested direction. Auto-advances
+     * the turn (no Confirm Turn step), mirroring `rotate()` for the cube.
+     */
+    public function megaRotate(RotateMegaminxRequest $request, Game $game, GameRoom $room): RedirectResponse
+    {
+        if ($room->game_id !== $game->id) {
+            abort(404, 'Room not found for this game.');
+        }
+
+        if ($this->variantOf($room) !== self::VARIANT_MEGAMINX) {
+            return back()->withErrors(['error' => 'This room is not playing the megaminx variant.']);
+        }
+
+        $currentPlayer = $this->findCurrentPlayer($room);
+
+        if (! $currentPlayer) {
+            abort(403, 'You are not a player in this room.');
+        }
+
+        if (! $room->isPlaying()) {
+            return back()->withErrors(['error' => 'Game is not in progress.']);
+        }
+
+        $settings = $room->settings ?? [];
+
+        if (($settings['winner'] ?? null) !== null) {
+            return back()->withErrors(['error' => 'Game is already over.']);
+        }
+
+        $expectedPlayerId = $this->expectedPlayerId($settings);
+        if ($expectedPlayerId !== $currentPlayer->id) {
+            return back()->withErrors(['error' => 'It is not your turn.']);
+        }
+
+        if ($settings['pending_action'] ?? false) {
+            return back()->withErrors(['error' => 'Confirm your turn before taking another action.']);
+        }
+
+        $face = (int) $request->validated('face');
+        /** @var 'cw'|'ccw' $direction */
+        $direction = $request->validated('direction');
+
+        /** @var array<int, int|null> $marks */
+        $marks = $settings['marks'];
+
+        $settings['marks'] = MegaminxCube::apply($face, $direction, $marks);
+        $settings['move_count'] = ($settings['move_count'] ?? 0) + 1;
+
+        $action = [
+            'type' => 'mega_rotate',
+            'player' => (int) $settings['current_turn'],
+            'face' => $face,
+            'direction' => $direction,
+            'move_id' => $settings['move_count'],
+        ];
+        $settings['last_action'] = $action;
+        $settings = $this->appendHistory($settings, $action);
+
+        $settings = $this->finalizeAfterAction($settings, self::VARIANT_MEGAMINX, requireConfirm: false);
+
+        $room->update([
+            'settings' => $settings,
+            'winner' => $settings['winner'] !== null ? (string) $settings['winner'] : null,
+            'status' => $settings['winner'] !== null ? 'finished' : 'playing',
+            'ended_at' => $settings['winner'] !== null ? now() : null,
+        ]);
+
+        $this->recordGameEnd($room, $settings);
+
+        return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
+    }
+
+    /**
+     * Resolve the active variant for a room. Defaults to "cube" for rows
+     * created before the variant column existed.
+     *
+     * @return self::VARIANT_CUBE|self::VARIANT_MEGAMINX
+     */
+    private function variantOf(GameRoom $room): string
+    {
+        return $room->variant === self::VARIANT_MEGAMINX
+            ? self::VARIANT_MEGAMINX
+            : self::VARIANT_CUBE;
+    }
+
+    /**
      * After a mark or rotate: check win / draw. If the game continues,
      * either auto-advance the turn (rotate) or flag `pending_action`
      * so the UI shows a Confirm Turn button (mark).
      *
      * @param  array<string, mixed>  $settings
+     * @param  self::VARIANT_CUBE|self::VARIANT_MEGAMINX  $variant
      * @return array<string, mixed>
      */
-    private function finalizeAfterAction(array $settings, bool $requireConfirm): array
+    private function finalizeAfterAction(array $settings, string $variant, bool $requireConfirm): array
     {
         /** @var array<int, int|null> $marks */
         $marks = $settings['marks'];
-        $lines = RubikCube::winningLines($marks);
+        $lines = $variant === self::VARIANT_MEGAMINX
+            ? MegaminxCube::winningLines($marks)
+            : RubikCube::winningLines($marks);
         $currentSlot = (int) $settings['current_turn'];
 
         if (count($lines) > 0) {
@@ -479,8 +698,10 @@ class CubeTacGameController extends Controller
 
         // Draw on move limit OR full board
         $moveLimit = (int) ($settings['move_limit'] ?? self::MOVES_PER_PLAYER * 2);
-        if (($settings['move_count'] ?? 0) >= $moveLimit
-            || RubikCube::isComplete($marks)) {
+        $isFull = $variant === self::VARIANT_MEGAMINX
+            ? MegaminxCube::isComplete($marks)
+            : RubikCube::isComplete($marks);
+        if (($settings['move_count'] ?? 0) >= $moveLimit || $isFull) {
             $settings['winner'] = 'draw';
             $settings['winning_lines'] = [];
             $settings['pending_action'] = false;
@@ -543,11 +764,14 @@ class CubeTacGameController extends Controller
         }
 
         $last = $settings['last_action'] ?? null;
-        if (! is_array($last) || ($last['type'] ?? null) !== 'mark') {
+        $lastType = is_array($last) ? ($last['type'] ?? null) : null;
+        if ($lastType !== 'mark' && $lastType !== 'mega_mark') {
             return back()->withErrors(['error' => 'Only marks can be undone.']);
         }
 
-        $idx = RubikCube::indexOf((int) $last['face'], (int) $last['row'], (int) $last['col']);
+        $idx = $lastType === 'mega_mark'
+            ? MegaminxCube::indexOf((int) $last['face'], (int) $last['slot'])
+            : RubikCube::indexOf((int) $last['face'], (int) $last['row'], (int) $last['col']);
         /** @var array<int, int|null> $marks */
         $marks = $settings['marks'];
         $marks[$idx] = null;

@@ -76,6 +76,17 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
         );
     };
 
+    const variant: 'cube' | 'megaminx' = room.variant === 'megaminx' ? 'megaminx' : 'cube';
+
+    const handlePickVariant = (next: 'cube' | 'megaminx') => {
+        if (next === variant) return;
+        router.post(
+            route('rooms.pickVariant', [gameSlug, room.room_code]),
+            { variant: next },
+            { preserveScroll: true, preserveState: true },
+        );
+    };
+
     // Map of design-index → holder player id, so the picker can dim
     // swatches taken by other players. Includes disconnected holders so a
     // reconnect keeps their glyph intact.
@@ -147,6 +158,40 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
                             />
                         );
                     })}
+                </div>
+
+                {/* Variant picker — host chooses the playing surface; locked once the match starts. */}
+                <div className="mt-2 flex flex-col items-center gap-2">
+                    <div className="text-[10px] font-black uppercase tracking-[0.35em] text-yellow-900/70 dark:text-yellow-300/70">
+                        Playing surface
+                    </div>
+                    <div className="inline-flex rounded-full border-2 border-yellow-400 bg-white/80 p-1 shadow-md dark:bg-gray-800/80 dark:border-yellow-600/60">
+                        {(['cube', 'megaminx'] as const).map((v) => {
+                            const selected = v === variant;
+                            const label = v === 'cube' ? 'Cube · 6 faces' : 'Megaminx · 12 faces';
+                            return (
+                                <button
+                                    key={v}
+                                    type="button"
+                                    onClick={isHost ? () => handlePickVariant(v) : undefined}
+                                    disabled={!isHost}
+                                    aria-pressed={selected}
+                                    className={`rounded-full px-4 py-1.5 text-xs font-black uppercase tracking-[0.18em] transition ${
+                                        selected
+                                            ? 'bg-linear-to-r from-orange-500 to-pink-500 text-white shadow-md'
+                                            : 'text-yellow-900 hover:bg-yellow-100/70 dark:text-yellow-300 dark:hover:bg-yellow-900/30'
+                                    } ${!isHost ? 'cursor-not-allowed opacity-70' : ''}`}
+                                >
+                                    {label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    {!isHost && (
+                        <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-yellow-900/50 dark:text-yellow-300/50">
+                            Host picks the variant
+                        </div>
+                    )}
                 </div>
 
                 {canStart ? (

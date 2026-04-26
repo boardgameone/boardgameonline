@@ -726,6 +726,27 @@ class GameRoomController extends Controller
                 $room->update(['cheese_stolen_at_hour' => $expiredHour]);
             }
 
+            // Auto-peek: if exactly one mouse was awake and they didn't peek manually
+            // before the timer expired, pick a random other mouse for them. They never
+            // get to "waste" their alone hour.
+            if ($room->playerWokeUpAlone($expiredHour)) {
+                $aloneMouse = $room->playersAtHour($expiredHour)->first();
+                if ($aloneMouse && ! $aloneMouse->hasPeekedAtHour($expiredHour)) {
+                    $target = $room->connectedPlayers()
+                        ->where('id', '!=', $aloneMouse->id)
+                        ->whereNotNull('die_value')
+                        ->inRandomOrder()
+                        ->first();
+                    if ($target) {
+                        $aloneMouse->recordPeek(
+                            $target->id,
+                            (int) $target->die_value,
+                            $expiredHour,
+                        );
+                    }
+                }
+            }
+
             if ($expiredHour === 6) {
                 $room->update([
                     'current_hour' => 7,

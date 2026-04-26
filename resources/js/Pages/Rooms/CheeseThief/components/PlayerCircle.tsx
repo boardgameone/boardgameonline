@@ -11,6 +11,8 @@ interface PlayerCircleProps {
     clickablePlayerIds?: number[];
     showDice?: boolean;
     selectedPlayerId?: number | null;
+    /** Short verb shown as a "tap to ___" badge over clickable cards (e.g. "peek", "vote"). Hidden when omitted. */
+    actionLabel?: string;
 }
 
 export default function PlayerCircle({
@@ -22,6 +24,7 @@ export default function PlayerCircle({
     clickablePlayerIds = [],
     showDice = false,
     selectedPlayerId = null,
+    actionLabel,
 }: PlayerCircleProps) {
     const isNightPhase = currentHour >= 1 && currentHour <= 6;
     const isAwake = (playerId: number) => awakePlayerIds.includes(playerId);
@@ -38,8 +41,13 @@ export default function PlayerCircle({
                 // Awake-state markers are only meaningful when the viewer is awake too
                 // (the server already empties awakePlayerIds for sleeping viewers).
                 const showAwakeMarker = isNightPhase && awake && (isSelf || currentPlayerIsAwake);
-                // The die is "peeked" if the server revealed it for someone other than us.
-                const dieIsPeeked = !isSelf && player.die_value !== null && player.die_value !== undefined;
+                // The die is "peeked" only during gameplay (not at hour 9 results, where the
+                // server reveals everyone's die universally — that's not a peek).
+                const dieIsPeeked =
+                    !isSelf
+                    && currentHour !== 9
+                    && player.die_value !== null
+                    && player.die_value !== undefined;
 
                 return (
                     <button
@@ -63,12 +71,12 @@ export default function PlayerCircle({
                             </span>
                         )}
 
-                        {clickable && !isSelected && (
+                        {clickable && !isSelected && actionLabel && (
                             <span
                                 className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-indigo-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow"
                                 aria-hidden
                             >
-                                tap to peek
+                                tap to {actionLabel}
                             </span>
                         )}
 
@@ -104,9 +112,14 @@ export default function PlayerCircle({
                                 `}
                                 title={dieIsPeeked ? 'You peeked at this mouse' : undefined}
                             >
-                                <DieDisplay value={player.die_value} size="sm" />
+                                <DieDisplay value={player.die_value} size="md" />
                                 {dieIsPeeked && (
-                                    <span className="absolute -top-1 -right-1 text-[10px]">{'\u{1F441}'}</span>
+                                    <span
+                                        className="absolute -top-2 -right-2 rounded-full bg-indigo-500 px-1 text-[10px] leading-tight text-white shadow"
+                                        title="Learned via peek"
+                                    >
+                                        {'\u{1F441}'}
+                                    </span>
                                 )}
                             </div>
                         )}

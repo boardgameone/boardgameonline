@@ -871,6 +871,101 @@ class CheeseThiefGameTest extends TestCase
         $response->assertSessionHasErrors('error');
     }
 
+    public function test_auto_peek_fires_when_alone_mouse_idles_through_their_hour(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+        $players = $data['players'];
+
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+        $this->rigThief($room, $players[2]);
+        $players[0]->update(['die_value' => 3]); // alone at hour 3
+        $players[1]->update(['die_value' => 5]);
+        $players[2]->update(['die_value' => 4]);
+        $players[3]->update(['die_value' => 6]);
+
+        Carbon::setTestNow(now());
+        $room->update(['current_hour' => 3, 'hour_started_at' => now(), 'cheese_stolen_at_hour' => null]);
+
+        // Idle past the hour timer so settleNight fires.
+        Carbon::setTestNow(now()->addSeconds(13));
+        $this->actingAs($players[0]->user)->get(route('rooms.show', [$room->game->slug, $room->room_code]));
+
+        $players[0]->refresh();
+        $peeked = $players[0]->getPeekedPlayers();
+        $this->assertNotEmpty($peeked, 'Auto-peek should have fired for the idling alone mouse');
+        $this->assertCount(1, $peeked);
+
+        // The peeked die value must match the actual die of the chosen target.
+        $targetId = (int) array_key_first($peeked);
+        $target = collect($players)->firstWhere('id', $targetId);
+        $this->assertNotNull($target);
+        $this->assertEquals($target->die_value, $peeked[$targetId]);
+        $this->assertNotEquals($players[0]->id, $targetId, 'Auto-peek must not target the alone mouse themselves');
+
+        Carbon::setTestNow();
+    }
+
+    public function test_auto_peek_does_not_overwrite_a_manual_peek(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+        $players = $data['players'];
+
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+        $this->rigThief($room, $players[2]);
+        $players[0]->update(['die_value' => 3]);
+        $players[1]->update(['die_value' => 5]);
+        $players[2]->update(['die_value' => 4]);
+        $players[3]->update(['die_value' => 6]);
+
+        Carbon::setTestNow(now());
+        $room->update(['current_hour' => 3, 'hour_started_at' => now()]);
+
+        // Manual peek at player 1.
+        $this->actingAs($players[0]->user)
+            ->post(route('rooms.peek', [$room->game->slug, $room->room_code]), [
+                'target_player_id' => $players[1]->id,
+            ]);
+
+        // Now let the hour expire — auto-peek must NOT add another entry.
+        Carbon::setTestNow(now()->addSeconds(13));
+        $this->actingAs($players[0]->user)->get(route('rooms.show', [$room->game->slug, $room->room_code]));
+
+        $players[0]->refresh();
+        $peeked = $players[0]->getPeekedPlayers();
+        $this->assertCount(1, $peeked);
+        $this->assertEquals($players[1]->die_value, $peeked[$players[1]->id]);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_auto_peek_does_not_fire_when_two_mice_share_the_hour(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+        $players = $data['players'];
+
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+        $this->rigThief($room, $players[2]);
+        $players[0]->update(['die_value' => 3]);
+        $players[1]->update(['die_value' => 3]); // shared
+        $players[2]->update(['die_value' => 4]);
+        $players[3]->update(['die_value' => 6]);
+
+        Carbon::setTestNow(now());
+        $room->update(['current_hour' => 3, 'hour_started_at' => now()]);
+        Carbon::setTestNow(now()->addSeconds(13));
+        $this->actingAs($players[0]->user)->get(route('rooms.show', [$room->game->slug, $room->room_code]));
+
+        $players[0]->refresh();
+        $players[1]->refresh();
+        $this->assertEmpty($players[0]->getPeekedPlayers());
+        $this->assertEmpty($players[1]->getPeekedPlayers());
+
+        Carbon::setTestNow();
+    }
+
     public function test_can_peek_flag_only_for_alone_mouse(): void
     {
         $data = $this->createGameWithPlayers(4);

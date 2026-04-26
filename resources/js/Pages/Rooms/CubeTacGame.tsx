@@ -10,12 +10,14 @@ import WaitingPhase from '@/Pages/Rooms/CubeTac/WaitingPhase';
 import PlayingPhase from '@/Pages/Rooms/CubeTac/PlayingPhase';
 import FinishedPhase from '@/Pages/Rooms/CubeTac/FinishedPhase';
 import type { CubeSceneHandle } from '@/Pages/Rooms/CubeTac/CubeScene';
+import type { MegaminxSceneHandle } from '@/Pages/Rooms/CubeTac/MegaminxScene';
 import { VoiceChatProvider } from '@/Contexts/VoiceChatContext';
 import VoiceGalleryPanel from '@/Components/VoiceGalleryPanel';
 import { GamePlayer, GameRoom, PageProps } from '@/types';
 import { Head, Link, router, useForm, usePoll } from '@inertiajs/react';
 import { FormEventHandler, ReactNode, useRef } from 'react';
 import { Marks, Move } from '@/lib/rubikCube';
+import type { Direction as MegaDirection } from '@/lib/megaminx';
 
 interface CubeTacPlayer {
     id: number;
@@ -29,14 +31,24 @@ interface CubeTacPlayer {
 
 interface CubeTacGameState {
     status: 'playing' | 'finished';
+    /** Which gameplay surface this room is using. Defaults to "cube" on legacy rows. */
+    variant: 'cube' | 'megaminx';
+    /**
+     * Length is 54 for the cube variant and 132 for the megaminx variant —
+     * the consumer must read `variant` before indexing.
+     */
     marks: Marks;
     current_turn: number;
     move_count: number;
     move_limit: number;
     winner: number | 'draw' | null;
+    /**
+     * For the cube variant, `cells` are `[row, col]` pairs on a single face.
+     * For the megaminx variant, `cells` are 3 flat sticker indices on the same face.
+     */
     winning_lines: Array<{
         face: number;
-        cells: Array<[number, number]>;
+        cells: Array<[number, number]> | [number, number, number];
         player: number;
     }>;
     last_action: Record<string, unknown> | null;
@@ -61,6 +73,9 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
     usePoll(2500, {}, { keepAlive: room.status !== 'finished' });
 
     const cubeRef = useRef<CubeSceneHandle>(null);
+    const megaRef = useRef<MegaminxSceneHandle>(null);
+
+    const variant: 'cube' | 'megaminx' = gameState?.variant ?? (room.variant === 'megaminx' ? 'megaminx' : 'cube');
 
     const gameSlug = room.game?.slug || 'cubetac';
     const isGuest = !auth.user;
@@ -92,6 +107,25 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
         router.post(
             route('rooms.cubetac.rotate', [gameSlug, room.room_code]),
             { move },
+            { preserveScroll: true, preserveState: true },
+        );
+    };
+
+    const handleMegaMark = (face: number, slot: number) => {
+        router.post(
+            route('rooms.cubetac.megaMark', [gameSlug, room.room_code]),
+            { face, slot },
+            { preserveScroll: true, preserveState: true },
+        );
+    };
+
+    const handleMegaRotate = (face: number, direction: MegaDirection) => {
+        // The megaminx scene's playMove is invoked by MegaminxPlayingPhase
+        // itself (see its internal handleRotate) so we don't need to call
+        // ref.current here.
+        router.post(
+            route('rooms.cubetac.megaRotate', [gameSlug, room.room_code]),
+            { face, direction },
             { preserveScroll: true, preserveState: true },
         );
     };
@@ -147,6 +181,8 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
     ) : gameState && room.status === 'playing' ? (
         <PlayingPhase
             cubeRef={cubeRef}
+            megaRef={megaRef}
+            variant={variant}
             marks={gameState.marks}
             currentTurn={gameState.current_turn}
             moveCount={gameState.move_count}
@@ -159,6 +195,8 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
             lastAction={gameState.last_action}
             onMark={handleMark}
             onRotate={handleRotate}
+            onMegaMark={handleMegaMark}
+            onMegaRotate={handleMegaRotate}
             onEndTurn={handleEndTurn}
             onUndoMark={handleUndoMark}
             onLeave={handleLeave}
@@ -166,9 +204,14 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
         />
     ) : gameState && room.status === 'finished' ? (
         <FinishedPhase
+            variant={variant}
             marks={gameState.marks}
             winner={gameState.winner ?? 'draw'}
-            winningLines={gameState.winning_lines}
+            winningLines={gameState.winning_lines.map((l) => ({
+                face: l.face,
+                cells: l.cells as Array<[number, number]> | number[],
+                player: l.player,
+            }))}
             players={gameState.players.map((p, slot) => ({
                 id: p?.id ?? null,
                 nickname: p?.nickname ?? `Player ${slot + 1}`,

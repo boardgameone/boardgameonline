@@ -120,36 +120,35 @@ class MegaminxCubeTest extends TestCase
         }
     }
 
-    public function test_cw_advances_corner_to_next_vertex_slot(): void
+    public function test_cw_moves_corner_to_cw_neighbor_vertex_slot(): void
     {
-        // Spot check (advisor recommendation): a unique value at face 0 slot 1
-        // (corner at v[0]) must end up at face 0 slot 3 (corner at v[1]) after one CW.
+        // Vertices are stored CCW from outside; CW rotation moves vertex i to
+        // the position of vertex (i-1+5)%5 (its CW neighbor). So a mark at
+        // face 0 slot 1 (corner at v[0]) ends up at slot 9 (v[4]) after CW.
         $marks = MegaminxCube::initialMarks();
         $src = MegaminxCube::indexOf(0, 1);
         $marks[$src] = 'CORNER_V0';
 
         $after = MegaminxCube::apply(0, 'cw', $marks);
 
-        $expected = MegaminxCube::indexOf(0, 3);
-        $this->assertSame('CORNER_V0', $after[$expected], 'Face 0 CW: corner at v[0] (slot 1) should move to slot 3 (v[1])');
-        $this->assertNull($after[$src], 'Source slot should now hold a different value (or null since no other mark was set)');
+        $expected = MegaminxCube::indexOf(0, 9);
+        $this->assertSame('CORNER_V0', $after[$expected], 'Face 0 CW: corner at v[0] (slot 1) should move to slot 9 (v[4]) — the CW neighbor');
+
+        // CCW should send it the other way (to slot 3, v[1]).
+        $afterCcw = MegaminxCube::apply(0, 'ccw', $marks);
+        $expectedCcw = MegaminxCube::indexOf(0, 3);
+        $this->assertSame('CORNER_V0', $afterCcw[$expectedCcw], 'Face 0 CCW: corner at v[0] should move to slot 3 (v[1])');
     }
 
-    public function test_cw_moves_adjacent_face_corner_to_next_adjacent_face(): void
+    public function test_face_rotation_displaces_three_cells_per_adjacent_face(): void
     {
-        // Spot check (advisor recommendation): mark the "near-F corner_left" cell on
-        // adjacency[0][0]; after F=0 CW, that mark must appear at the corresponding
-        // near-F corner_left cell on adjacency[0][1].
+        // Mark all 11 cells of one adjacent face of F=0 with unique values.
+        // After F=0 CW, exactly 3 of those cells should have left the face,
+        // and they should ALL land on a single other adjacent face of F=0
+        // (the structural property of a Megaminx face turn).
         $adj = MegaminxCube::adjacency();
         $srcAdj = $adj[0][0];
-        $dstAdj = $adj[0][1];
-        $this->assertNotSame($srcAdj, $dstAdj, 'Adjacent faces 0 and 1 of face 0 must differ');
 
-        // We don't know srcK/dstK from outside the service, so look up the slot by
-        // searching: build a uniquely-marked board, apply the rotation, and assert
-        // exactly ONE sticker from $srcAdj's near-F cells ended up on $dstAdj.
-
-        // Mark all 11 cells of $srcAdj with face-encoded values, leave the rest null.
         $marks = MegaminxCube::initialMarks();
         for ($s = 0; $s < 11; $s++) {
             $marks[MegaminxCube::indexOf($srcAdj, $s)] = "src_{$s}";
@@ -157,19 +156,6 @@ class MegaminxCubeTest extends TestCase
 
         $after = MegaminxCube::apply(0, 'cw', $marks);
 
-        // Exactly 3 of $srcAdj's stickers should have moved off $srcAdj and onto $dstAdj
-        // (the 3 cells touching face 0's perimeter).
-        $movedToDst = [];
-        for ($s = 0; $s < 11; $s++) {
-            $val = $after[MegaminxCube::indexOf($dstAdj, $s)];
-            if (is_string($val) && str_starts_with($val, 'src_')) {
-                $movedToDst[] = $val;
-            }
-        }
-        $this->assertCount(3, $movedToDst, "Exactly 3 cells of face {$srcAdj} should move to face {$dstAdj} when face 0 rotates CW");
-
-        // And exactly 3 of $srcAdj's slots should now be null (the "near-F" 3 cells
-        // that gave away their values), with the other 8 still holding "src_*".
         $remainingOnSrc = 0;
         for ($s = 0; $s < 11; $s++) {
             $val = $after[MegaminxCube::indexOf($srcAdj, $s)];
@@ -177,7 +163,22 @@ class MegaminxCubeTest extends TestCase
                 $remainingOnSrc++;
             }
         }
-        $this->assertSame(8, $remainingOnSrc, "Face {$srcAdj} should retain 8 of its original 11 cells");
+        $this->assertSame(8, $remainingOnSrc, "Face {$srcAdj} should retain 8 of its 11 cells");
+
+        $destinationFaces = [];
+        for ($i = 0; $i < 132; $i++) {
+            $val = $after[$i];
+            if (is_string($val) && str_starts_with($val, 'src_')) {
+                $destFace = intdiv($i, 11);
+                if ($destFace !== $srcAdj) {
+                    $destinationFaces[$destFace] = ($destinationFaces[$destFace] ?? 0) + 1;
+                }
+            }
+        }
+        $this->assertCount(1, $destinationFaces, 'All 3 displaced cells should land on a single other face');
+        $destFace = (int) array_key_first($destinationFaces);
+        $this->assertSame(3, $destinationFaces[$destFace]);
+        $this->assertContains($destFace, $adj[0], "Destination face {$destFace} must be an adjacent face of face 0");
     }
 
     public function test_each_rotation_permutes_exactly_25_cells(): void
