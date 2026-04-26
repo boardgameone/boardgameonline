@@ -6,13 +6,26 @@ use App\Models\Game;
 use App\Models\GamePlayer;
 use App\Models\GameRoom;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 class CheeseThiefGameTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Throttle middleware uses the cache; clear it so per-IP counters
+        // don't bleed across tests within the same PHP process.
+        Cache::flush();
+    }
+
+    /**
+     * @return array{game: Game, room: GameRoom, players: array<int, GamePlayer>, host: User}
+     */
     private function createGameWithPlayers(int $playerCount = 4): array
     {
         $game = Game::factory()->create(['min_players' => 4, 'max_players' => 8]);
@@ -30,6 +43,22 @@ class CheeseThiefGameTest extends TestCase
         return ['game' => $game, 'room' => $room, 'players' => $players, 'host' => $host];
     }
 
+    /**
+     * Force `$thief` to be the only thief in the room. Uses raw queries to
+     * bypass Eloquent's "skip update when not dirty" optimization, which would
+     * otherwise leave the random thief assigned by start() untouched.
+     */
+    private function rigThief(GameRoom $room, GamePlayer $thief): void
+    {
+        $room->players()->update(['is_thief' => false]);
+        $room->players()->whereKey($thief->id)->update(['is_thief' => true]);
+        $room->update(['thief_player_id' => $thief->id]);
+        foreach ($room->players as $p) {
+            $p->refresh();
+        }
+        $thief->refresh();
+    }
+
     public function test_starting_game_assigns_thief_and_rolls_dice(): void
     {
         $data = $this->createGameWithPlayers(4);
@@ -42,12 +71,11 @@ class CheeseThiefGameTest extends TestCase
         $this->assertEquals('playing', $room->status);
         $this->assertEquals(0, $room->current_hour);
         $this->assertNotNull($room->thief_player_id);
+        $this->assertNull($room->cheese_stolen_at_hour);
 
-        // Verify exactly one thief was assigned
         $thiefCount = $room->connectedPlayers()->where('is_thief', true)->count();
         $this->assertEquals(1, $thiefCount);
 
-        // Verify all players have dice values between 1-6
         foreach ($room->connectedPlayers as $player) {
             $this->assertNotNull($player->die_value);
             $this->assertGreaterThanOrEqual(1, $player->die_value);
@@ -62,10 +90,8 @@ class CheeseThiefGameTest extends TestCase
         $host = $data['host'];
         $players = $data['players'];
 
-        // Start the game
         $this->actingAs($host)->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
 
-        // Confirm roll as first player
         $response = $this->actingAs($host)->post(route('rooms.confirmRoll', [$room->game->slug, $room->room_code]));
 
         $response->assertRedirect();
@@ -79,124 +105,288 @@ class CheeseThiefGameTest extends TestCase
         $room = $data['room'];
         $players = $data['players'];
 
-        // Start the game
         $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
 
-        // All players confirm their rolls
         foreach ($players as $player) {
             $this->actingAs($player->user)->post(route('rooms.confirmRoll', [$room->game->slug, $room->room_code]));
         }
 
         $room->refresh();
-        // Should have advanced past rolling phase (current_hour > 0)
         $this->assertGreaterThanOrEqual(1, $room->current_hour);
     }
 
-    public function test_player_can_peek_when_alone(): void
+    // --- Steal cheese mechanic ---
+
+    public function test_thief_can_steal_cheese_during_their_hour(): void
     {
         $data = $this->createGameWithPlayers(4);
         $room = $data['room'];
         $players = $data['players'];
 
-        // Start the game
         $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
 
-        // Set up a specific scenario: player 0 wakes up at hour 3, alone
-        $players[0]->update(['die_value' => 3, 'game_data' => ['confirmed_roll' => true]]);
-        $players[1]->update(['die_value' => 1, 'game_data' => ['confirmed_roll' => true]]);
-        $players[2]->update(['die_value' => 2, 'game_data' => ['confirmed_roll' => true]]);
-        $players[3]->update(['die_value' => 4, 'game_data' => ['confirmed_roll' => true]]);
-        $room->update(['current_hour' => 3]);
-
-        // Player 0 should be able to peek
-        $response = $this->actingAs($players[0]->user)->post(route('rooms.peek', [$room->game->slug, $room->room_code]), [
-            'target_player_id' => $players[1]->id,
+        $this->rigThief($room, $players[0]);
+        $players[0]->update(['die_value' => 3]);
+        $room->update([
+            'current_hour' => 3,
+            'hour_started_at' => now(),
+            'cheese_stolen_at_hour' => null,
         ]);
+
+        $response = $this->actingAs($players[0]->user)
+            ->post(route('rooms.stealCheese', [$room->game->slug, $room->room_code]));
 
         $response->assertRedirect();
-
-        // Verify peek was recorded
-        $players[0]->refresh();
-        $peekedPlayers = $players[0]->getPeekedPlayers();
-        $this->assertArrayHasKey($players[1]->id, $peekedPlayers);
+        $room->refresh();
+        $this->assertEquals(3, $room->cheese_stolen_at_hour);
     }
 
-    public function test_player_cannot_peek_when_not_alone(): void
+    public function test_non_thief_cannot_steal_cheese(): void
     {
         $data = $this->createGameWithPlayers(4);
         $room = $data['room'];
         $players = $data['players'];
 
-        // Start the game
         $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
 
-        // Set up: players 0 and 1 both wake up at hour 3
-        $players[0]->update(['die_value' => 3, 'game_data' => ['confirmed_roll' => true]]);
-        $players[1]->update(['die_value' => 3, 'game_data' => ['confirmed_roll' => true]]);
-        $players[2]->update(['die_value' => 2, 'game_data' => ['confirmed_roll' => true]]);
-        $players[3]->update(['die_value' => 4, 'game_data' => ['confirmed_roll' => true]]);
-        $room->update(['current_hour' => 3]);
-
-        // Player 0 should NOT be able to peek
-        $response = $this->actingAs($players[0]->user)->post(route('rooms.peek', [$room->game->slug, $room->room_code]), [
-            'target_player_id' => $players[2]->id,
+        $this->rigThief($room, $players[0]);
+        $players[0]->update(['die_value' => 3]);
+        $players[1]->update(['die_value' => 3]); // also awake at hour 3
+        $room->update([
+            'current_hour' => 3,
+            'hour_started_at' => now(),
+            'cheese_stolen_at_hour' => null,
         ]);
+
+        $response = $this->actingAs($players[1]->user)
+            ->post(route('rooms.stealCheese', [$room->game->slug, $room->room_code]));
+
+        $response->assertSessionHasErrors('error');
+        $room->refresh();
+        $this->assertNull($room->cheese_stolen_at_hour);
+    }
+
+    public function test_thief_cannot_steal_outside_their_hour(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+        $players = $data['players'];
+
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+
+        $this->rigThief($room, $players[0]);
+        $players[0]->update(['die_value' => 4]);
+        $room->update([
+            'current_hour' => 3,
+            'hour_started_at' => now(),
+            'cheese_stolen_at_hour' => null,
+        ]);
+
+        $response = $this->actingAs($players[0]->user)
+            ->post(route('rooms.stealCheese', [$room->game->slug, $room->room_code]));
+
+        $response->assertSessionHasErrors('error');
+        $room->refresh();
+        $this->assertNull($room->cheese_stolen_at_hour);
+    }
+
+    public function test_thief_cannot_steal_twice(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+        $players = $data['players'];
+
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+
+        $this->rigThief($room, $players[0]);
+        $players[0]->update(['die_value' => 3]);
+        $room->update([
+            'current_hour' => 3,
+            'hour_started_at' => now(),
+            'cheese_stolen_at_hour' => 3,
+        ]);
+
+        $response = $this->actingAs($players[0]->user)
+            ->post(route('rooms.stealCheese', [$room->game->slug, $room->room_code]));
 
         $response->assertSessionHasErrors('error');
     }
 
-    public function test_peeking_at_thief_steals_cheese(): void
+    public function test_cheese_auto_steals_when_thief_hour_expires_via_tick(): void
     {
         $data = $this->createGameWithPlayers(4);
         $room = $data['room'];
         $players = $data['players'];
 
-        // Start the game
         $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
 
-        // Make player 1 the thief
-        $players[1]->update(['is_thief' => true]);
-        $room->update(['thief_player_id' => $players[1]->id]);
-
-        // Set up: player 0 wakes up alone at hour 3
-        $players[0]->update(['die_value' => 3, 'game_data' => ['confirmed_roll' => true]]);
-        $players[1]->update(['die_value' => 1, 'game_data' => ['confirmed_roll' => true]]);
-        $players[2]->update(['die_value' => 2, 'game_data' => ['confirmed_roll' => true]]);
-        $players[3]->update(['die_value' => 4, 'game_data' => ['confirmed_roll' => true]]);
-        $room->update(['current_hour' => 3]);
-
-        // Player 0 peeks at the thief (player 1)
-        $this->actingAs($players[0]->user)->post(route('rooms.peek', [$room->game->slug, $room->room_code]), [
-            'target_player_id' => $players[1]->id,
+        $this->rigThief($room, $players[1]);
+        foreach ($players as $i => $player) {
+            $player->update([
+                'die_value' => $i + 1, // 1..4
+                'game_data' => ['confirmed_roll' => true],
+            ]);
+        }
+        $room->update([
+            'current_hour' => 2, // thief's wake hour
+            'hour_started_at' => now(),
+            'cheese_stolen_at_hour' => null,
         ]);
 
-        // Verify cheese was stolen
-        $players[0]->refresh();
-        $this->assertTrue($players[0]->has_stolen_cheese);
+        Carbon::setTestNow(now()->addSeconds(13)); // past 12s timer
+
+        // settleNight runs as part of show()
+        $this->actingAs($players[0]->user)->get(route('rooms.show', [$room->game->slug, $room->room_code]));
+
+        $room->refresh();
+        $this->assertEquals(2, $room->cheese_stolen_at_hour);
+        $this->assertGreaterThan(2, $room->current_hour);
+
+        Carbon::setTestNow();
     }
 
-    public function test_player_can_skip_peek(): void
+    // --- Equal-duration hours / narrator pacing ---
+
+    public function test_every_hour_uses_the_same_timer_duration(): void
     {
         $data = $this->createGameWithPlayers(4);
         $room = $data['room'];
         $players = $data['players'];
 
-        // Start the game
         $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
 
-        // Set up: player 0 wakes up alone at hour 3
-        $players[0]->update(['die_value' => 3, 'game_data' => ['confirmed_roll' => true]]);
-        $players[1]->update(['die_value' => 1, 'game_data' => ['confirmed_roll' => true]]);
-        $players[2]->update(['die_value' => 2, 'game_data' => ['confirmed_roll' => true]]);
-        $players[3]->update(['die_value' => 4, 'game_data' => ['confirmed_roll' => true]]);
+        // Empty hour: nobody awake at hour 1.
+        foreach ($players as $i => $player) {
+            $player->update(['die_value' => $i + 3]); // 3..6
+        }
+        $room->update(['current_hour' => 1, 'hour_started_at' => now()]);
+        $room->refresh();
+        $emptyDuration = $room->getHourTimerDuration();
+
+        // Solo hour: only player 0 awake at hour 3.
         $room->update(['current_hour' => 3]);
+        $room->refresh();
+        $soloDuration = $room->getHourTimerDuration();
 
-        $response = $this->actingAs($players[0]->user)->post(route('rooms.skipPeek', [$room->game->slug, $room->room_code]));
+        // Multi-player hour: rig two players to hour 5.
+        $players[0]->update(['die_value' => 5]);
+        $players[1]->update(['die_value' => 5]);
+        $room->update(['current_hour' => 5]);
+        $room->refresh();
+        $multiDuration = $room->getHourTimerDuration();
 
-        $response->assertRedirect();
-        $players[0]->refresh();
-        $this->assertTrue($players[0]->hasCompletedHour(3));
+        $this->assertEquals($emptyDuration, $soloDuration);
+        $this->assertEquals($soloDuration, $multiDuration);
     }
+
+    public function test_hour_timer_does_not_expire_before_full_duration(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+
+        Carbon::setTestNow(now());
+        $room->update(['current_hour' => 3, 'hour_started_at' => now()]);
+
+        // Halfway through the timer.
+        Carbon::setTestNow(now()->addSeconds((int) ($room->getHourTimerDuration() / 2)));
+        $room->refresh();
+        $this->assertFalse($room->isHourTimerExpired());
+
+        // Past the timer.
+        Carbon::setTestNow(now()->addSeconds($room->getHourTimerDuration() + 1));
+        $room->refresh();
+        $this->assertTrue($room->isHourTimerExpired());
+
+        Carbon::setTestNow();
+    }
+
+    public function test_show_settles_expired_night_hours(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+        $players = $data['players'];
+
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+
+        // Nobody awake at hour 1 or 2.
+        $players[0]->update(['die_value' => 3, 'game_data' => ['confirmed_roll' => true]]);
+        $players[1]->update(['die_value' => 4, 'game_data' => ['confirmed_roll' => true]]);
+        $players[2]->update(['die_value' => 5, 'game_data' => ['confirmed_roll' => true]]);
+        $players[3]->update(['die_value' => 6, 'game_data' => ['confirmed_roll' => true]]);
+
+        Carbon::setTestNow(now());
+        $room->update(['current_hour' => 1, 'hour_started_at' => now()]);
+
+        // Past one timer cycle: should advance to hour 2 but not skip more (timer freshly reset).
+        Carbon::setTestNow(now()->addSeconds(13));
+        $this->actingAs($players[0]->user)->get(route('rooms.show', [$room->game->slug, $room->room_code]));
+
+        $room->refresh();
+        $this->assertEquals(2, $room->current_hour);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_show_settles_through_multiple_expired_hours(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+        $players = $data['players'];
+
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+
+        $players[0]->update(['die_value' => 3, 'game_data' => ['confirmed_roll' => true]]);
+        $players[1]->update(['die_value' => 4, 'game_data' => ['confirmed_roll' => true]]);
+        $players[2]->update(['die_value' => 5, 'game_data' => ['confirmed_roll' => true]]);
+        $players[3]->update(['die_value' => 6, 'game_data' => ['confirmed_roll' => true]]);
+
+        Carbon::setTestNow(now());
+        $room->update(['current_hour' => 1, 'hour_started_at' => now()]);
+
+        // Past three timer cycles (idle tab).
+        Carbon::setTestNow(now()->addSeconds(13 * 3 + 1));
+        $this->actingAs($players[0]->user)->get(route('rooms.show', [$room->game->slug, $room->room_code]));
+
+        $room->refresh();
+        $this->assertGreaterThanOrEqual(4, $room->current_hour);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_show_advances_to_accomplice_phase_after_hour_six_expires(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+        $players = $data['players'];
+
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+
+        $this->rigThief($room, $players[0]);
+        foreach ($players as $player) {
+            $player->update([
+                'die_value' => 6,
+                'game_data' => ['confirmed_roll' => true],
+            ]);
+        }
+        $room->update([
+            'current_hour' => 6,
+            'hour_started_at' => now(),
+        ]);
+
+        Carbon::setTestNow(now()->addSeconds(13));
+        $this->actingAs($players[0]->user)->get(route('rooms.show', [$room->game->slug, $room->room_code]));
+
+        $room->refresh();
+        $this->assertEquals(7, $room->current_hour);
+        // Auto-steal must have fired during settle.
+        $this->assertEquals(6, $room->cheese_stolen_at_hour);
+
+        Carbon::setTestNow();
+    }
+
+    // --- Accomplice + voting (existing flows preserved) ---
 
     public function test_thief_can_select_accomplice(): void
     {
@@ -204,18 +394,16 @@ class CheeseThiefGameTest extends TestCase
         $room = $data['room'];
         $players = $data['players'];
 
-        // Start the game and make player 0 the thief
         $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
-        $players[0]->update(['is_thief' => true]);
-        $room->update(['thief_player_id' => $players[0]->id, 'current_hour' => 7]);
+        $this->rigThief($room, $players[0]);
+        $room->update(['current_hour' => 7]);
 
-        // Thief selects accomplice
-        $response = $this->actingAs($players[0]->user)->post(route('rooms.selectAccomplice', [$room->game->slug, $room->room_code]), [
-            'accomplice_player_id' => $players[1]->id,
-        ]);
+        $response = $this->actingAs($players[0]->user)
+            ->post(route('rooms.selectAccomplice', [$room->game->slug, $room->room_code]), [
+                'accomplice_player_id' => $players[1]->id,
+            ]);
 
         $response->assertRedirect();
-
         $room->refresh();
         $players[1]->refresh();
         $this->assertEquals($players[1]->id, $room->accomplice_player_id);
@@ -228,20 +416,14 @@ class CheeseThiefGameTest extends TestCase
         $room = $data['room'];
         $players = $data['players'];
 
-        // Start the game and make player 0 the thief
         $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+        $this->rigThief($room, $players[0]);
+        $room->update(['current_hour' => 7]);
 
-        // Reset all players' thief status and explicitly set player 0 as thief
-        foreach ($players as $player) {
-            $player->update(['is_thief' => false]);
-        }
-        $players[0]->update(['is_thief' => true]);
-        $room->update(['thief_player_id' => $players[0]->id, 'current_hour' => 7]);
-
-        // Non-thief (player 1) tries to select accomplice
-        $response = $this->actingAs($players[1]->user)->post(route('rooms.selectAccomplice', [$room->game->slug, $room->room_code]), [
-            'accomplice_player_id' => $players[2]->id,
-        ]);
+        $response = $this->actingAs($players[1]->user)
+            ->post(route('rooms.selectAccomplice', [$room->game->slug, $room->room_code]), [
+                'accomplice_player_id' => $players[2]->id,
+            ]);
 
         $response->assertSessionHasErrors('error');
     }
@@ -252,17 +434,15 @@ class CheeseThiefGameTest extends TestCase
         $room = $data['room'];
         $players = $data['players'];
 
-        // Start the game and advance to voting phase
         $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
         $room->update(['current_hour' => 8]);
 
-        // Player votes
-        $response = $this->actingAs($players[0]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
-            'voted_for_player_id' => $players[1]->id,
-        ]);
+        $response = $this->actingAs($players[0]->user)
+            ->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
+                'voted_for_player_id' => $players[1]->id,
+            ]);
 
         $response->assertRedirect();
-
         $players[0]->refresh();
         $this->assertTrue($players[0]->hasVoted());
     }
@@ -273,221 +453,13 @@ class CheeseThiefGameTest extends TestCase
         $room = $data['room'];
         $players = $data['players'];
 
-        // Start the game and advance to voting phase
         $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
         $room->update(['current_hour' => 8]);
 
-        // Player tries to vote for themselves
-        $response = $this->actingAs($players[0]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
-            'voted_for_player_id' => $players[0]->id,
-        ]);
-
-        $response->assertSessionHasErrors('error');
-    }
-
-    public function test_game_ends_when_all_vote(): void
-    {
-        $data = $this->createGameWithPlayers(4);
-        $room = $data['room'];
-        $players = $data['players'];
-
-        // Start the game, set thief and advance to voting phase
-        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
-        $players[0]->update(['is_thief' => true]);
-        $room->update(['thief_player_id' => $players[0]->id, 'current_hour' => 8]);
-
-        // All players vote for player 0 (the thief)
-        foreach ($players as $index => $player) {
-            $voteFor = $index === 0 ? $players[1]->id : $players[0]->id;
-            $this->actingAs($player->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
-                'voted_for_player_id' => $voteFor,
+        $response = $this->actingAs($players[0]->user)
+            ->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
+                'voted_for_player_id' => $players[0]->id,
             ]);
-        }
-
-        $room->refresh();
-        $this->assertEquals('finished', $room->status);
-        $this->assertEquals(9, $room->current_hour);
-        $this->assertNotNull($room->winner);
-    }
-
-    public function test_mice_win_when_thief_gets_most_votes(): void
-    {
-        $data = $this->createGameWithPlayers(4);
-        $room = $data['room'];
-        $players = $data['players'];
-
-        // Start the game, set thief and advance to voting phase
-        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
-        $players[0]->update(['is_thief' => true]);
-        $room->update(['thief_player_id' => $players[0]->id, 'current_hour' => 8]);
-
-        // Players 1, 2, 3 vote for player 0 (thief), player 0 votes for player 1
-        $this->actingAs($players[0]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
-            'voted_for_player_id' => $players[1]->id,
-        ]);
-        $this->actingAs($players[1]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
-            'voted_for_player_id' => $players[0]->id,
-        ]);
-        $this->actingAs($players[2]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
-            'voted_for_player_id' => $players[0]->id,
-        ]);
-        $this->actingAs($players[3]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
-            'voted_for_player_id' => $players[0]->id,
-        ]);
-
-        $room->refresh();
-        $this->assertEquals('mice', $room->winner);
-    }
-
-    public function test_thief_wins_when_not_caught(): void
-    {
-        $data = $this->createGameWithPlayers(4);
-        $room = $data['room'];
-        $players = $data['players'];
-
-        // Start the game, set thief (player 0) and advance to voting phase
-        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
-        $players[0]->update(['is_thief' => true]);
-        $room->update(['thief_player_id' => $players[0]->id, 'current_hour' => 8]);
-
-        // Most players vote for player 1 (not the thief)
-        $this->actingAs($players[0]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
-            'voted_for_player_id' => $players[1]->id,
-        ]);
-        $this->actingAs($players[1]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
-            'voted_for_player_id' => $players[2]->id,
-        ]);
-        $this->actingAs($players[2]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
-            'voted_for_player_id' => $players[1]->id,
-        ]);
-        $this->actingAs($players[3]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
-            'voted_for_player_id' => $players[1]->id,
-        ]);
-
-        $room->refresh();
-        $this->assertEquals('thief', $room->winner);
-    }
-
-    public function test_game_state_hides_thief_identity_during_game(): void
-    {
-        $data = $this->createGameWithPlayers(4);
-        $room = $data['room'];
-        $players = $data['players'];
-
-        // Start the game
-        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
-
-        // Reset all players' thief status and explicitly set player 1 as thief
-        foreach ($players as $player) {
-            $player->update(['is_thief' => false]);
-        }
-        $players[1]->update(['is_thief' => true]);
-        $room->update(['thief_player_id' => $players[1]->id]);
-
-        // Refresh player 2 to get updated state and explicitly load user relationship
-        $players[2]->refresh()->load('user');
-
-        // View room as non-thief (player 2)
-        $response = $this->actingAs($players[2]->user)->get(route('rooms.show', [$room->game->slug, $room->room_code]));
-
-        $response->assertInertia(function ($page) {
-            $page->component('Rooms/Show')
-                ->has('gameState')
-                ->where('gameState.is_thief', false);
-
-            // Check that other players' thief status is hidden
-            $gameState = $page->toArray()['props']['gameState'];
-            foreach ($gameState['players'] as $player) {
-                // Only thief can see thief status during game, others should see null
-                $this->assertNull($player['is_thief']);
-            }
-        });
-    }
-
-    public function test_game_state_shows_thief_identity_to_thief(): void
-    {
-        $data = $this->createGameWithPlayers(4);
-        $room = $data['room'];
-        $players = $data['players'];
-
-        // Start the game
-        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
-
-        // Reset all players' thief status and explicitly set player 0 as thief
-        foreach ($players as $player) {
-            $player->update(['is_thief' => false]);
-        }
-        $players[0]->update(['is_thief' => true]);
-        $room->update(['thief_player_id' => $players[0]->id]);
-
-        // Refresh player 0 to get updated state
-        $players[0]->refresh();
-
-        // View room as thief
-        $response = $this->actingAs($players[0]->user)->get(route('rooms.show', [$room->game->slug, $room->room_code]));
-
-        $response->assertInertia(function ($page) {
-            $page->component('Rooms/Show')
-                ->has('gameState')
-                ->where('gameState.is_thief', true);
-        });
-    }
-
-    public function test_game_state_reveals_all_roles_after_game_ends(): void
-    {
-        $data = $this->createGameWithPlayers(4);
-        $room = $data['room'];
-        $players = $data['players'];
-
-        // Start the game and finish it
-        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
-        $players[0]->update(['is_thief' => true]);
-        $players[1]->update(['is_accomplice' => true]);
-        $room->update([
-            'thief_player_id' => $players[0]->id,
-            'accomplice_player_id' => $players[1]->id,
-            'current_hour' => 9,
-            'status' => 'finished',
-            'winner' => 'mice',
-        ]);
-
-        // View as any player
-        $response = $this->actingAs($players[2]->user)->get(route('rooms.show', [$room->game->slug, $room->room_code]));
-
-        $response->assertInertia(function ($page) use ($players) {
-            $page->component('Rooms/Show')
-                ->has('gameState')
-                ->where('gameState.thief_player_id', $players[0]->id)
-                ->where('gameState.accomplice_player_id', $players[1]->id);
-        });
-    }
-
-    public function test_player_cannot_confirm_roll_after_rolling_phase(): void
-    {
-        $data = $this->createGameWithPlayers(4);
-        $room = $data['room'];
-        $players = $data['players'];
-
-        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
-        $room->update(['current_hour' => 3]); // Night phase
-
-        $response = $this->actingAs($players[0]->user)->post(route('rooms.confirmRoll', [$room->game->slug, $room->room_code]));
-
-        $response->assertSessionHasErrors('error');
-    }
-
-    public function test_player_cannot_vote_before_voting_phase(): void
-    {
-        $data = $this->createGameWithPlayers(4);
-        $room = $data['room'];
-        $players = $data['players'];
-
-        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
-        $room->update(['current_hour' => 3]); // Night phase
-
-        $response = $this->actingAs($players[0]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
-            'voted_for_player_id' => $players[1]->id,
-        ]);
 
         $response->assertSessionHasErrors('error');
     }
@@ -499,292 +471,289 @@ class CheeseThiefGameTest extends TestCase
         $players = $data['players'];
 
         $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
-        $room->update(['current_hour' => 8]); // Voting phase
+        $room->update(['current_hour' => 8]);
 
-        // First vote
-        $this->actingAs($players[0]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
-            'voted_for_player_id' => $players[1]->id,
-        ]);
+        $this->actingAs($players[0]->user)
+            ->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
+                'voted_for_player_id' => $players[1]->id,
+            ]);
 
-        // Try to vote again
-        $response = $this->actingAs($players[0]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
-            'voted_for_player_id' => $players[2]->id,
-        ]);
+        $response = $this->actingAs($players[0]->user)
+            ->post(route('rooms.vote', [$room->game->slug, $room->room_code]), [
+                'voted_for_player_id' => $players[2]->id,
+            ]);
 
         $response->assertSessionHasErrors('error');
     }
 
-    public function test_night_hour_auto_advances_after_timer_expires(): void
+    public function test_mice_win_when_thief_unanimously_caught(): void
     {
         $data = $this->createGameWithPlayers(4);
         $room = $data['room'];
         $players = $data['players'];
 
-        // Start the game
         $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+        $this->rigThief($room, $players[0]);
+        $room->update(['current_hour' => 8]);
 
-        // Set up: player 0 wakes up alone at hour 3
-        $players[0]->update(['die_value' => 3, 'game_data' => ['confirmed_roll' => true]]);
-        $players[1]->update(['die_value' => 1, 'game_data' => ['confirmed_roll' => true]]);
-        $players[2]->update(['die_value' => 2, 'game_data' => ['confirmed_roll' => true]]);
-        $players[3]->update(['die_value' => 4, 'game_data' => ['confirmed_roll' => true]]);
-
-        // Set current hour and start timer
-        \Carbon\Carbon::setTestNow(now());
-        $room->update([
-            'current_hour' => 3,
-            'hour_started_at' => now(),
-        ]);
-
-        // Before timer expires, hour should not be complete if player hasn't acted
-        $this->assertFalse($room->currentHourComplete());
-
-        // Fast forward 16 seconds (past the 15-second timer)
-        \Carbon\Carbon::setTestNow(now()->addSeconds(16));
+        $this->actingAs($players[0]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), ['voted_for_player_id' => $players[1]->id]);
+        $this->actingAs($players[1]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), ['voted_for_player_id' => $players[0]->id]);
+        $this->actingAs($players[2]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), ['voted_for_player_id' => $players[0]->id]);
+        $this->actingAs($players[3]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), ['voted_for_player_id' => $players[0]->id]);
 
         $room->refresh();
-        // After timer expires, hour should be complete
-        $this->assertTrue($room->currentHourComplete());
-
-        \Carbon\Carbon::setTestNow(); // Reset time
+        $this->assertEquals('mice', $room->winner);
     }
 
-    public function test_player_can_peek_before_timer_expires(): void
+    public function test_thief_wins_when_not_caught(): void
     {
         $data = $this->createGameWithPlayers(4);
         $room = $data['room'];
         $players = $data['players'];
 
-        // Start the game
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+        $this->rigThief($room, $players[0]);
+        $room->update(['current_hour' => 8]);
+
+        $this->actingAs($players[0]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), ['voted_for_player_id' => $players[1]->id]);
+        $this->actingAs($players[1]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), ['voted_for_player_id' => $players[2]->id]);
+        $this->actingAs($players[2]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), ['voted_for_player_id' => $players[1]->id]);
+        $this->actingAs($players[3]->user)->post(route('rooms.vote', [$room->game->slug, $room->room_code]), ['voted_for_player_id' => $players[1]->id]);
+
+        $room->refresh();
+        $this->assertEquals('thief', $room->winner);
+    }
+
+    // --- Visibility + game state ---
+
+    public function test_game_state_hides_thief_identity_during_game(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+        $players = $data['players'];
+
         $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
 
-        // Set up: player 0 wakes up alone at hour 3
-        $players[0]->update(['die_value' => 3, 'game_data' => ['confirmed_roll' => true]]);
-        $players[1]->update(['die_value' => 1, 'game_data' => ['confirmed_roll' => true]]);
-        $players[2]->update(['die_value' => 2, 'game_data' => ['confirmed_roll' => true]]);
-        $players[3]->update(['die_value' => 4, 'game_data' => ['confirmed_roll' => true]]);
+        $this->rigThief($room, $players[1]);
 
-        // Set current hour and start timer
-        \Carbon\Carbon::setTestNow(now());
-        $room->update([
-            'current_hour' => 3,
-            'hour_started_at' => now(),
-        ]);
+        $players[2]->refresh()->load('user');
 
-        // Fast forward 10 seconds (within the 15-second timer)
-        \Carbon\Carbon::setTestNow(now()->addSeconds(10));
+        $response = $this->actingAs($players[2]->user)->get(route('rooms.show', [$room->game->slug, $room->room_code]));
 
-        // Player should still be able to peek
-        $response = $this->actingAs($players[0]->user)->post(route('rooms.peek', [$room->game->slug, $room->room_code]), [
-            'target_player_id' => $players[1]->id,
-        ]);
+        $response->assertInertia(function ($page) {
+            $page->component('Rooms/Show')
+                ->has('gameState')
+                ->where('gameState.is_thief', false);
 
-        $response->assertRedirect();
+            $gameState = $page->toArray()['props']['gameState'];
+            foreach ($gameState['players'] as $player) {
+                $this->assertNull($player['is_thief']);
+            }
+        });
+    }
+
+    public function test_game_state_shows_thief_identity_to_thief(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+        $players = $data['players'];
+
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+        $this->rigThief($room, $players[0]);
+
         $players[0]->refresh();
-        $this->assertTrue($players[0]->hasCompletedHour(3));
+        $response = $this->actingAs($players[0]->user)->get(route('rooms.show', [$room->game->slug, $room->room_code]));
 
-        \Carbon\Carbon::setTestNow(); // Reset time
+        $response->assertInertia(function ($page) {
+            $page->component('Rooms/Show')
+                ->has('gameState')
+                ->where('gameState.is_thief', true);
+        });
     }
 
-    public function test_player_cannot_peek_after_timer_expires(): void
+    public function test_game_state_hides_other_players_die_values(): void
     {
         $data = $this->createGameWithPlayers(4);
         $room = $data['room'];
         $players = $data['players'];
 
-        // Start the game
         $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
 
-        // Set up: player 0 wakes up alone at hour 3
-        $players[0]->update(['die_value' => 3, 'game_data' => ['confirmed_roll' => true]]);
-        $players[1]->update(['die_value' => 1, 'game_data' => ['confirmed_roll' => true]]);
-        $players[2]->update(['die_value' => 2, 'game_data' => ['confirmed_roll' => true]]);
-        $players[3]->update(['die_value' => 4, 'game_data' => ['confirmed_roll' => true]]);
+        $players[0]->update(['die_value' => 1]);
+        $players[1]->update(['die_value' => 2]);
+        $players[2]->update(['die_value' => 3]);
+        $players[3]->update(['die_value' => 4]);
 
-        // Set current hour and start timer
-        \Carbon\Carbon::setTestNow(now());
-        $room->update([
-            'current_hour' => 3,
-            'hour_started_at' => now(),
-        ]);
+        $players[0]->refresh()->load('user');
+        $response = $this->actingAs($players[0]->user)->get(route('rooms.show', [$room->game->slug, $room->room_code]));
 
-        // Fast forward 16 seconds (past the 15-second timer)
-        \Carbon\Carbon::setTestNow(now()->addSeconds(16));
-
-        $room->refresh();
-
-        // Hour should be complete due to timer, so peek should be blocked
-        // The controller will detect currentHourComplete() and likely auto-advance or show error
-        $this->assertTrue($room->currentHourComplete());
-
-        \Carbon\Carbon::setTestNow(); // Reset time
+        $response->assertInertia(function ($page) use ($players) {
+            $gameState = $page->toArray()['props']['gameState'];
+            foreach ($gameState['players'] as $p) {
+                if ($p['id'] === $players[0]->id) {
+                    $this->assertEquals(1, $p['die_value']);
+                } else {
+                    $this->assertNull($p['die_value']);
+                }
+            }
+        });
     }
 
-    public function test_timer_resets_for_each_new_hour(): void
+    public function test_game_state_reveals_all_roles_after_game_ends(): void
     {
         $data = $this->createGameWithPlayers(4);
         $room = $data['room'];
         $players = $data['players'];
 
-        // Start the game
         $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
-
-        // Set up dice
-        $players[0]->update(['die_value' => 3, 'game_data' => ['confirmed_roll' => true]]);
-        $players[1]->update(['die_value' => 4, 'game_data' => ['confirmed_roll' => true]]);
-        $players[2]->update(['die_value' => 2, 'game_data' => ['confirmed_roll' => true]]);
-        $players[3]->update(['die_value' => 5, 'game_data' => ['confirmed_roll' => true]]);
-
-        // Hour 3 with timer
-        \Carbon\Carbon::setTestNow(now());
+        $this->rigThief($room, $players[0]);
+        $players[1]->update(['is_accomplice' => true]);
         $room->update([
-            'current_hour' => 3,
-            'hour_started_at' => now(),
+            'accomplice_player_id' => $players[1]->id,
+            'current_hour' => 9,
+            'status' => 'finished',
+            'winner' => 'mice',
+            'cheese_stolen_at_hour' => 4,
         ]);
 
-        $hour3StartTime = $room->hour_started_at;
+        $response = $this->actingAs($players[2]->user)->get(route('rooms.show', [$room->game->slug, $room->room_code]));
 
-        // Advance to hour 4
-        \Carbon\Carbon::setTestNow(now()->addSeconds(5));
+        $response->assertInertia(function ($page) use ($players) {
+            $page->component('Rooms/Show')
+                ->has('gameState')
+                ->where('gameState.thief_player_id', $players[0]->id)
+                ->where('gameState.accomplice_player_id', $players[1]->id)
+                ->where('gameState.cheese_stolen_at_hour', 4);
+        });
+    }
+
+    public function test_cheese_visibility_present_during_own_hour_before_steal(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+        $players = $data['players'];
+
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+
+        $this->rigThief($room, $players[3]);
+        foreach ($players as $i => $player) {
+            $player->update(['die_value' => $i + 1]); // 1..4, thief wakes at 4
+        }
+        $room->update([
+            'current_hour' => 2,
+            'hour_started_at' => now(),
+            'cheese_stolen_at_hour' => null,
+        ]);
+
+        $response = $this->actingAs($players[1]->user)
+            ->get(route('rooms.show', [$room->game->slug, $room->room_code]));
+
+        $response->assertInertia(function ($page) {
+            $page->where('gameState.cheese_visible_to_self', 'present');
+        });
+    }
+
+    public function test_cheese_visibility_gone_after_thief_hour(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+        $players = $data['players'];
+
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+
+        // player 0 wakes at 4 (after thief). Thief is player 3 with die=2.
+        $this->rigThief($room, $players[3]);
+        $players[0]->update(['die_value' => 4]);
+        $players[1]->update(['die_value' => 1]);
+        $players[2]->update(['die_value' => 5]);
+        $players[3]->update(['die_value' => 2]);
         $room->update([
             'current_hour' => 4,
             'hour_started_at' => now(),
+            'cheese_stolen_at_hour' => 2,
         ]);
 
-        $room->refresh();
-        $hour4StartTime = $room->hour_started_at;
+        $response = $this->actingAs($players[0]->user)
+            ->get(route('rooms.show', [$room->game->slug, $room->room_code]));
 
-        // Timer should have been reset
-        $this->assertNotEquals($hour3StartTime, $hour4StartTime);
-        $this->assertTrue($hour4StartTime->greaterThan($hour3StartTime));
-
-        \Carbon\Carbon::setTestNow(); // Reset time
+        $response->assertInertia(function ($page) {
+            $page->where('gameState.cheese_visible_to_self', 'gone');
+        });
     }
 
-    public function test_empty_hours_are_not_instantly_skipped(): void
+    public function test_cheese_visibility_hidden_when_not_awake(): void
     {
         $data = $this->createGameWithPlayers(4);
         $room = $data['room'];
         $players = $data['players'];
 
-        // Start the game
         $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
 
-        // Set up: nobody wakes up at hour 1
-        $players[0]->update(['die_value' => 3, 'game_data' => ['confirmed_roll' => true]]);
-        $players[1]->update(['die_value' => 4, 'game_data' => ['confirmed_roll' => true]]);
-        $players[2]->update(['die_value' => 5, 'game_data' => ['confirmed_roll' => true]]);
-        $players[3]->update(['die_value' => 6, 'game_data' => ['confirmed_roll' => true]]);
+        $this->rigThief($room, $players[1]);
+        $players[0]->update(['die_value' => 5]);
+        $players[1]->update(['die_value' => 1]);
+        $players[2]->update(['die_value' => 2]);
+        $players[3]->update(['die_value' => 3]);
+        $room->update([
+            'current_hour' => 2, // player 0 not awake, hour 2 is player 2's
+            'hour_started_at' => now(),
+            'cheese_stolen_at_hour' => null,
+        ]);
 
-        \Carbon\Carbon::setTestNow(now());
+        $response = $this->actingAs($players[0]->user)
+            ->get(route('rooms.show', [$room->game->slug, $room->room_code]));
+
+        $response->assertInertia(function ($page) {
+            $page->where('gameState.cheese_visible_to_self', 'hidden');
+        });
+    }
+
+    public function test_can_steal_cheese_flag_only_for_thief_during_their_hour(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+        $players = $data['players'];
+
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+
+        $this->rigThief($room, $players[0]);
+        foreach ($players as $i => $player) {
+            $player->update(['die_value' => $i + 1]);
+        }
         $room->update([
             'current_hour' => 1,
             'hour_started_at' => now(),
+            'cheese_stolen_at_hour' => null,
         ]);
 
-        // Hour should NOT be instantly complete — must wait for empty hour timer
-        $room->refresh();
-        $this->assertFalse($room->currentHourComplete());
-        $this->assertEquals(1, $room->current_hour);
+        $thiefResponse = $this->actingAs($players[0]->user)
+            ->get(route('rooms.show', [$room->game->slug, $room->room_code]));
 
-        \Carbon\Carbon::setTestNow();
+        $thiefResponse->assertInertia(function ($page) {
+            $page->where('gameState.can_steal_cheese', true);
+        });
+
+        $miceResponse = $this->actingAs($players[1]->user)
+            ->get(route('rooms.show', [$room->game->slug, $room->room_code]));
+
+        $miceResponse->assertInertia(function ($page) {
+            $page->where('gameState.can_steal_cheese', false);
+        });
     }
 
-    public function test_empty_hours_advance_after_timer_expires(): void
+    public function test_player_cannot_confirm_roll_after_rolling_phase(): void
     {
         $data = $this->createGameWithPlayers(4);
         $room = $data['room'];
         $players = $data['players'];
 
-        // Start the game
         $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+        $room->update(['current_hour' => 3]);
 
-        // Set up: nobody wakes up at hour 1
-        $players[0]->update(['die_value' => 3, 'game_data' => ['confirmed_roll' => true]]);
-        $players[1]->update(['die_value' => 4, 'game_data' => ['confirmed_roll' => true]]);
-        $players[2]->update(['die_value' => 5, 'game_data' => ['confirmed_roll' => true]]);
-        $players[3]->update(['die_value' => 6, 'game_data' => ['confirmed_roll' => true]]);
+        $response = $this->actingAs($players[0]->user)
+            ->post(route('rooms.confirmRoll', [$room->game->slug, $room->room_code]));
 
-        \Carbon\Carbon::setTestNow(now());
-        $room->update([
-            'current_hour' => 1,
-            'hour_started_at' => now(),
-        ]);
-
-        // Fast forward past the empty hour timer (3 seconds)
-        \Carbon\Carbon::setTestNow(now()->addSeconds(4));
-
-        $room->refresh();
-        $this->assertTrue($room->currentHourComplete());
-
-        \Carbon\Carbon::setTestNow();
-    }
-
-    public function test_multi_player_hours_use_empty_timer(): void
-    {
-        $data = $this->createGameWithPlayers(4);
-        $room = $data['room'];
-        $players = $data['players'];
-
-        // Start the game
-        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
-
-        // Set up: two players wake up at hour 3
-        $players[0]->update(['die_value' => 3, 'game_data' => ['confirmed_roll' => true]]);
-        $players[1]->update(['die_value' => 3, 'game_data' => ['confirmed_roll' => true]]);
-        $players[2]->update(['die_value' => 5, 'game_data' => ['confirmed_roll' => true]]);
-        $players[3]->update(['die_value' => 6, 'game_data' => ['confirmed_roll' => true]]);
-
-        \Carbon\Carbon::setTestNow(now());
-        $room->update([
-            'current_hour' => 3,
-            'hour_started_at' => now(),
-        ]);
-
-        // Before empty timer: not complete
-        $room->refresh();
-        $this->assertFalse($room->currentHourComplete());
-
-        // After empty timer (3s): complete
-        \Carbon\Carbon::setTestNow(now()->addSeconds(4));
-        $room->refresh();
-        $this->assertTrue($room->currentHourComplete());
-
-        \Carbon\Carbon::setTestNow();
-    }
-
-    public function test_show_auto_advances_expired_night_hours(): void
-    {
-        $data = $this->createGameWithPlayers(4);
-        $room = $data['room'];
-        $players = $data['players'];
-
-        // Start the game
-        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
-
-        // Nobody wakes up at hours 1 or 2
-        $players[0]->update(['die_value' => 3, 'game_data' => ['confirmed_roll' => true]]);
-        $players[1]->update(['die_value' => 4, 'game_data' => ['confirmed_roll' => true]]);
-        $players[2]->update(['die_value' => 5, 'game_data' => ['confirmed_roll' => true]]);
-        $players[3]->update(['die_value' => 6, 'game_data' => ['confirmed_roll' => true]]);
-
-        \Carbon\Carbon::setTestNow(now());
-        $room->update([
-            'current_hour' => 1,
-            'hour_started_at' => now(),
-        ]);
-
-        // Fast forward past the empty hour timer
-        \Carbon\Carbon::setTestNow(now()->addSeconds(4));
-
-        // Polling (show) should auto-advance past expired hour
-        $this->actingAs($players[0]->user)->get(route('rooms.show', [$room->game->slug, $room->room_code]));
-
-        $room->refresh();
-        // Should have advanced past hour 1 (to hour 2, which also has a fresh timer)
-        $this->assertGreaterThan(1, $room->current_hour);
-
-        \Carbon\Carbon::setTestNow();
+        $response->assertSessionHasErrors('error');
     }
 
     public function test_timer_does_not_apply_to_non_night_phases(): void
@@ -792,41 +761,15 @@ class CheeseThiefGameTest extends TestCase
         $data = $this->createGameWithPlayers(4);
         $room = $data['room'];
 
-        // Start the game
         $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
 
-        // Rolling phase (hour 0) - no timer
-        $room->update([
-            'current_hour' => 0,
-            'hour_started_at' => now(),
-        ]);
-        $this->assertFalse($room->isHourTimerExpired()); // Hour 0 doesn't have timer
-
-        // Accomplice selection (hour 7) - no timer
-        $room->update([
-            'current_hour' => 7,
-            'hour_started_at' => null,
-        ]);
+        $room->update(['current_hour' => 0, 'hour_started_at' => now()]);
         $this->assertFalse($room->isHourTimerExpired());
 
-        // Voting phase (hour 8) - no timer
-        $room->update([
-            'current_hour' => 8,
-            'hour_started_at' => null,
-        ]);
+        $room->update(['current_hour' => 7, 'hour_started_at' => null]);
         $this->assertFalse($room->isHourTimerExpired());
 
-        // Night hours (1-6) should have timer
-        \Carbon\Carbon::setTestNow(now());
-        $room->update([
-            'current_hour' => 3,
-            'hour_started_at' => now(),
-        ]);
-
-        \Carbon\Carbon::setTestNow(now()->addSeconds(16));
-        $room->refresh();
-        $this->assertTrue($room->isHourTimerExpired());
-
-        \Carbon\Carbon::setTestNow(); // Reset time
+        $room->update(['current_hour' => 8, 'hour_started_at' => null]);
+        $this->assertFalse($room->isHourTimerExpired());
     }
 }

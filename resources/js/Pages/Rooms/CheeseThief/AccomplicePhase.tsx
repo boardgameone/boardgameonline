@@ -51,10 +51,9 @@ export default function AccomplicePhase({ gameState, roomCode, gameSlug }: Accom
                 </p>
             </div>
 
-            {/* Cheese Stolen Alert */}
             {gameState.cheese_stolen && (
                 <div className="rounded-lg bg-yellow-100 px-6 py-3 text-yellow-800">
-                    {'\u{1F9C0}'} <strong>The cheese has been stolen!</strong> Someone peeked at the thief!
+                    🧀 <strong>The cheese is gone!</strong> The thief struck during the night.
                 </div>
             )}
 
