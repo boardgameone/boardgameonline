@@ -259,37 +259,102 @@ export function moveParams(): Record<string, { axis: Vec3; angle: number }> {
 }
 
 /**
- * Compute the 3D position of a cell, used for rendering. Cells are placed
- * inside the face's plane:
- *   - slot 0 (center) sits at the face center
- *   - slots 1, 3, 5, 7, 9 (corners) sit between the face center and each
- *     pentagon vertex, at fraction `cornerInset` (closer to vertex when larger)
- *   - slots 2, 4, 6, 8, 10 (edges) sit between the face center and each
- *     pentagon edge midpoint, at fraction `edgeInset`
+ * Geometry parameters for the Megaminx face tiling.
+ *
+ * A face is a flat regular pentagon split into 11 polygonal pieces, just like
+ * a real Megaminx puzzle face:
+ *   - 1 central pentagon (smaller, same orientation as the outer pentagon)
+ *   - 5 quad corner pieces — one at each outer pentagon vertex
+ *   - 5 quad edge pieces — one along each outer pentagon edge
+ *
+ * `INNER_PENTAGON_SCALE` (α): how much smaller the central pentagon is than
+ *   the outer one. 0.45 means the inner pentagon's vertices sit at 45% of the
+ *   way from the face center toward the outer vertices.
+ * `CORNER_CUT_FRACTION` (β): where the cut along each outer edge lives —
+ *   `β` of the edge near each vertex belongs to that vertex's corner piece.
+ * `PIECE_INSET`: each piece is shrunk this fraction toward its own centroid
+ *   before rendering, leaving thin "grout" gaps between pieces (visible as
+ *   the dark backdrop showing through).
  */
-export function cellPosition(face: number, slot: number, cornerInset = 0.66, edgeInset = 0.66): Vec3 {
-    const center = faceCenters()[face];
-    if (slot === 0) return center;
-    const verts = faceVertices()[face].map((vi) => vertices()[vi]);
-    const cornerIndex = Math.floor((slot - 1) / 2);
-    if (slot % 2 === 1) {
-        // corner cell — between face center and pentagon vertex
-        const v = verts[cornerIndex];
-        return [
-            center[0] + cornerInset * (v[0] - center[0]),
-            center[1] + cornerInset * (v[1] - center[1]),
-            center[2] + cornerInset * (v[2] - center[2]),
-        ];
+const INNER_PENTAGON_SCALE = 0.45;
+const CORNER_CUT_FRACTION = 0.32;
+const PIECE_INSET = 0.06;
+
+/**
+ * Compute the polygon vertices (in 3D, in the face plane) for a single
+ * Megaminx cell. Vertices are ordered such that fan-triangulation from the
+ * polygon's centroid produces front-facing triangles relative to the face's
+ * outward normal. The returned polygon is already inset by `PIECE_INSET`.
+ */
+export function cellPolygon(face: number, slot: number): Vec3[] {
+    const C = faceCenters()[face];
+    const V = faceVertices()[face].map((vi) => vertices()[vi]);
+
+    // Inner pentagon vertices — same orientation as outer, scaled toward center.
+    const I = V.map((v) => lerpVec(C, v, INNER_PENTAGON_SCALE));
+
+    // Cut points on each outer edge (V[k] → V[k+1]).
+    // cuts[k][0] is `β` along the edge (near V[k]); cuts[k][1] is `1-β` (near V[k+1]).
+    const cuts: Array<[Vec3, Vec3]> = V.map((vk, k) => {
+        const vNext = V[(k + 1) % 5];
+        return [lerpVec(vk, vNext, CORNER_CUT_FRACTION), lerpVec(vk, vNext, 1 - CORNER_CUT_FRACTION)];
+    });
+
+    let raw: Vec3[];
+    if (slot === 0) {
+        // Central pentagon — same orientation as outer
+        raw = [I[0], I[1], I[2], I[3], I[4]];
+    } else if (slot % 2 === 1) {
+        // Corner piece at V[k] — quad: V[k], cut on edge prevK near V[k], I[k], cut on edge k near V[k]
+        const k = (slot - 1) / 2;
+        const prevK = (k - 1 + 5) % 5;
+        raw = [V[k], cuts[prevK][1], I[k], cuts[k][0]];
+    } else {
+        // Edge piece on edge V[k] → V[k+1] — quad: cut near V[k], cut near V[k+1], I[k+1], I[k]
+        const k = (slot - 2) / 2;
+        raw = [cuts[k][0], cuts[k][1], I[(k + 1) % 5], I[k]];
     }
-    // edge cell — between face center and the midpoint of two consecutive verts
-    const a = verts[cornerIndex];
-    const b = verts[(cornerIndex + 1) % 5];
-    const m: Vec3 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
-    return [
-        center[0] + edgeInset * (m[0] - center[0]),
-        center[1] + edgeInset * (m[1] - center[1]),
-        center[2] + edgeInset * (m[2] - center[2]),
-    ];
+
+    return insetPolygon(raw, PIECE_INSET);
+}
+
+/** Centroid of a cell's polygon — used for placing glyphs / rotation arrows. */
+export function cellCentroid(face: number, slot: number): Vec3 {
+    const poly = cellPolygon(face, slot);
+    const n = poly.length;
+    let x = 0;
+    let y = 0;
+    let z = 0;
+    for (const v of poly) {
+        x += v[0];
+        y += v[1];
+        z += v[2];
+    }
+    return [x / n, y / n, z / n];
+}
+
+function lerpVec(a: Vec3, b: Vec3, t: number): Vec3 {
+    return [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1]), a[2] + t * (b[2] - a[2])];
+}
+
+function insetPolygon(verts: Vec3[], factor: number): Vec3[] {
+    const n = verts.length;
+    let cx = 0;
+    let cy = 0;
+    let cz = 0;
+    for (const v of verts) {
+        cx += v[0];
+        cy += v[1];
+        cz += v[2];
+    }
+    cx /= n;
+    cy /= n;
+    cz /= n;
+    return verts.map((v) => [
+        v[0] + factor * (cx - v[0]),
+        v[1] + factor * (cy - v[1]),
+        v[2] + factor * (cz - v[2]),
+    ] as Vec3);
 }
 
 // ---------------------------------------------------------------------------
