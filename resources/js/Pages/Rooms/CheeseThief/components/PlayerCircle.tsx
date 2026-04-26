@@ -32,11 +32,9 @@ export default function PlayerCircle({
                 const isSelf = player.id === currentPlayerId;
                 const awake = isAwake(player.id);
                 const clickable = isClickable(player.id);
-
-                // Build avatar className for game-specific styling
-                const avatarClassName = `
-                    ${isNightPhase && awake && (isSelf || currentPlayerIsAwake) ? 'ring-4 ring-yellow-400 animate-pulse' : ''}
-                `.trim();
+                // Awake-state markers are only meaningful when the viewer is awake too
+                // (the server already empties awakePlayerIds for sleeping viewers).
+                const showAwakeMarker = isNightPhase && awake && (isSelf || currentPlayerIsAwake);
 
                 return (
                     <button
@@ -44,12 +42,20 @@ export default function PlayerCircle({
                         onClick={() => clickable && onPlayerClick?.(player)}
                         disabled={!clickable}
                         className={`
-                            flex flex-col items-center gap-2 rounded-xl p-4 transition-all
+                            relative flex flex-col items-center gap-2 rounded-xl p-4 transition-all
                             ${isSelf ? 'ring-2 ring-blue-500 bg-blue-50' : 'bg-white'}
                             ${clickable ? 'cursor-pointer hover:bg-gray-100 hover:scale-105' : 'cursor-default'}
-                            ${isNightPhase && !awake ? 'opacity-50' : ''}
                         `}
                     >
+                        {showAwakeMarker && (
+                            <span
+                                className="absolute right-2 top-2 text-xs opacity-70"
+                                title="Awake"
+                                aria-hidden
+                            >
+                                🌙
+                            </span>
+                        )}
                         <PlayerAvatarWithVoice
                             playerId={player.id}
                             nickname={player.nickname}
@@ -58,7 +64,6 @@ export default function PlayerCircle({
                             size="lg"
                             showVoiceControls={true}
                             showVoiceIndicators={true}
-                            avatarClassName={avatarClassName}
                         />
 
                         <span className="text-sm font-medium text-gray-900 max-w-[80px] truncate">

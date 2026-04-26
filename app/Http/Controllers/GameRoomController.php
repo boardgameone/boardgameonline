@@ -769,8 +769,14 @@ class GameRoomController extends Controller
         })->values()->all();
 
         // Mice awake at the current hour (their die value matches).
+        // Only revealed to viewers who are themselves awake — sleeping mice
+        // shouldn't be able to deduce who else is up tonight.
         $awakePlayers = [];
-        if ($currentHour >= 1 && $currentHour <= 6) {
+        $viewerIsAwakeNow = $currentPlayer
+            && $currentHour >= 1
+            && $currentHour <= 6
+            && $currentPlayer->die_value === $currentHour;
+        if ($currentHour >= 1 && $currentHour <= 6 && ($viewerIsAwakeNow || $isGameOver)) {
             $awakePlayers = $room->playersAtHour($currentHour)->pluck('id')->all();
         }
 

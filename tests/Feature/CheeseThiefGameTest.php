@@ -952,6 +952,35 @@ class CheeseThiefGameTest extends TestCase
         });
     }
 
+    public function test_sleeping_mouse_cannot_see_who_is_awake(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+        $players = $data['players'];
+
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+        $this->rigThief($room, $players[2]);
+        $players[0]->update(['die_value' => 3]); // awake at hour 3
+        $players[1]->update(['die_value' => 5]); // sleeping at hour 3
+        $players[2]->update(['die_value' => 4]);
+        $players[3]->update(['die_value' => 6]);
+        $room->update(['current_hour' => 3, 'hour_started_at' => now()]);
+
+        $awakeResponse = $this->actingAs($players[0]->user)
+            ->get(route('rooms.show', [$room->game->slug, $room->room_code]));
+        $awakeResponse->assertInertia(function ($page) use ($players) {
+            $ids = $page->toArray()['props']['gameState']['awake_player_ids'];
+            $this->assertEquals([$players[0]->id], $ids);
+        });
+
+        $sleepingResponse = $this->actingAs($players[1]->user)
+            ->get(route('rooms.show', [$room->game->slug, $room->room_code]));
+        $sleepingResponse->assertInertia(function ($page) {
+            $ids = $page->toArray()['props']['gameState']['awake_player_ids'];
+            $this->assertEquals([], $ids);
+        });
+    }
+
     public function test_innocent_mouse_does_not_see_thief_identity(): void
     {
         $data = $this->createGameWithPlayers(4);
