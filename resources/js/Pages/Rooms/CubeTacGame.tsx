@@ -12,6 +12,8 @@ import FinishedPhase from '@/Pages/Rooms/CubeTac/FinishedPhase';
 import type { CubeSceneHandle } from '@/Pages/Rooms/CubeTac/CubeScene';
 import type { MegaminxSceneHandle } from '@/Pages/Rooms/CubeTac/MegaminxScene';
 import type { PyraminxSceneHandle } from '@/Pages/Rooms/CubeTac/PyraminxScene';
+import type { OctahedronSceneHandle } from '@/Pages/Rooms/CubeTac/OctahedronScene';
+import type { IcosahedronSceneHandle } from '@/Pages/Rooms/CubeTac/IcosahedronScene';
 import { VoiceChatProvider } from '@/Contexts/VoiceChatContext';
 import VoiceGalleryPanel from '@/Components/VoiceGalleryPanel';
 import { GamePlayer, GameRoom, PageProps } from '@/types';
@@ -20,6 +22,8 @@ import { FormEventHandler, ReactNode, useRef } from 'react';
 import { Marks, Move } from '@/lib/rubikCube';
 import type { Direction as MegaDirection } from '@/lib/megaminx';
 import type { Direction as PyraDirection } from '@/lib/pyraminx';
+import type { Direction as OctaDirection } from '@/lib/octahedron';
+import type { Direction as IcosaDirection } from '@/lib/icosahedron';
 
 interface CubeTacPlayer {
     id: number;
@@ -34,10 +38,11 @@ interface CubeTacPlayer {
 interface CubeTacGameState {
     status: 'playing' | 'finished';
     /** Which gameplay surface this room is using. Defaults to "cube" on legacy rows. */
-    variant: 'cube' | 'megaminx' | 'pyraminx';
+    variant: 'cube' | 'megaminx' | 'pyraminx' | 'octahedron' | 'icosahedron';
     /**
      * Length depends on the variant: 54 for cube, 132 for megaminx, 36 for
-     * pyraminx — the consumer must read `variant` before indexing.
+     * pyraminx, 72 for octahedron, 180 for icosahedron — the consumer must
+     * read `variant` before indexing.
      */
     marks: Marks;
     current_turn: number;
@@ -77,9 +82,19 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
     const cubeRef = useRef<CubeSceneHandle>(null);
     const megaRef = useRef<MegaminxSceneHandle>(null);
     const pyraRef = useRef<PyraminxSceneHandle>(null);
+    const octaRef = useRef<OctahedronSceneHandle>(null);
+    const icosaRef = useRef<IcosahedronSceneHandle>(null);
 
-    const variant: 'cube' | 'megaminx' | 'pyraminx' = gameState?.variant
-        ?? (room.variant === 'megaminx' ? 'megaminx' : room.variant === 'pyraminx' ? 'pyraminx' : 'cube');
+    const variant: 'cube' | 'megaminx' | 'pyraminx' | 'octahedron' | 'icosahedron' = gameState?.variant
+        ?? (room.variant === 'megaminx'
+            ? 'megaminx'
+            : room.variant === 'pyraminx'
+                ? 'pyraminx'
+                : room.variant === 'octahedron'
+                    ? 'octahedron'
+                    : room.variant === 'icosahedron'
+                        ? 'icosahedron'
+                        : 'cube');
 
     const gameSlug = room.game?.slug || 'cubetac';
     const isGuest = !auth.user;
@@ -152,6 +167,42 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
         );
     };
 
+    const handleOctaMark = (face: number, slot: number) => {
+        router.post(
+            route('rooms.cubetac.octaMark', [gameSlug, room.room_code]),
+            { face, slot },
+            { preserveScroll: true, preserveState: true },
+        );
+    };
+
+    const handleOctaRotate = (face: number, direction: OctaDirection) => {
+        // PlayingPhase calls octaRef.current.playMove directly, so this
+        // handler only needs to fire the network request.
+        router.post(
+            route('rooms.cubetac.octaRotate', [gameSlug, room.room_code]),
+            { face, direction },
+            { preserveScroll: true, preserveState: true },
+        );
+    };
+
+    const handleIcosaMark = (face: number, slot: number) => {
+        router.post(
+            route('rooms.cubetac.icosaMark', [gameSlug, room.room_code]),
+            { face, slot },
+            { preserveScroll: true, preserveState: true },
+        );
+    };
+
+    const handleIcosaRotate = (face: number, direction: IcosaDirection) => {
+        // PlayingPhase calls icosaRef.current.playMove directly, so this
+        // handler only needs to fire the network request.
+        router.post(
+            route('rooms.cubetac.icosaRotate', [gameSlug, room.room_code]),
+            { face, direction },
+            { preserveScroll: true, preserveState: true },
+        );
+    };
+
     const handleEndTurn = () => {
         router.post(
             route('rooms.cubetac.endTurn', [gameSlug, room.room_code]),
@@ -205,6 +256,8 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
             cubeRef={cubeRef}
             megaRef={megaRef}
             pyraRef={pyraRef}
+            octaRef={octaRef}
+            icosaRef={icosaRef}
             variant={variant}
             marks={gameState.marks}
             currentTurn={gameState.current_turn}
@@ -222,6 +275,10 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
             onMegaRotate={handleMegaRotate}
             onPyraMark={handlePyraMark}
             onPyraRotate={handlePyraRotate}
+            onOctaMark={handleOctaMark}
+            onOctaRotate={handleOctaRotate}
+            onIcosaMark={handleIcosaMark}
+            onIcosaRotate={handleIcosaRotate}
             onEndTurn={handleEndTurn}
             onUndoMark={handleUndoMark}
             onLeave={handleLeave}

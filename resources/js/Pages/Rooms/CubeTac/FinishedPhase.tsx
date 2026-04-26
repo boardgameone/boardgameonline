@@ -11,6 +11,8 @@ import { Marks, indexOf } from '@/lib/rubikCube';
 const CubeScene = lazy(() => import('./CubeScene'));
 const MegaminxScene = lazy(() => import('./MegaminxScene'));
 const PyraminxScene = lazy(() => import('./PyraminxScene'));
+const OctahedronScene = lazy(() => import('./OctahedronScene'));
+const IcosahedronScene = lazy(() => import('./IcosahedronScene'));
 
 export interface WinningLineData {
     face: number;
@@ -43,7 +45,7 @@ export interface FinishedPhaseProps {
     onLeave?: () => void;
     leaveLabel?: string;
     /** Which playing surface to render. Defaults to 'cube'. */
-    variant?: 'cube' | 'megaminx' | 'pyraminx';
+    variant?: 'cube' | 'megaminx' | 'pyraminx' | 'octahedron' | 'icosahedron';
 }
 
 export default function FinishedPhase({
@@ -60,6 +62,8 @@ export default function FinishedPhase({
 }: FinishedPhaseProps) {
     const isMegaminx = variant === 'megaminx';
     const isPyraminx = variant === 'pyraminx';
+    const isOctahedron = variant === 'octahedron';
+    const isIcosahedron = variant === 'icosahedron';
     const winningIndices = useMemo(() => {
         const set = new Set<number>();
         for (const line of winningLines) {
@@ -115,6 +119,22 @@ export default function FinishedPhase({
                         />
                     ) : isPyraminx ? (
                         <PyraminxScene
+                            marks={marks}
+                            playerColors={playerColors}
+                            designs={playerDesigns}
+                            winningIndices={winningIndices}
+                            interactive={false}
+                        />
+                    ) : isOctahedron ? (
+                        <OctahedronScene
+                            marks={marks}
+                            playerColors={playerColors}
+                            designs={playerDesigns}
+                            winningIndices={winningIndices}
+                            interactive={false}
+                        />
+                    ) : isIcosahedron ? (
+                        <IcosahedronScene
                             marks={marks}
                             playerColors={playerColors}
                             designs={playerDesigns}
