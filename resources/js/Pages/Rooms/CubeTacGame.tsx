@@ -11,6 +11,7 @@ import PlayingPhase from '@/Pages/Rooms/CubeTac/PlayingPhase';
 import FinishedPhase from '@/Pages/Rooms/CubeTac/FinishedPhase';
 import type { CubeSceneHandle } from '@/Pages/Rooms/CubeTac/CubeScene';
 import { VoiceChatProvider } from '@/Contexts/VoiceChatContext';
+import VoiceGalleryPanel from '@/Components/VoiceGalleryPanel';
 import { GamePlayer, GameRoom, PageProps } from '@/types';
 import { Head, Link, router, useForm, usePoll } from '@inertiajs/react';
 import { FormEventHandler, ReactNode, useRef } from 'react';
@@ -199,6 +200,7 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
                         currentPlayerId={currentPlayer.id}
                     >
                         {content}
+                        <VoiceGalleryPanel currentPlayerId={currentPlayer.id} />
                     </VoiceChatProvider>
                 ) : (
                     content

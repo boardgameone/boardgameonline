@@ -1,5 +1,6 @@
 import RoomChat from '@/Components/RoomChat';
 import { VoiceChatProvider } from '@/Contexts/VoiceChatContext';
+import VoiceGalleryPanel from '@/Components/VoiceGalleryPanel';
 import GameLayout from '@/Layouts/GameLayout';
 import { GamePlayer, GameRoom, PageProps, TwentyEightGameState } from '@/types';
 import { Head, useForm, usePoll } from '@inertiajs/react';
@@ -126,6 +127,7 @@ export default function TwentyEightGamePage({ auth, room, currentPlayer, isHost,
                     currentPlayerId={currentPlayer.id}
                 >
                     {content}
+                    <VoiceGalleryPanel currentPlayerId={currentPlayer.id} />
                 </VoiceChatProvider>
             ) : (
                 content
