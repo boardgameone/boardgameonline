@@ -3,6 +3,7 @@ import { router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import { useSound, useRandomSound } from '@/hooks/useSound';
 import PlayerCircle from './components/PlayerCircle';
+import MouseNotes from './components/MouseNotes';
 
 interface VotingPhaseProps {
     gameState: GameState;
@@ -103,6 +104,8 @@ export default function VotingPhase({ gameState, roomCode, gameSlug }: VotingPha
                 </div>
             )}
 
+            <MouseNotes gameState={gameState} />
+
             {/* Players */}
             <div className="w-full">
                 <h3 className="mb-4 text-center text-lg font-semibold text-gray-700">
@@ -115,6 +118,7 @@ export default function VotingPhase({ gameState, roomCode, gameSlug }: VotingPha
                     currentHour={gameState.current_hour}
                     onPlayerClick={handlePlayerClick}
                     clickablePlayerIds={canVote ? votablePlayerIds : []}
+                    selectedPlayerId={selectedPlayer?.id ?? null}
                     showDice={true}
                 />
             </div>

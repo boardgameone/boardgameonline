@@ -417,11 +417,22 @@ function VoiceTile({
     const stream = isCurrentUser ? localStream : remoteStream;
     const showVideo = !!stream && (isCurrentUser ? currentUserVideoOn : true);
 
+    // Keep the <video> element mounted across stream-availability changes; toggle
+    // visibility via class. Conditionally mounting tears down the playback
+    // pipeline on every flick and is the canonical flicker source.
     useEffect(() => {
-        if (videoRef.current && stream && showVideo) {
-            videoRef.current.srcObject = stream;
+        const el = videoRef.current;
+        if (!el) {
+            return;
         }
-    }, [stream, showVideo]);
+        if (stream) {
+            if (el.srcObject !== stream) {
+                el.srcObject = stream;
+            }
+        } else if (el.srcObject) {
+            el.srcObject = null;
+        }
+    }, [stream]);
 
     const tileClickable = !!stream;
 
@@ -435,15 +446,14 @@ function VoiceTile({
             onClick={tileClickable ? onMaximize : undefined}
             title={tileClickable ? 'Click to maximize' : undefined}
         >
-            {showVideo ? (
-                <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="h-full w-full scale-x-[-1] object-cover"
-                />
-            ) : (
+            <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className={`h-full w-full scale-x-[-1] object-cover ${showVideo ? '' : 'hidden'}`}
+            />
+            {!showVideo && (
                 <div className="flex h-full w-full items-center justify-center">
                     <div
                         className={`flex items-center justify-center rounded-full text-2xl font-bold text-white shadow-md transition-all duration-150 ${

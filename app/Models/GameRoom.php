@@ -30,6 +30,7 @@ class GameRoom extends Model
         'cheese_stolen_at_hour',
         'winner',
         'settings',
+        'variant',
         'started_at',
         'ended_at',
         'games_played',

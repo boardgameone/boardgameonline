@@ -7,6 +7,7 @@ import Stage from './components/Stage';
 import Cheese from './components/Cheese';
 import Curtains from './components/Curtains';
 import HourNarrator from './components/HourNarrator';
+import MouseNotes from './components/MouseNotes';
 
 interface NightPhaseProps {
     gameState: GameState;
@@ -18,8 +19,6 @@ export default function NightPhase({ gameState, roomCode, gameSlug }: NightPhase
     const [selectedPeekTarget, setSelectedPeekTarget] = useState<GameStatePlayer | null>(null);
 
     const currentPlayer = gameState.players.find((p) => p.id === gameState.current_player_id);
-    // Canonical awake check: my die matches the current hour. Doesn't depend on
-    // awake_player_ids, which the server intentionally hides from sleeping viewers.
     const isAwake = !!currentPlayer?.die_value && currentPlayer.die_value === gameState.current_hour;
     const otherAwake = gameState.players.filter(
         (p) => gameState.awake_player_ids.includes(p.id) && p.id !== gameState.current_player_id,
@@ -61,15 +60,6 @@ export default function NightPhase({ gameState, roomCode, gameSlug }: NightPhase
         }
     }, [gameState.cheese_stolen]);
 
-    // Poll the server every 1.5s during the night so settleNight() advances the
-    // clock for everyone — including empty hours where nobody acts.
-    useEffect(() => {
-        const id = window.setInterval(() => {
-            router.reload({ only: ['gameState'] });
-        }, 1500);
-        return () => window.clearInterval(id);
-    }, []);
-
     const handleSteal = () => {
         playCheeseMunch();
         router.post(route('rooms.stealCheese', [gameSlug, roomCode]));
@@ -87,29 +77,19 @@ export default function NightPhase({ gameState, roomCode, gameSlug }: NightPhase
         router.post(
             route('rooms.peek', [gameSlug, roomCode]),
             { target_player_id: selectedPeekTarget.id },
-            {
-                onSuccess: () => setSelectedPeekTarget(null),
-            },
+            { onSuccess: () => setSelectedPeekTarget(null) },
         );
     };
 
-    const progress = (gameState.current_hour / 6) * 100;
-
     return (
-        <div className="flex flex-col items-center gap-6">
+        <div className="flex flex-col items-center gap-5">
             <HourNarrator
                 hour={gameState.current_hour}
                 timerDuration={gameState.hour_timer_duration}
                 startedAt={gameState.hour_started_at}
             />
 
-            <div className="h-2 w-48 overflow-hidden rounded-full bg-gray-200">
-                <div
-                    className="h-full bg-indigo-600 transition-all duration-500"
-                    style={{ width: `${progress}%` }}
-                />
-            </div>
-
+            {/* Stage */}
             <div className="w-full max-w-xl">
                 <Stage>
                     <Cheese present={cheesePresent} />
@@ -117,60 +97,71 @@ export default function NightPhase({ gameState, roomCode, gameSlug }: NightPhase
                 </Stage>
             </div>
 
+            {/* Status banner — anchors directly under the stage */}
             <div
                 className={`
-                    rounded-2xl p-5 text-center w-full max-w-md
-                    ${isAwake ? 'bg-amber-50 border-2 border-amber-300' : 'bg-slate-100'}
+                    -mt-2 w-full max-w-md rounded-2xl px-5 py-4 text-center shadow-md
+                    ${isAwake
+                        ? 'bg-gradient-to-b from-amber-50 to-amber-100 ring-2 ring-amber-300'
+                        : 'bg-slate-50 ring-1 ring-slate-200'}
                 `}
             >
                 {isAwake ? (
                     <>
-                        <p className="text-lg font-semibold text-amber-900">
-                            🐭 You woke up at hour {gameState.current_hour}!
+                        <p className="text-lg font-bold text-amber-900">
+                            {'\u{1F42D}'} You woke up at hour {gameState.current_hour}!
                         </p>
 
                         {gameState.can_steal_cheese && (
                             <button
                                 onClick={handleSteal}
-                                className="mt-4 rounded-xl bg-rose-600 px-6 py-3 text-lg font-bold text-white shadow-lg transition hover:scale-105 hover:bg-rose-700 animate-pulse"
+                                className="mt-3 rounded-xl bg-gradient-to-b from-rose-500 to-rose-700 px-6 py-3 text-lg font-bold text-white shadow-lg transition hover:scale-105 hover:from-rose-600 hover:to-rose-800 animate-pulse"
                             >
-                                🧀 Steal the Cheese!
+                                {'\u{1F9C0}'} Steal the Cheese!
                             </button>
                         )}
 
                         {!gameState.can_steal_cheese && cheesePresent && (
-                            <p className="mt-2 text-amber-800">
-                                The cheese is right there...
+                            <p className="mt-1 text-sm text-amber-800">
+                                The cheese is right there, untouched.
                             </p>
                         )}
 
                         {cheeseGone && (
-                            <p className="mt-2 font-medium text-rose-700">
+                            <p className="mt-1 text-sm font-medium text-rose-700">
                                 The cheese is gone! Someone got here before you.
                             </p>
                         )}
 
                         {otherAwake.length > 0 && (
-                            <p className="mt-3 text-sm text-amber-700">
-                                👀 Also awake: <strong>{otherAwake.map((p) => p.nickname).join(', ')}</strong>
+                            <p className="mt-3 inline-flex items-center gap-1 rounded-full bg-amber-200/60 px-3 py-1 text-xs font-semibold text-amber-900">
+                                {'\u{1F441}'} Also awake: {otherAwake.map((p) => p.nickname).join(', ')}
                             </p>
                         )}
 
                         {gameState.can_peek && (
-                            <div className="mt-4 rounded-lg bg-indigo-50 p-3 text-indigo-900">
-                                <p className="text-sm font-semibold">
-                                    👀 You're alone — peek at one mouse to learn their wake hour.
+                            <div className="mt-4 rounded-xl bg-indigo-50 p-3 ring-1 ring-indigo-200">
+                                <p className="text-sm font-semibold text-indigo-900">
+                                    {'\u{1F50D}'} You're alone — peek at one mouse to learn their wake hour.
                                 </p>
                                 {selectedPeekTarget ? (
-                                    <button
-                                        onClick={handlePeek}
-                                        className="mt-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-                                    >
-                                        Peek at {selectedPeekTarget.nickname}
-                                    </button>
+                                    <div className="mt-2 flex items-center justify-center gap-2">
+                                        <button
+                                            onClick={handlePeek}
+                                            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-700"
+                                        >
+                                            Peek at {selectedPeekTarget.nickname}
+                                        </button>
+                                        <button
+                                            onClick={() => setSelectedPeekTarget(null)}
+                                            className="text-xs text-indigo-600 underline"
+                                        >
+                                            cancel
+                                        </button>
+                                    </div>
                                 ) : (
                                     <p className="mt-1 text-xs italic text-indigo-700">
-                                        Tap a mouse below to select.
+                                        {'\u{1F447}'} Tap a glowing mouse below to select.
                                     </p>
                                 )}
                             </div>
@@ -179,15 +170,19 @@ export default function NightPhase({ gameState, roomCode, gameSlug }: NightPhase
                 ) : (
                     <p className="text-slate-600">
                         {currentPlayer?.die_value && currentPlayer.die_value < gameState.current_hour
-                            ? `💤 Zzz... your hour (${currentPlayer.die_value}) has passed.`
-                            : `💤 Zzz... waiting for hour ${currentPlayer?.die_value ?? '?'}`}
+                            ? `${'\u{1F4A4}'} Zzz... your hour (${currentPlayer.die_value}) has passed.`
+                            : `${'\u{1F4A4}'} Zzz... waiting for hour ${currentPlayer?.die_value ?? '?'}.`}
                     </p>
                 )}
             </div>
 
+            {/* Persistent player notes — your die + everything you've peeked */}
+            <MouseNotes gameState={gameState} />
+
+            {/* Player cards row */}
             <div className="w-full">
-                <h3 className="mb-3 text-center text-sm font-semibold uppercase tracking-wide text-slate-600">
-                    Mice
+                <h3 className="mb-3 text-center text-xs font-bold uppercase tracking-[0.25em] text-slate-500">
+                    {'\u{1F42D}'} The Mice
                 </h3>
                 <PlayerCircle
                     players={gameState.players}
@@ -196,6 +191,7 @@ export default function NightPhase({ gameState, roomCode, gameSlug }: NightPhase
                     currentHour={gameState.current_hour}
                     onPlayerClick={handlePlayerClick}
                     clickablePlayerIds={peekablePlayerIds}
+                    selectedPlayerId={selectedPeekTarget?.id ?? null}
                     showDice={true}
                 />
             </div>
