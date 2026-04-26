@@ -1,6 +1,7 @@
 import GameIcon from '@/Components/GameIcon';
 import RoomChat from '@/Components/RoomChat';
 import { VoiceChatProvider } from '@/Contexts/VoiceChatContext';
+import VoiceGalleryPanel from '@/Components/VoiceGalleryPanel';
 import GameLayout from '@/Layouts/GameLayout';
 import { GamePlayer, GameRoom, PageProps } from '@/types';
 import { Head, useForm, usePoll } from '@inertiajs/react';
@@ -181,6 +182,7 @@ export default function TrioGamePage({ auth, room, currentPlayer, isHost, gameSt
                     currentPlayerId={currentPlayer.id}
                 >
                     {content}
+                    <VoiceGalleryPanel currentPlayerId={currentPlayer.id} />
                 </VoiceChatProvider>
             ) : (
                 content
