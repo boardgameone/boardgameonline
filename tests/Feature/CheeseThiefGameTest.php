@@ -772,4 +772,210 @@ class CheeseThiefGameTest extends TestCase
         $room->update(['current_hour' => 8, 'hour_started_at' => null]);
         $this->assertFalse($room->isHourTimerExpired());
     }
+
+    // --- Peek when alone ---
+
+    public function test_peeker_alone_sees_target_die_value(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+        $players = $data['players'];
+
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+        $this->rigThief($room, $players[2]);
+        $players[0]->update(['die_value' => 3]);
+        $players[1]->update(['die_value' => 6]);
+        $players[2]->update(['die_value' => 4]);
+        $players[3]->update(['die_value' => 5]);
+        $room->update(['current_hour' => 3, 'hour_started_at' => now(), 'cheese_stolen_at_hour' => null]);
+
+        $response = $this->actingAs($players[0]->user)
+            ->post(route('rooms.peek', [$room->game->slug, $room->room_code]), [
+                'target_player_id' => $players[1]->id,
+            ]);
+
+        $response->assertRedirect();
+        $players[0]->refresh();
+        $this->assertEquals([$players[1]->id => 6], $players[0]->getPeekedPlayers());
+        $this->assertTrue($players[0]->hasPeekedAtHour(3));
+    }
+
+    public function test_peek_blocked_when_two_mice_share_the_hour(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+        $players = $data['players'];
+
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+        $this->rigThief($room, $players[2]);
+        $players[0]->update(['die_value' => 3]);
+        $players[1]->update(['die_value' => 3]); // shared hour
+        $players[2]->update(['die_value' => 4]);
+        $players[3]->update(['die_value' => 5]);
+        $room->update(['current_hour' => 3, 'hour_started_at' => now()]);
+
+        $response = $this->actingAs($players[0]->user)
+            ->post(route('rooms.peek', [$room->game->slug, $room->room_code]), [
+                'target_player_id' => $players[2]->id,
+            ]);
+
+        $response->assertSessionHasErrors('error');
+        $players[0]->refresh();
+        $this->assertEmpty($players[0]->getPeekedPlayers());
+    }
+
+    public function test_peek_blocked_outside_own_wake_hour(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+        $players = $data['players'];
+
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+        $this->rigThief($room, $players[2]);
+        $players[0]->update(['die_value' => 5]);
+        $players[1]->update(['die_value' => 6]);
+        $room->update(['current_hour' => 3, 'hour_started_at' => now()]);
+
+        $response = $this->actingAs($players[0]->user)
+            ->post(route('rooms.peek', [$room->game->slug, $room->room_code]), [
+                'target_player_id' => $players[1]->id,
+            ]);
+
+        $response->assertSessionHasErrors('error');
+    }
+
+    public function test_only_one_peek_per_hour(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+        $players = $data['players'];
+
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+        $this->rigThief($room, $players[2]);
+        $players[0]->update(['die_value' => 3]);
+        $players[1]->update(['die_value' => 6]);
+        $players[2]->update(['die_value' => 4]);
+        $players[3]->update(['die_value' => 5]);
+        $room->update(['current_hour' => 3, 'hour_started_at' => now()]);
+
+        $this->actingAs($players[0]->user)
+            ->post(route('rooms.peek', [$room->game->slug, $room->room_code]), [
+                'target_player_id' => $players[1]->id,
+            ]);
+
+        $response = $this->actingAs($players[0]->user)
+            ->post(route('rooms.peek', [$room->game->slug, $room->room_code]), [
+                'target_player_id' => $players[3]->id,
+            ]);
+
+        $response->assertSessionHasErrors('error');
+    }
+
+    public function test_can_peek_flag_only_for_alone_mouse(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+        $players = $data['players'];
+
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+        $this->rigThief($room, $players[2]);
+        $players[0]->update(['die_value' => 3]);
+        $players[1]->update(['die_value' => 5]);
+        $players[2]->update(['die_value' => 4]);
+        $players[3]->update(['die_value' => 6]);
+        $room->update(['current_hour' => 3, 'hour_started_at' => now()]);
+
+        $aloneResponse = $this->actingAs($players[0]->user)
+            ->get(route('rooms.show', [$room->game->slug, $room->room_code]));
+        $aloneResponse->assertInertia(fn ($page) => $page->where('gameState.can_peek', true));
+
+        $sleepingResponse = $this->actingAs($players[1]->user)
+            ->get(route('rooms.show', [$room->game->slug, $room->room_code]));
+        $sleepingResponse->assertInertia(fn ($page) => $page->where('gameState.can_peek', false));
+    }
+
+    public function test_peeked_die_value_visible_in_game_state(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+        $players = $data['players'];
+
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+        $this->rigThief($room, $players[2]);
+        $players[0]->update(['die_value' => 3]);
+        $players[1]->update(['die_value' => 6]);
+        $players[2]->update(['die_value' => 4]);
+        $players[3]->update(['die_value' => 5]);
+        $room->update(['current_hour' => 3, 'hour_started_at' => now()]);
+
+        $this->actingAs($players[0]->user)
+            ->post(route('rooms.peek', [$room->game->slug, $room->room_code]), [
+                'target_player_id' => $players[1]->id,
+            ]);
+
+        $response = $this->actingAs($players[0]->user)
+            ->get(route('rooms.show', [$room->game->slug, $room->room_code]));
+
+        $response->assertInertia(function ($page) use ($players) {
+            $gameState = $page->toArray()['props']['gameState'];
+            $peeked = collect($gameState['players'])->firstWhere('id', $players[1]->id);
+            $other = collect($gameState['players'])->firstWhere('id', $players[3]->id);
+            $this->assertEquals(6, $peeked['die_value']);
+            $this->assertNull($other['die_value']);
+        });
+    }
+
+    // --- Accomplice sees thief ---
+
+    public function test_accomplice_sees_thief_identity_after_being_picked(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+        $players = $data['players'];
+
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+        $this->rigThief($room, $players[0]);
+        $players[1]->update(['is_accomplice' => true]);
+        $room->update([
+            'accomplice_player_id' => $players[1]->id,
+            'current_hour' => 8, // voting phase
+        ]);
+
+        $response = $this->actingAs($players[1]->user)
+            ->get(route('rooms.show', [$room->game->slug, $room->room_code]));
+
+        $response->assertInertia(function ($page) use ($players) {
+            $gameState = $page->toArray()['props']['gameState'];
+            $this->assertEquals($players[0]->id, $gameState['thief_player_id']);
+            $thiefRow = collect($gameState['players'])->firstWhere('id', $players[0]->id);
+            $this->assertTrue($thiefRow['is_thief']);
+        });
+    }
+
+    public function test_innocent_mouse_does_not_see_thief_identity(): void
+    {
+        $data = $this->createGameWithPlayers(4);
+        $room = $data['room'];
+        $players = $data['players'];
+
+        $this->actingAs($data['host'])->post(route('rooms.start', [$data['game']->slug, $room->room_code]));
+        $this->rigThief($room, $players[0]);
+        $players[1]->update(['is_accomplice' => true]);
+        $room->update([
+            'accomplice_player_id' => $players[1]->id,
+            'current_hour' => 8,
+        ]);
+
+        // Player 2 is an innocent mouse — should NOT see thief identity.
+        $response = $this->actingAs($players[2]->user)
+            ->get(route('rooms.show', [$room->game->slug, $room->room_code]));
+
+        $response->assertInertia(function ($page) {
+            $gameState = $page->toArray()['props']['gameState'];
+            $this->assertNull($gameState['thief_player_id']);
+            foreach ($gameState['players'] as $p) {
+                $this->assertNull($p['is_thief']);
+            }
+        });
+    }
 }

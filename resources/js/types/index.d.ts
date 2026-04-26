@@ -189,6 +189,7 @@ export interface GameState {
     players: GameStatePlayer[];
     awake_player_ids: number[];
     can_steal_cheese: boolean;
+    can_peek: boolean;
     cheese_visible_to_self: 'present' | 'gone' | 'hidden';
     cheese_stolen: boolean; // Whether the current viewer "knows" cheese is stolen
     cheese_stolen_at_hour: number | null; // Only revealed at game end
