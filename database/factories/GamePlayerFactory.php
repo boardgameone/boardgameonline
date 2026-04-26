@@ -2,13 +2,14 @@
 
 namespace Database\Factories;
 
+use App\Models\GamePlayer;
 use App\Models\GameRoom;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\GamePlayer>
+ * @extends Factory<GamePlayer>
  */
 class GamePlayerFactory extends Factory
 {
@@ -31,7 +32,6 @@ class GamePlayerFactory extends Factory
             'is_thief' => false,
             'is_accomplice' => false,
             'die_value' => null,
-            'has_stolen_cheese' => false,
             'is_connected' => true,
             'is_muted' => true,
             'is_video_enabled' => false,

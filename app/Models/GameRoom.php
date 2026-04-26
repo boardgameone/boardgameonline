@@ -27,6 +27,7 @@ class GameRoom extends Model
         'hour_started_at',
         'thief_player_id',
         'accomplice_player_id',
+        'cheese_stolen_at_hour',
         'winner',
         'settings',
         'started_at',
@@ -43,6 +44,7 @@ class GameRoom extends Model
             'settings' => 'array',
             'is_public' => 'boolean',
             'current_hour' => 'integer',
+            'cheese_stolen_at_hour' => 'integer',
             'hour_started_at' => 'datetime',
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
@@ -128,14 +130,6 @@ class GameRoom extends Model
     }
 
     /**
-     * @return HasMany<GamePeek, $this>
-     */
-    public function peeks(): HasMany
-    {
-        return $this->hasMany(GamePeek::class);
-    }
-
-    /**
      * @return HasMany<GameVote, $this>
      */
     public function votes(): HasMany
@@ -203,14 +197,6 @@ class GameRoom extends Model
     }
 
     /**
-     * Check if a player woke up alone at the given hour.
-     */
-    public function playerWokeUpAlone(int $hour): bool
-    {
-        return $this->playersAtHour($hour)->count() === 1;
-    }
-
-    /**
      * Check if all connected players have confirmed their die rolls.
      */
     public function allPlayersConfirmedRoll(): bool
@@ -219,68 +205,42 @@ class GameRoom extends Model
     }
 
     /**
-     * Get the timer duration for the current hour based on player count.
-     * Empty hours (0 players) or multi-player hours (2+) use a shorter timer.
-     * Solo-player hours use the full timer.
+     * Get the fixed timer duration (in seconds) for every night hour.
+     * Each of the 6 hours runs for the same duration regardless of how many
+     * mice are awake — like a narrator counting through the night.
      */
     public function getHourTimerDuration(): int
     {
-        $count = $this->playersAtHour($this->current_hour)->count();
-
-        if ($count === 1) {
-            return (int) config('games.cheese_thief.night_hour_timer_seconds', 15);
-        }
-
-        return (int) config('games.cheese_thief.empty_hour_timer_seconds', 3);
+        return (int) config('games.cheese_thief.night_hour_timer_seconds', 12);
     }
 
     /**
      * Check if the hour timer has expired.
-     * Uses shorter timer for empty/multi-player hours, full timer for solo-player hours.
      */
     public function isHourTimerExpired(): bool
     {
         if ($this->current_hour < 1 || $this->current_hour > 6) {
-            return false; // Only night hours have timers
+            return false;
         }
 
         if (! $this->hour_started_at) {
             return false;
         }
 
-        $timerDuration = $this->getHourTimerDuration();
-
-        return $this->hour_started_at->diffInSeconds(now()) >= $timerDuration;
+        return $this->hour_started_at->diffInSeconds(now()) >= $this->getHourTimerDuration();
     }
 
     /**
      * Check if the current night hour phase is complete.
-     * A night hour is complete when:
-     * - The timer has expired (shorter for empty/multi-player hours, longer for solo), or
-     * - Exactly 1 player woke up and has completed their action.
+     * Hours always run for the full timer duration — no early-completion path.
      */
     public function currentHourComplete(): bool
     {
-        $hour = $this->current_hour;
-        if ($hour < 1 || $hour > 6) {
+        if ($this->current_hour < 1 || $this->current_hour > 6) {
             return true;
         }
 
-        // Check if timer has expired
-        if ($this->isHourTimerExpired()) {
-            return true;
-        }
-
-        $awakePlayers = $this->playersAtHour($hour);
-        $count = $awakePlayers->count();
-
-        // No one or multiple players woke up - wait for timer
-        if ($count === 0 || $count > 1) {
-            return false;
-        }
-
-        // Exactly one player - check if they've completed their action
-        return $awakePlayers->first()->hasCompletedHour($hour);
+        return $this->isHourTimerExpired();
     }
 
     /**
@@ -324,10 +284,25 @@ class GameRoom extends Model
     }
 
     /**
-     * Check if cheese has been stolen (any player peeked at the thief).
+     * Check if the cheese has been stolen (set when night reaches the thief's hour).
      */
     public function isCheeseStolen(): bool
     {
-        return $this->connectedPlayers()->where('has_stolen_cheese', true)->exists();
+        return ! is_null($this->cheese_stolen_at_hour);
+    }
+
+    /**
+     * Get the thief's die value (the hour at which the cheese can/will be stolen).
+     */
+    public function thiefDieValue(): ?int
+    {
+        if (! $this->thief_player_id) {
+            return null;
+        }
+
+        $thief = $this->players->firstWhere('id', $this->thief_player_id)
+            ?? $this->players()->find($this->thief_player_id);
+
+        return $thief?->die_value;
     }
 }

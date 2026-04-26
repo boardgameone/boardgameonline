@@ -24,7 +24,6 @@ class GamePlayer extends Model
         'is_thief',
         'is_accomplice',
         'die_value',
-        'has_stolen_cheese',
         'is_connected',
         'is_muted',
         'is_video_enabled',
@@ -42,7 +41,6 @@ class GamePlayer extends Model
             'is_host' => 'boolean',
             'is_thief' => 'boolean',
             'is_accomplice' => 'boolean',
-            'has_stolen_cheese' => 'boolean',
             'is_connected' => 'boolean',
             'is_muted' => 'boolean',
             'is_video_enabled' => 'boolean',
@@ -75,22 +73,6 @@ class GamePlayer extends Model
     public function actions(): HasMany
     {
         return $this->hasMany(GameAction::class);
-    }
-
-    /**
-     * @return HasMany<GamePeek, $this>
-     */
-    public function peeksPerformed(): HasMany
-    {
-        return $this->hasMany(GamePeek::class, 'peeker_id');
-    }
-
-    /**
-     * @return HasMany<GamePeek, $this>
-     */
-    public function peeksReceived(): HasMany
-    {
-        return $this->hasMany(GamePeek::class, 'peeked_at_id');
     }
 
     /**
@@ -128,28 +110,6 @@ class GamePlayer extends Model
     }
 
     /**
-     * Check if this player has completed their action for a given night hour.
-     */
-    public function hasCompletedHour(int $hour): bool
-    {
-        return in_array($hour, $this->game_data['completed_hours'] ?? []);
-    }
-
-    /**
-     * Mark a night hour as completed for this player.
-     */
-    public function completeHour(int $hour): void
-    {
-        $completedHours = $this->game_data['completed_hours'] ?? [];
-        if (! in_array($hour, $completedHours)) {
-            $completedHours[] = $hour;
-            $this->update([
-                'game_data' => array_merge($this->game_data ?? [], ['completed_hours' => $completedHours]),
-            ]);
-        }
-    }
-
-    /**
      * Check if this player has cast a vote.
      */
     public function hasVoted(): bool
@@ -164,28 +124,6 @@ class GamePlayer extends Model
     {
         $this->update([
             'game_data' => array_merge($this->game_data ?? [], ['has_voted' => true]),
-        ]);
-    }
-
-    /**
-     * Get the IDs of players this player has peeked at (and their die values).
-     *
-     * @return array<int, int> player_id => die_value
-     */
-    public function getPeekedPlayers(): array
-    {
-        return $this->game_data['peeked_players'] ?? [];
-    }
-
-    /**
-     * Record that this player peeked at another player's die.
-     */
-    public function recordPeek(int $playerId, int $dieValue): void
-    {
-        $peekedPlayers = $this->game_data['peeked_players'] ?? [];
-        $peekedPlayers[$playerId] = $dieValue;
-        $this->update([
-            'game_data' => array_merge($this->game_data ?? [], ['peeked_players' => $peekedPlayers]),
         ]);
     }
 }

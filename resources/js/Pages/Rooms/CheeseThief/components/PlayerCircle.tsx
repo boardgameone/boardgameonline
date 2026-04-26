@@ -48,10 +48,8 @@ export default function PlayerCircle({
                             ${isSelf ? 'ring-2 ring-blue-500 bg-blue-50' : 'bg-white'}
                             ${clickable ? 'cursor-pointer hover:bg-gray-100 hover:scale-105' : 'cursor-default'}
                             ${isNightPhase && !awake ? 'opacity-50' : ''}
-                            ${player.has_stolen_cheese && (isSelf || currentPlayerIsAwake) ? 'ring-2 ring-yellow-500' : ''}
                         `}
                     >
-                        {/* Avatar with Voice/Video */}
                         <PlayerAvatarWithVoice
                             playerId={player.id}
                             nickname={player.nickname}
@@ -63,13 +61,11 @@ export default function PlayerCircle({
                             avatarClassName={avatarClassName}
                         />
 
-                        {/* Name */}
                         <span className="text-sm font-medium text-gray-900 max-w-[80px] truncate">
                             {player.nickname}
                             {isSelf && ' (You)'}
                         </span>
 
-                        {/* Status indicators */}
                         <div className="flex items-center gap-1 text-xs">
                             {isNightPhase && awake && (isSelf || currentPlayerIsAwake) && (
                                 <span className="text-yellow-600" title="Awake">
@@ -79,11 +75,6 @@ export default function PlayerCircle({
                             {isNightPhase && !awake && (isSelf || currentPlayerIsAwake) && (
                                 <span className="text-gray-400" title="Sleeping">
                                     {'\u{1F4A4}'}
-                                </span>
-                            )}
-                            {player.has_stolen_cheese && (isSelf || currentPlayerIsAwake) && (
-                                <span title="Cheese stolen!">
-                                    {'\u{1F9C0}'}
                                 </span>
                             )}
                             {player.is_thief && (
@@ -98,17 +89,15 @@ export default function PlayerCircle({
                             )}
                         </div>
 
-                        {/* Die display */}
                         {showDice && (
                             <div className="mt-1">
                                 <DieDisplay
-                                    value={isSelf || currentPlayerIsAwake ? player.die_value : null}
+                                    value={isSelf ? player.die_value : null}
                                     size="sm"
                                 />
                             </div>
                         )}
 
-                        {/* Confirmation/Vote status */}
                         {currentHour === 0 && (
                             <span className={`text-xs ${player.has_confirmed_roll ? 'text-green-600' : 'text-gray-400'}`}>
                                 {player.has_confirmed_roll ? '\u2713 Ready' : 'Waiting...'}

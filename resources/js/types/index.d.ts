@@ -50,7 +50,6 @@ export interface GamePlayer {
     is_thief: boolean;
     is_accomplice: boolean;
     die_value: number | null;
-    has_stolen_cheese: boolean;
     is_connected: boolean;
     is_muted: boolean;
     turn_order: number | null;
@@ -75,12 +74,11 @@ export interface GameStatePlayer {
     is_host: boolean;
     is_connected: boolean;
     turn_order: number | null;
-    die_value: number | null; // Only visible to self, if peeked, or game over
+    die_value: number | null; // Only visible to self or game over
     is_thief: boolean | null; // Only visible to thief or game over
     is_accomplice: boolean | null; // Only visible to thief, accomplice, or game over
     has_confirmed_roll: boolean;
     has_voted: boolean;
-    has_stolen_cheese: boolean;
 }
 
 export interface ChatMessage {
@@ -190,11 +188,12 @@ export interface GameState {
     current_hour: number; // 0=rolling, 1-6=night, 7=accomplice, 8=voting, 9=results
     players: GameStatePlayer[];
     awake_player_ids: number[];
-    can_peek: boolean;
-    can_skip_peek: boolean;
+    can_steal_cheese: boolean;
+    cheese_visible_to_self: 'present' | 'gone' | 'hidden';
+    cheese_stolen: boolean; // Whether the current viewer "knows" cheese is stolen
+    cheese_stolen_at_hour: number | null; // Only revealed at game end
     can_select_accomplice: boolean;
     can_vote: boolean;
-    cheese_stolen: boolean;
     winner: 'mice' | 'thief' | null;
     thief_player_id: number | null; // Only visible when game over
     accomplice_player_id: number | null; // Only visible to thief, accomplice, or game over

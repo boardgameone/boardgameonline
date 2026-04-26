@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\Game;
 use App\Models\GameAction;
 use App\Models\GameCardReveal;
-use App\Models\GamePeek;
 use App\Models\GamePlayer;
 use App\Models\GameRoom;
 use App\Models\GameVote;
@@ -165,7 +164,7 @@ class ResetGameTest extends TestCase
         ]);
     }
 
-    public function test_reset_clears_peeks_votes_actions(): void
+    public function test_reset_clears_votes_actions(): void
     {
         $host = User::factory()->create();
         $game = Game::factory()->create(['min_players' => 2]);
@@ -173,14 +172,6 @@ class ResetGameTest extends TestCase
         $hostPlayer = GamePlayer::factory()->forRoom($room)->forUser($host)->host()->create();
         $otherPlayer = GamePlayer::factory()->forRoom($room)->create();
 
-        // Create game-specific data
-        GamePeek::create([
-            'game_room_id' => $room->id,
-            'peeker_id' => $hostPlayer->id,
-            'peeked_at_id' => $otherPlayer->id,
-            'hour' => 3,
-            'saw_thief' => false,
-        ]);
         GameVote::create([
             'game_room_id' => $room->id,
             'voter_id' => $hostPlayer->id,
@@ -189,13 +180,12 @@ class ResetGameTest extends TestCase
         GameAction::create([
             'game_room_id' => $room->id,
             'player_id' => $hostPlayer->id,
-            'action_type' => 'peek',
+            'action_type' => 'noop',
             'hour' => 3,
         ]);
 
         $this->actingAs($host)->post(route('rooms.resetGame', [$game->slug, $room->room_code]));
 
-        $this->assertEquals(0, $room->peeks()->count());
         $this->assertEquals(0, $room->votes()->count());
         $this->assertEquals(0, $room->actions()->count());
     }
