@@ -13,15 +13,19 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type Ref } from 'react';
 import { Marks, Move, indexOf } from '@/lib/rubikCube';
 import { indexOf as megaIndexOf, type Direction as MegaDirection } from '@/lib/megaminx';
+import { indexOf as pyraIndexOf, type Direction as PyraDirection } from '@/lib/pyraminx';
 import RotateControls from './components/RotateControls';
+import PyraRotateControls from './components/PyraRotateControls';
 import type { CubeSceneHandle } from './CubeScene';
 import type { MegaminxSceneHandle } from './MegaminxScene';
+import type { PyraminxSceneHandle } from './PyraminxScene';
 import { useVoiceChatOptional } from '@/Contexts/VoiceChatContext';
 import VideoModal from '@/Components/VideoModal';
 import { useSound } from '@/hooks/useSound';
 
 const CubeScene = lazy(() => import('./CubeScene'));
 const MegaminxScene = lazy(() => import('./MegaminxScene'));
+const PyraminxScene = lazy(() => import('./PyraminxScene'));
 
 export interface CubeTacPlayerInfo {
     id: number | null;
@@ -61,13 +65,17 @@ export interface PlayingPhaseProps {
      * Which playing surface this room uses. Defaults to 'cube' for callers
      * that predate the variant feature (and for the local hotseat page).
      */
-    variant?: 'cube' | 'megaminx';
+    variant?: 'cube' | 'megaminx' | 'pyraminx';
     onMark: (face: number, row: number, col: number) => void;
     onRotate: (move: Move) => void;
     /** Megaminx mark handler — required when variant === 'megaminx'. */
     onMegaMark?: (face: number, slot: number) => void;
     /** Megaminx rotate handler — required when variant === 'megaminx'. */
     onMegaRotate?: (face: number, direction: MegaDirection) => void;
+    /** Pyraminx mark handler — required when variant === 'pyraminx'. */
+    onPyraMark?: (face: number, slot: number) => void;
+    /** Pyraminx rotate handler — required when variant === 'pyraminx'. */
+    onPyraRotate?: (face: number, direction: PyraDirection) => void;
     onEndTurn: () => void;
     onUndoMark: () => void;
     /** Banner override — used by local mode to show "Player 1's turn" etc. */
@@ -78,6 +86,8 @@ export interface PlayingPhaseProps {
     cubeRef?: Ref<CubeSceneHandle>;
     /** Ref for the megaminx scene's imperative handle. */
     megaRef?: Ref<MegaminxSceneHandle>;
+    /** Ref for the pyraminx scene's imperative handle. */
+    pyraRef?: Ref<PyraminxSceneHandle>;
     /**
      * Total completed games in this lobby (wins + draws). Feeds the round
      * indicator in the leaderboard — a round is one game per player.
@@ -104,12 +114,15 @@ export default function PlayingPhase({
     onRotate,
     onMegaMark,
     onMegaRotate,
+    onPyraMark,
+    onPyraRotate,
     onEndTurn,
     onUndoMark,
     turnLabelOverride,
     onLeave,
     cubeRef,
     megaRef,
+    pyraRef,
     gamesPlayed,
 }: PlayingPhaseProps) {
     const voiceChat = useVoiceChatOptional();
@@ -138,11 +151,12 @@ export default function PlayingPhase({
     const canAct = isMyTurn && !pendingAction;
 
     // Pending mark — different lastAction.type per variant. The cube
-    // identifies the pending sticker by (face, row, col); the megaminx by
-    // (face, slot). We compute a single flat index for both so the scene
-    // components can highlight it uniformly.
+    // identifies the pending sticker by (face, row, col); megaminx and
+    // pyraminx by (face, slot). We compute a single flat index for all
+    // three so the scene components can highlight it uniformly.
     const isMegaminx = variant === 'megaminx';
-    const pendingCubeMark = !isMegaminx && pendingAction && lastAction && lastAction.type === 'mark'
+    const isPyraminx = variant === 'pyraminx';
+    const pendingCubeMark = variant === 'cube' && pendingAction && lastAction && lastAction.type === 'mark'
         ? {
             face: lastAction.face as number,
             row: lastAction.row as number,
@@ -155,18 +169,28 @@ export default function PlayingPhase({
             slot: lastAction.slot as number,
         }
         : null;
+    const pendingPyraMark = isPyraminx && pendingAction && lastAction && lastAction.type === 'pyra_mark'
+        ? {
+            face: lastAction.face as number,
+            slot: lastAction.slot as number,
+        }
+        : null;
     const pendingIndex = pendingCubeMark
         ? indexOf(pendingCubeMark.face, pendingCubeMark.row, pendingCubeMark.col)
         : pendingMegaMark
             ? megaIndexOf(pendingMegaMark.face, pendingMegaMark.slot)
-            : null;
-    const hasPending = pendingCubeMark !== null || pendingMegaMark !== null;
+            : pendingPyraMark
+                ? pyraIndexOf(pendingPyraMark.face, pendingPyraMark.slot)
+                : null;
+    const hasPending = pendingCubeMark !== null || pendingMegaMark !== null || pendingPyraMark !== null;
     const subLabel = pendingAction && isMyTurn
         ? 'Confirm · or tap your mark to undo'
         : canAct || turnLabelOverride
             ? isMegaminx
                 ? 'Tap a cell · or use a face center to rotate ↺ ↻'
-                : 'Tap a sticker · or rotate a face'
+                : isPyraminx
+                    ? 'Tap a perimeter cell · or rotate a face below'
+                    : 'Tap a sticker · or rotate a face'
             : 'Waiting…';
 
     // Cube click: tap the pending mark to undo, otherwise mark an empty cell.
@@ -202,6 +226,27 @@ export default function PlayingPhase({
             megaRef.current?.playMove(face, direction);
         }
         onMegaRotate?.(face, direction);
+    };
+
+    // Pyraminx click: same shape as megaminx, but only the 6 perimeter slots
+    // (0..5) are accepted. The scene already restricts clicking to those.
+    const handlePyraCellClick = (face: number, slot: number) => {
+        if (pendingPyraMark && pendingPyraMark.face === face && pendingPyraMark.slot === slot) {
+            onUndoMark();
+            return;
+        }
+        if (canAct && marks[pyraIndexOf(face, slot)] === null) {
+            onPyraMark?.(face, slot);
+        }
+    };
+
+    const handlePyraRotateWithSound = (face: number, direction: PyraDirection) => {
+        if (!canAct) return;
+        playRotateSound();
+        if (pyraRef && typeof pyraRef === 'object' && 'current' in pyraRef) {
+            pyraRef.current?.playMove(face, direction);
+        }
+        onPyraRotate?.(face, direction);
     };
 
     const stickerClickActive = isMyTurn && (canAct || hasPending);
@@ -252,7 +297,11 @@ export default function PlayingPhase({
                     fallback={
                         <div className="flex h-full items-center justify-center">
                             <div className="text-xs font-bold uppercase tracking-[0.4em] text-gray-500">
-                                {isMegaminx ? 'Loading megaminx…' : 'Loading cube…'}
+                                {isMegaminx
+                                    ? 'Loading megaminx…'
+                                    : isPyraminx
+                                        ? 'Loading pyraminx…'
+                                        : 'Loading cube…'}
                             </div>
                         </div>
                     }
@@ -267,6 +316,16 @@ export default function PlayingPhase({
                             onCellClick={stickerClickActive ? handleCellClick : undefined}
                             onRotate={canAct ? handleMegaRotateWithSound : undefined}
                             interactive={stickerClickActive || canAct}
+                        />
+                    ) : isPyraminx ? (
+                        <PyraminxScene
+                            ref={pyraRef}
+                            marks={marks}
+                            playerColors={playerColors}
+                            designs={playerDesigns}
+                            pendingIndex={pendingIndex}
+                            onCellClick={stickerClickActive ? handlePyraCellClick : undefined}
+                            interactive={stickerClickActive}
                         />
                     ) : (
                         <CubeScene
@@ -339,7 +398,8 @@ export default function PlayingPhase({
                     )}
                 </div>
 
-                {!isMegaminx && <RotateControls onRotate={handleRotateWithSound} disabled={!canAct} />}
+                {!isMegaminx && !isPyraminx && <RotateControls onRotate={handleRotateWithSound} disabled={!canAct} />}
+                {isPyraminx && <PyraRotateControls onRotate={handlePyraRotateWithSound} disabled={!canAct} />}
 
                 {isMyTurn && pendingAction && (
                     <div className="flex justify-center pt-1">

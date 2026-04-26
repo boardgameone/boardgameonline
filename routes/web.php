@@ -83,6 +83,8 @@ Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/reset', [CubeTacGameCon
 Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/pick-design', [CubeTacGameController::class, 'pickDesign'])->middleware('throttle:30,1')->name('rooms.cubetac.pickDesign');
 Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/mega-mark', [CubeTacGameController::class, 'megaMark'])->middleware('throttle:60,1')->name('rooms.cubetac.megaMark');
 Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/mega-rotate', [CubeTacGameController::class, 'megaRotate'])->middleware('throttle:60,1')->name('rooms.cubetac.megaRotate');
+Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/pyra-mark', [CubeTacGameController::class, 'pyraMark'])->middleware('throttle:60,1')->name('rooms.cubetac.pyraMark');
+Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/pyra-rotate', [CubeTacGameController::class, 'pyraRotate'])->middleware('throttle:60,1')->name('rooms.cubetac.pyraRotate');
 Route::get('/play/cubetac/local', [CubeTacGameController::class, 'local'])->name('cubetac.local');
 
 Route::middleware('auth')->group(function () {
