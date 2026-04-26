@@ -19,6 +19,7 @@ import * as THREE from 'three';
 import {
     forwardRef,
     memo,
+    useEffect,
     useImperativeHandle,
     useMemo,
     useRef,
@@ -113,6 +114,45 @@ const MegaminxScene = forwardRef<MegaminxSceneHandle, MegaminxSceneProps>(functi
 ) {
     const animationRef = useRef<PendingAnimation | null>(null);
     const [animationTick, setAnimationTick] = useState(0);
+    const orbitControlsRef = useRef<OrbitControlsImpl | null>(null);
+    const heldArrowKeysRef = useRef<Set<string>>(new Set());
+
+    // Hold-to-orbit: tracking arrow keys in a Set + applying per frame in
+    // <ArrowKeyOrbit> mirrors mouse drag cadence and avoids the OS key-repeat
+    // delay (~500 ms before the second event fires). Same pattern as CubeScene.
+    useEffect(() => {
+        const isArrow = (key: string) =>
+            key === 'ArrowLeft' || key === 'ArrowRight' || key === 'ArrowUp' || key === 'ArrowDown';
+
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (!isArrow(e.key)) return;
+            const target = e.target as HTMLElement | null;
+            if (
+                target?.tagName === 'INPUT'
+                || target?.tagName === 'TEXTAREA'
+                || target?.isContentEditable
+            ) {
+                return;
+            }
+            e.preventDefault();
+            heldArrowKeysRef.current.add(e.key);
+        };
+        const onKeyUp = (e: KeyboardEvent) => {
+            if (!isArrow(e.key)) return;
+            heldArrowKeysRef.current.delete(e.key);
+        };
+        const onBlur = () => {
+            heldArrowKeysRef.current.clear();
+        };
+        window.addEventListener('keydown', onKeyDown);
+        window.addEventListener('keyup', onKeyUp);
+        window.addEventListener('blur', onBlur);
+        return () => {
+            window.removeEventListener('keydown', onKeyDown);
+            window.removeEventListener('keyup', onKeyUp);
+            window.removeEventListener('blur', onBlur);
+        };
+    }, []);
 
     useImperativeHandle(
         ref,
@@ -143,6 +183,9 @@ const MegaminxScene = forwardRef<MegaminxSceneHandle, MegaminxSceneProps>(functi
             <directionalLight position={[-4, -3, -5]} intensity={0.25} />
 
             <OrbitControls
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                ref={orbitControlsRef as any}
+                makeDefault
                 enablePan={false}
                 enableZoom={true}
                 minDistance={4.2}
@@ -150,6 +193,7 @@ const MegaminxScene = forwardRef<MegaminxSceneHandle, MegaminxSceneProps>(functi
                 rotateSpeed={0.7}
                 zoomSpeed={0.6}
             />
+            <ArrowKeyOrbit controlsRef={orbitControlsRef} heldKeysRef={heldArrowKeysRef} />
 
             <DodecahedronGroup
                 marks={marks}
@@ -173,6 +217,55 @@ const MegaminxScene = forwardRef<MegaminxSceneHandle, MegaminxSceneProps>(functi
 });
 
 export default MegaminxScene;
+
+// ---------------------------------------------------------------------------
+// Arrow-key camera orbit — held arrow keys spin the dodecahedron in space
+// (camera orbit, not face turns). Mirrors CubeScene's ArrowKeyOrbit so users
+// get the same hold-to-spin feel across both variants.
+// ---------------------------------------------------------------------------
+
+const ORBIT_SPEED_RAD_PER_SEC = Math.PI * 6; // ~1080°/sec — matches CubeScene
+
+/**
+ * Minimal subset of three-stdlib's OrbitControls we drive directly. Drei
+ * exposes the full instance via ref; we only need the spherical-angle
+ * getters/setters since `rotateLeft`/`rotateUp` live behind private closures.
+ */
+interface OrbitControlsImpl {
+    getAzimuthalAngle: () => number;
+    getPolarAngle: () => number;
+    setAzimuthalAngle: (angle: number) => void;
+    setPolarAngle: (angle: number) => void;
+}
+
+function ArrowKeyOrbit({
+    controlsRef,
+    heldKeysRef,
+}: {
+    controlsRef: React.MutableRefObject<OrbitControlsImpl | null>;
+    heldKeysRef: React.MutableRefObject<Set<string>>;
+}) {
+    useFrame((_, delta) => {
+        const held = heldKeysRef.current;
+        if (held.size === 0) return;
+        const controls = controlsRef.current;
+        if (!controls) return;
+        const step = ORBIT_SPEED_RAD_PER_SEC * delta;
+        let dx = 0;
+        let dy = 0;
+        if (held.has('ArrowLeft')) dx -= step;
+        if (held.has('ArrowRight')) dx += step;
+        if (held.has('ArrowUp')) dy -= step;
+        if (held.has('ArrowDown')) dy += step;
+        if (dx !== 0) {
+            controls.setAzimuthalAngle(controls.getAzimuthalAngle() - dx);
+        }
+        if (dy !== 0) {
+            controls.setPolarAngle(controls.getPolarAngle() - dy);
+        }
+    });
+    return null;
+}
 
 // ---------------------------------------------------------------------------
 
