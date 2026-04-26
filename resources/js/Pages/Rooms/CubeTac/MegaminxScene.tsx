@@ -42,6 +42,7 @@ import {
     moveParams,
     vertices,
 } from '@/lib/megaminx';
+import MarkGlyph, { GLYPH_REFERENCE_HALF_WIDTH } from './MarkGlyph';
 
 /** A pleasantly distinct color per face — used for the pentagon backdrops. */
 const FACE_COLORS: string[] = [
@@ -59,7 +60,6 @@ const FACE_COLORS: string[] = [
     '#e9d5ff', // purple-200
 ];
 
-const SLOT_GLYPHS = ['X', 'O', '△', '▢', '✚', '⬡'] as const;
 const FALLBACK_GLYPH_COLOR = '#94a3b8';
 const ANIMATION_MS = 220;
 
@@ -467,7 +467,6 @@ function FaceMesh({
                 const isWin = winningIndices?.has(flat) ?? false;
                 const isPending = pendingIndex === flat;
                 const designIdx = mark !== null ? designs?.[mark] ?? mark : null;
-                const glyph = designIdx !== null ? SLOT_GLYPHS[designIdx % SLOT_GLYPHS.length] : null;
 
                 // Empty pieces show the face color (so users can tell the 12 faces apart);
                 // marked pieces show the player's avatar color over it. Center always gets
@@ -485,8 +484,9 @@ function FaceMesh({
                         slot={slot}
                         normal={normal}
                         color={baseColor}
-                        glyph={glyph}
-                        glyphColor={mark !== null ? '#0f172a' : '#ffffff'}
+                        design={designIdx}
+                        fillColor="#0f172a"
+                        glowColor={mark !== null ? (playerColors[mark] ?? FALLBACK_GLYPH_COLOR) : '#ffffff'}
                         isWin={isWin}
                         isPending={isPending}
                         isMarked={mark !== null}
@@ -517,8 +517,9 @@ interface PieceTileProps {
     slot: number;
     normal: Vec3;
     color: string;
-    glyph: string | null;
-    glyphColor: string;
+    design: number | null;
+    fillColor: string;
+    glowColor: string;
     isWin: boolean;
     isPending: boolean;
     isMarked: boolean;
@@ -536,8 +537,9 @@ function PieceTile({
     slot,
     normal,
     color,
-    glyph,
-    glyphColor,
+    design,
+    fillColor,
+    glowColor,
     isWin,
     isPending,
     isMarked,
@@ -609,9 +611,22 @@ function PieceTile({
                     emissiveIntensity={isWin ? 0.55 : 0}
                 />
             </mesh>
-            {glyph && isMarked && (
-                <group position={glyphPosition} quaternion={glyphQuaternion}>
-                    <GlyphSprite glyph={glyph} color={glyphColor} size={glyphSize} />
+            {design !== null && isMarked && (
+                <group
+                    position={glyphPosition}
+                    quaternion={glyphQuaternion}
+                    scale={[
+                        glyphSize / GLYPH_REFERENCE_HALF_WIDTH,
+                        glyphSize / GLYPH_REFERENCE_HALF_WIDTH,
+                        1,
+                    ]}
+                >
+                    <MarkGlyph
+                        design={design}
+                        color={fillColor}
+                        glowColor={glowColor}
+                        opacity={isPending ? 0.65 : 1}
+                    />
                 </group>
             )}
         </group>

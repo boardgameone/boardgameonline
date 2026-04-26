@@ -2,7 +2,7 @@ import { GameState, GameStatePlayer } from '@/types';
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { useSound, useRandomSound } from '@/hooks/useSound';
-import PlayerCircle from './components/PlayerCircle';
+import GameTable from './components/GameTable';
 import Stage from './components/Stage';
 import Cheese from './components/Cheese';
 import Curtains from './components/Curtains';
@@ -17,6 +17,8 @@ interface NightPhaseProps {
 
 export default function NightPhase({ gameState, roomCode, gameSlug }: NightPhaseProps) {
     const [selectedPeekTarget, setSelectedPeekTarget] = useState<GameStatePlayer | null>(null);
+    const [isPeeking, setIsPeeking] = useState(false);
+    const [isStealing, setIsStealing] = useState(false);
 
     const currentPlayer = gameState.players.find((p) => p.id === gameState.current_player_id);
     const isAwake = !!currentPlayer?.die_value && currentPlayer.die_value === gameState.current_hour;
@@ -61,8 +63,18 @@ export default function NightPhase({ gameState, roomCode, gameSlug }: NightPhase
     }, [gameState.cheese_stolen]);
 
     const handleSteal = () => {
+        if (isStealing) {
+            return;
+        }
         playCheeseMunch();
-        router.post(route('rooms.stealCheese', [gameSlug, roomCode]));
+        router.post(
+            route('rooms.stealCheese', [gameSlug, roomCode]),
+            {},
+            {
+                onStart: () => setIsStealing(true),
+                onFinish: () => setIsStealing(false),
+            },
+        );
     };
 
     const handlePlayerClick = (player: GameStatePlayer) => {
@@ -72,38 +84,36 @@ export default function NightPhase({ gameState, roomCode, gameSlug }: NightPhase
     };
 
     const handlePeek = () => {
-        if (!selectedPeekTarget) return;
+        if (!selectedPeekTarget || isPeeking) {
+            return;
+        }
         playPeek();
         router.post(
             route('rooms.peek', [gameSlug, roomCode]),
             { target_player_id: selectedPeekTarget.id },
-            { onSuccess: () => setSelectedPeekTarget(null) },
+            {
+                onStart: () => setIsPeeking(true),
+                onFinish: () => setIsPeeking(false),
+                onSuccess: () => setSelectedPeekTarget(null),
+            },
         );
     };
 
     return (
-        <div className="flex flex-col items-center gap-5">
+        <div className="flex flex-col items-center gap-5 pb-28">
             <HourNarrator
                 hour={gameState.current_hour}
                 timerDuration={gameState.hour_timer_duration}
                 startedAt={gameState.hour_started_at}
             />
 
-            {/* Stage */}
-            <div className="w-full max-w-xl">
-                <Stage>
-                    <Cheese present={cheesePresent} />
-                    <Curtains open={isAwake} />
-                </Stage>
-            </div>
-
-            {/* Status banner — anchors directly under the stage */}
+            {/* Status banner — above the table */}
             <div
                 className={`
-                    -mt-2 w-full max-w-md rounded-2xl px-5 py-4 text-center shadow-md
+                    w-full max-w-md rounded-2xl px-5 py-4 text-center shadow-md
                     ${isAwake
                         ? 'bg-gradient-to-b from-amber-50 to-amber-100 ring-2 ring-amber-300'
-                        : 'bg-slate-50 ring-1 ring-slate-200'}
+                        : 'bg-slate-800/60 ring-1 ring-slate-700 text-slate-200'}
                 `}
             >
                 {isAwake ? (
@@ -115,9 +125,10 @@ export default function NightPhase({ gameState, roomCode, gameSlug }: NightPhase
                         {gameState.can_steal_cheese && (
                             <button
                                 onClick={handleSteal}
-                                className="mt-3 rounded-xl bg-gradient-to-b from-rose-500 to-rose-700 px-6 py-3 text-lg font-bold text-white shadow-lg transition hover:scale-105 hover:from-rose-600 hover:to-rose-800 animate-pulse"
+                                disabled={isStealing}
+                                className="mt-3 rounded-xl bg-gradient-to-b from-rose-500 to-rose-700 px-6 py-3 text-lg font-bold text-white shadow-lg transition hover:scale-105 hover:from-rose-600 hover:to-rose-800 animate-pulse disabled:cursor-not-allowed disabled:opacity-60 disabled:animate-none"
                             >
-                                {'\u{1F9C0}'} Steal the Cheese!
+                                {isStealing ? 'Sneaking…' : `${'\u{1F9C0}'} Steal the Cheese!`}
                             </button>
                         )}
 
@@ -140,35 +151,13 @@ export default function NightPhase({ gameState, roomCode, gameSlug }: NightPhase
                         )}
 
                         {gameState.can_peek && (
-                            <div className="mt-4 rounded-xl bg-indigo-50 p-3 ring-1 ring-indigo-200">
-                                <p className="text-sm font-semibold text-indigo-900">
-                                    {'\u{1F50D}'} You're alone — peek at one mouse to learn their wake hour.
-                                </p>
-                                {selectedPeekTarget ? (
-                                    <div className="mt-2 flex items-center justify-center gap-2">
-                                        <button
-                                            onClick={handlePeek}
-                                            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-700"
-                                        >
-                                            Peek at {selectedPeekTarget.nickname}
-                                        </button>
-                                        <button
-                                            onClick={() => setSelectedPeekTarget(null)}
-                                            className="text-xs text-indigo-600 underline"
-                                        >
-                                            cancel
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <p className="mt-1 text-xs italic text-indigo-700">
-                                        {'\u{1F447}'} Tap a glowing mouse below to select.
-                                    </p>
-                                )}
-                            </div>
+                            <p className="mt-3 text-sm font-semibold text-indigo-900">
+                                {'\u{1F50D}'} You're alone — peek at one mouse to learn their wake hour.
+                            </p>
                         )}
                     </>
                 ) : (
-                    <p className="text-slate-600">
+                    <p>
                         {currentPlayer?.die_value && currentPlayer.die_value < gameState.current_hour
                             ? `${'\u{1F4A4}'} Zzz... your hour (${currentPlayer.die_value}) has passed.`
                             : `${'\u{1F4A4}'} Zzz... waiting for hour ${currentPlayer?.die_value ?? '?'}.`}
@@ -176,25 +165,56 @@ export default function NightPhase({ gameState, roomCode, gameSlug }: NightPhase
                 )}
             </div>
 
-            {/* Persistent player notes — your die + everything you've peeked */}
             <MouseNotes gameState={gameState} />
 
-            {/* Player cards row */}
-            <div className="w-full">
-                <h3 className="mb-3 text-center text-xs font-bold uppercase tracking-[0.25em] text-slate-500">
-                    {'\u{1F42D}'} The Mice
-                </h3>
-                <PlayerCircle
-                    players={gameState.players}
-                    currentPlayerId={gameState.current_player_id}
-                    awakePlayerIds={gameState.awake_player_ids}
-                    currentHour={gameState.current_hour}
-                    onPlayerClick={handlePlayerClick}
-                    clickablePlayerIds={peekablePlayerIds}
-                    selectedPlayerId={selectedPeekTarget?.id ?? null}
-                    actionLabel="peek"
-                    showDice={true}
-                />
+            {/* Game table — mice arranged around the central stage */}
+            <GameTable
+                players={gameState.players}
+                currentPlayerId={gameState.current_player_id}
+                awakePlayerIds={gameState.awake_player_ids}
+                currentHour={gameState.current_hour}
+                onPlayerClick={handlePlayerClick}
+                clickablePlayerIds={peekablePlayerIds}
+                selectedPlayerId={selectedPeekTarget?.id ?? null}
+                showDice={true}
+            >
+                {/* Central stage (curtain + cheese) */}
+                <div className="aspect-square w-full">
+                    <Stage>
+                        <Cheese present={cheesePresent} />
+                        <Curtains open={isAwake} />
+                    </Stage>
+                </div>
+            </GameTable>
+
+            {/* Fixed-bottom peek confirm footer — slides up when a target is selected.
+                Decoupled from the status banner so its appearance is stable across re-renders. */}
+            <div
+                className={`
+                    pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-4
+                    transition-[transform,opacity] duration-300 ease-out
+                    ${selectedPeekTarget ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}
+                `}
+            >
+                <div className="pointer-events-auto flex max-w-md items-center gap-3 rounded-2xl bg-indigo-600/95 px-4 py-3 shadow-2xl ring-1 ring-indigo-300/60 backdrop-blur">
+                    <span className="text-sm font-semibold text-white">
+                        Peek at <strong>{selectedPeekTarget?.nickname ?? '...'}</strong>?
+                    </span>
+                    <button
+                        onClick={handlePeek}
+                        disabled={isPeeking || !selectedPeekTarget}
+                        className="rounded-lg bg-white px-3 py-1.5 text-sm font-bold text-indigo-700 shadow hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        {isPeeking ? 'Peeking…' : '🔍 Peek'}
+                    </button>
+                    <button
+                        onClick={() => setSelectedPeekTarget(null)}
+                        disabled={isPeeking}
+                        className="text-xs text-indigo-100 underline disabled:opacity-60"
+                    >
+                        cancel
+                    </button>
+                </div>
             </div>
         </div>
     );

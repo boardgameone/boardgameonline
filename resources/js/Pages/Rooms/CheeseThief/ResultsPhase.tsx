@@ -1,8 +1,8 @@
 import { GameState } from '@/types';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSound } from '@/hooks/useSound';
 import { router } from '@inertiajs/react';
-import PlayerCircle from './components/PlayerCircle';
+import GameTable from './components/GameTable';
 
 interface ResultsPhaseProps {
     gameState: GameState;
@@ -11,28 +11,25 @@ interface ResultsPhaseProps {
 }
 
 export default function ResultsPhase({ gameState, roomCode, gameSlug }: ResultsPhaseProps) {
+    const [isResetting, setIsResetting] = useState(false);
+
     const winner = gameState.winner;
     const thiefPlayer = gameState.players.find((p) => p.id === gameState.thief_player_id);
     const accomplicePlayer = gameState.players.find((p) => p.id === gameState.accomplice_player_id);
-    const currentPlayer = gameState.players.find((p) => p.id === gameState.current_player_id);
 
-    // Sound effects
     const { play: playVictory } = useSound('/sounds/cheese-thief/victory.mp3', { volume: 0.8 });
     const { play: playDefeat } = useSound('/sounds/cheese-thief/defeat.mp3', { volume: 0.8 });
 
-    // Sort players by vote count
     const sortedPlayers = [...gameState.players].sort((a, b) => {
         const votesA = gameState.vote_counts[a.id] || 0;
         const votesB = gameState.vote_counts[b.id] || 0;
         return votesB - votesA;
     });
 
-    // Determine if current player won
     const isThief = gameState.is_thief;
     const isAccomplice = gameState.is_accomplice;
     const playerWon = winner === 'thief' ? (isThief || isAccomplice) : (!isThief && !isAccomplice);
 
-    // Play victory or defeat sound when results load
     useEffect(() => {
         if (playerWon) {
             playVictory();
@@ -41,77 +38,97 @@ export default function ResultsPhase({ gameState, roomCode, gameSlug }: ResultsP
         }
     }, [playerWon]);
 
+    const handleReset = () => {
+        if (isResetting) {
+            return;
+        }
+        router.post(
+            route('rooms.resetGame', [gameSlug, roomCode]),
+            {},
+            {
+                onStart: () => setIsResetting(true),
+                onFinish: () => setIsResetting(false),
+            },
+        );
+    };
+
     return (
-        <div className="flex flex-col items-center gap-6">
-            {/* Winner Banner */}
-            <div className={`
-                w-full rounded-2xl p-8 text-center
-                ${winner === 'mice'
-                    ? 'bg-linear-to-br from-blue-100 to-green-100'
-                    : 'bg-linear-to-br from-red-100 to-orange-100'
-                }
-            `}>
-                <div className="text-5xl mb-4">
+        <div className="flex flex-col items-center gap-5">
+            {/* Winner banner */}
+            <div
+                className={`
+                    w-full rounded-2xl p-6 text-center
+                    ${winner === 'mice'
+                        ? 'bg-linear-to-br from-blue-100 to-emerald-100'
+                        : 'bg-linear-to-br from-red-100 to-orange-100'}
+                `}
+            >
+                <div className="text-5xl mb-2">
                     {winner === 'mice' ? '\u{1F389}' : '\u{1F977}'}
                 </div>
                 <h2 className="text-3xl font-bold text-gray-900">
                     {winner === 'mice' ? 'Innocent Mice WIN!' : 'The Thief Wins!'}
                 </h2>
-                <p className="mt-2 text-lg text-gray-700">
-                    {winner === 'mice'
-                        ? 'The thief was caught!'
-                        : 'The thief escaped with the cheese!'
-                    }
+                <p className="mt-1 text-base text-gray-700">
+                    {winner === 'mice' ? 'The thief was caught!' : 'The thief escaped with the cheese!'}
                 </p>
             </div>
 
-            {/* Your Result */}
-            <div className={`
-                rounded-xl px-6 py-4 text-center
-                ${playerWon ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
-            `}>
+            <div
+                className={`
+                    rounded-xl px-6 py-3 text-center
+                    ${playerWon ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}
+                `}
+            >
                 <p className="font-semibold">
                     {playerWon ? '\u{1F389} You Won!' : '\u{1F61E} You Lost!'}
                 </p>
-                <p className="text-sm mt-1">
+                <p className="text-sm mt-0.5">
                     You were: {isThief ? 'The Thief \u{1F977}' : isAccomplice ? 'The Accomplice \u{1F91D}' : 'An Innocent Mouse \u{1F401}'}
                 </p>
             </div>
 
-            {/* Reveal Roles */}
-            <div className="w-full rounded-xl bg-gray-50 p-6">
-                <h3 className="text-lg font-semibold text-gray-700 mb-4 text-center">
-                    Roles Revealed
-                </h3>
-                <div className="flex justify-center gap-8">
-                    <div className="text-center">
-                        <div
-                            className="mx-auto flex h-16 w-16 items-center justify-center rounded-full text-white font-bold text-2xl"
-                            style={{ backgroundColor: thiefPlayer?.avatar_color }}
-                        >
-                            {thiefPlayer?.nickname.charAt(0).toUpperCase()}
-                        </div>
-                        <p className="mt-2 font-medium">{thiefPlayer?.nickname}</p>
-                        <p className="text-sm text-red-600">{'\u{1F977}'} Thief</p>
-                    </div>
-                    {accomplicePlayer && (
-                        <div className="text-center">
+            <GameTable
+                players={gameState.players}
+                currentPlayerId={gameState.current_player_id}
+                awakePlayerIds={[]}
+                currentHour={gameState.current_hour}
+                showDice={true}
+            >
+                <div className="flex flex-col items-center justify-center gap-3 rounded-3xl bg-slate-900/70 p-4 text-center shadow-inner ring-1 ring-amber-200/20">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-amber-200/85">
+                        Roles revealed
+                    </span>
+                    <div className="flex items-center justify-center gap-4">
+                        <div className="flex flex-col items-center">
                             <div
-                                className="mx-auto flex h-16 w-16 items-center justify-center rounded-full text-white font-bold text-2xl"
-                                style={{ backgroundColor: accomplicePlayer?.avatar_color }}
+                                className="flex h-12 w-12 items-center justify-center rounded-full text-base font-bold text-white shadow"
+                                style={{ backgroundColor: thiefPlayer?.avatar_color }}
                             >
-                                {accomplicePlayer?.nickname.charAt(0).toUpperCase()}
+                                {thiefPlayer?.nickname.charAt(0).toUpperCase()}
                             </div>
-                            <p className="mt-2 font-medium">{accomplicePlayer?.nickname}</p>
-                            <p className="text-sm text-orange-600">{'\u{1F91D}'} Accomplice</p>
+                            <p className="mt-1 text-xs font-medium text-slate-100">{thiefPlayer?.nickname}</p>
+                            <p className="text-[10px] text-red-300">{'\u{1F977}'} Thief</p>
                         </div>
-                    )}
+                        {accomplicePlayer && (
+                            <div className="flex flex-col items-center">
+                                <div
+                                    className="flex h-12 w-12 items-center justify-center rounded-full text-base font-bold text-white shadow"
+                                    style={{ backgroundColor: accomplicePlayer.avatar_color }}
+                                >
+                                    {accomplicePlayer.nickname.charAt(0).toUpperCase()}
+                                </div>
+                                <p className="mt-1 text-xs font-medium text-slate-100">{accomplicePlayer.nickname}</p>
+                                <p className="text-[10px] text-orange-300">{'\u{1F91D}'} Accomplice</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
-            </div>
+            </GameTable>
 
-            {/* Vote Results */}
-            <div className="w-full rounded-xl bg-white p-6 shadow-sm dark:bg-gray-800">
-                <h3 className="text-lg font-semibold text-gray-700 mb-4 text-center dark:text-gray-300">
+            {/* Vote results */}
+            <div className="w-full rounded-xl bg-white p-5 shadow-sm dark:bg-gray-800">
+                <h3 className="mb-3 text-center text-base font-semibold text-gray-700 dark:text-gray-300">
                     Vote Results
                 </h3>
                 <div className="space-y-3">
@@ -125,27 +142,27 @@ export default function ResultsPhase({ gameState, roomCode, gameSlug }: ResultsP
                         return (
                             <div key={player.id} className="flex items-center gap-3">
                                 <div
-                                    className="flex h-10 w-10 items-center justify-center rounded-full text-white font-bold"
+                                    className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-white"
                                     style={{ backgroundColor: player.avatar_color }}
                                 >
                                     {player.nickname.charAt(0).toUpperCase()}
                                 </div>
                                 <div className="flex-1">
-                                    <div className="flex justify-between items-center mb-1">
-                                        <span className="font-medium dark:text-gray-200">
+                                    <div className="mb-1 flex items-center justify-between">
+                                        <span className="text-sm font-medium dark:text-gray-200">
                                             {player.nickname}
                                             {isThiefPlayer && ' \u{1F977}'}
                                             {player.is_accomplice && ' \u{1F91D}'}
                                         </span>
-                                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                                        <span className="text-xs text-gray-500 dark:text-gray-400">
                                             {votes} vote{votes !== 1 ? 's' : ''}
-                                            {wasCaught && ' \u2190 CAUGHT!'}
+                                            {wasCaught && ' ← CAUGHT!'}
                                         </span>
                                     </div>
                                     <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
                                         <div
                                             className={`h-full transition-all duration-500 ${
-                                                wasCaught ? 'bg-green-500' : isThiefPlayer ? 'bg-red-400' : 'bg-indigo-400'
+                                                wasCaught ? 'bg-emerald-500' : isThiefPlayer ? 'bg-red-400' : 'bg-indigo-400'
                                             }`}
                                             style={{ width: `${percentage}%` }}
                                         />
@@ -157,30 +174,14 @@ export default function ResultsPhase({ gameState, roomCode, gameSlug }: ResultsP
                 </div>
             </div>
 
-            {/* All Players with Dice */}
-            <div className="w-full">
-                <h3 className="mb-4 text-center text-lg font-semibold text-gray-700 dark:text-gray-300">
-                    All Players & Dice
-                </h3>
-                <PlayerCircle
-                    players={gameState.players}
-                    currentPlayerId={gameState.current_player_id}
-                    awakePlayerIds={[]}
-                    currentHour={gameState.current_hour}
-                    showDice={true}
-                />
-            </div>
-
-            {/* Play Again - Only host can reset */}
             {gameState.isHost && (
-                <div className="mt-4">
-                    <button
-                        onClick={() => router.post(route('rooms.resetGame', [gameSlug, roomCode]))}
-                        className="rounded-xl bg-indigo-600 px-8 py-4 font-semibold text-white hover:bg-indigo-700"
-                    >
-                        Play Again
-                    </button>
-                </div>
+                <button
+                    onClick={handleReset}
+                    disabled={isResetting}
+                    className="rounded-xl bg-indigo-600 px-8 py-4 font-semibold text-white shadow-lg hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                    {isResetting ? 'Resetting…' : 'Play Again'}
+                </button>
             )}
         </div>
     );
