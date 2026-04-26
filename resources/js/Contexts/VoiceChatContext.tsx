@@ -47,6 +47,11 @@ export interface VoiceChatContextValue {
     players: VoicePlayer[];
     speakingPlayers: Set<number>;
     remoteVideos: Map<number, MediaStream>;
+    // True while the remote's video track is muted (i.e. they're sending the
+    // disabled placeholder track, not real camera frames). Receivers gate the
+    // <video> element's visibility on this so the placeholder never appears
+    // as a black tile.
+    remoteVideoMuted: Map<number, boolean>;
     connectionStates: Map<number, ConnectionState>;
 
     // Local video stream (for current user's preview)
@@ -78,6 +83,7 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
     const [isVideoEnabled, setIsVideoEnabled] = useState(false);
     const [hasCameraAccess, setHasCameraAccess] = useState(false);
     const [remoteVideos, setRemoteVideos] = useState<Map<number, MediaStream>>(new Map());
+    const [remoteVideoMuted, setRemoteVideoMuted] = useState<Map<number, boolean>>(new Map());
     const [localVideoStream, setLocalVideoStream] = useState<MediaStream | null>(null);
 
     const peerRef = useRef<Peer | null>(null);
@@ -88,6 +94,11 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
     const peerPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const autoConnectAttempted = useRef(false);
     const silentAudioContextRef = useRef<AudioContext | null>(null);
+    // The placeholder canvas-derived video track that's spliced into every
+    // peer connection so the SDP always has an m=video line. We swap real
+    // camera frames in/out of the existing video sender via replaceTrack, so
+    // viewers (no camera) can still receive video from streamers.
+    const silentVideoTrackRef = useRef<MediaStreamTrack | null>(null);
     // Per-player analyser bookkeeping. setupAudioLevelDetection is called both
     // from incoming-stream handling and from toggleMute; without dedup we'd
     // race multiple rAF loops + AudioContexts for the same playerId.
@@ -104,7 +115,11 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
         [currentPlayerId],
     );
 
-    // Create a silent audio stream (no microphone permission required)
+    // Build a placeholder MediaStream with both audio and video tracks, both
+    // disabled. We hand this to PeerJS so every offer/answer SDP has both
+    // m=audio and m=video lines — even for users who never grant any
+    // permissions. Real audio/video tracks are spliced in later via
+    // sender.replaceTrack(), so the SDP shape never changes after negotiation.
     const createSilentStream = (): MediaStream => {
         const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
         const audioContext = new AudioContextClass();
@@ -115,13 +130,75 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
         oscillator.connect(dst);
         oscillator.start();
 
-        // Return the stream with muted tracks
-        const stream = dst.stream;
+        // 2x2 black canvas, captured at 1 fps. With track.enabled=false the
+        // encoder emits muted RTP only — no real frames go out. The 1 fps is
+        // there so the track is unambiguously "live" for receivers; 0 fps
+        // requires explicit requestFrame() and some browsers consider it dead.
+        const canvas = document.createElement('canvas');
+        canvas.width = 2;
+        canvas.height = 2;
+        const c2d = canvas.getContext('2d');
+        if (c2d) {
+            c2d.fillStyle = '#000';
+            c2d.fillRect(0, 0, 2, 2);
+        }
+        const placeholderVideoStream = (canvas as HTMLCanvasElement).captureStream(1);
+        const placeholderVideoTrack = placeholderVideoStream.getVideoTracks()[0];
+        silentVideoTrackRef.current = placeholderVideoTrack ?? null;
+
+        const stream = new MediaStream([
+            ...dst.stream.getAudioTracks(),
+            ...placeholderVideoStream.getVideoTracks(),
+        ]);
         stream.getAudioTracks().forEach(track => {
+            track.enabled = false;
+        });
+        stream.getVideoTracks().forEach(track => {
             track.enabled = false;
         });
         return stream;
     };
+
+    // Build the MediaStream we hand to peer.call/call.answer. Always includes
+    // exactly one audio track (real mic if unlocked, placeholder otherwise) and
+    // exactly one video track (real camera if on, placeholder otherwise) so the
+    // SDP shape is consistent and senders are stable.
+    const buildSendStream = useCallback((): MediaStream | null => {
+        if (!localStreamRef.current) {
+            return null;
+        }
+        const tracks: MediaStreamTrack[] = [];
+        const audioTrack = localStreamRef.current.getAudioTracks()[0];
+        if (audioTrack) {
+            tracks.push(audioTrack);
+        }
+        const realVideoTrack = localVideoStreamRef.current?.getVideoTracks()[0] ?? null;
+        const placeholderVideoTrack = silentVideoTrackRef.current;
+        const videoTrack = realVideoTrack ?? placeholderVideoTrack;
+        if (videoTrack) {
+            tracks.push(videoTrack);
+        }
+        return new MediaStream(tracks);
+    }, []);
+
+    // Swap the video sender's track on every active call. Used by toggleVideo
+    // to splice real camera frames in/out without renegotiating the connection
+    // — the video transceiver was created at peer.call() time using the
+    // placeholder, so the m=video line stays put forever.
+    const swapVideoTrack = useCallback((track: MediaStreamTrack | null) => {
+        callsRef.current.forEach(({ call, playerId }) => {
+            // Every connection carries a video sender from the placeholder
+            // negotiation, so look strictly for kind === 'video'.
+            const sender = call.peerConnection?.getSenders().find(s => s.track?.kind === 'video');
+            if (!sender) {
+                console.warn(`[Voice] No video sender for player ${playerId}; cannot swap`);
+                return;
+            }
+            sender.replaceTrack(track)
+                .then(() => console.log(`[Voice] Swapped video track for player ${playerId} -> ${track?.id ?? 'null'}`))
+                .catch(err => console.error(`[Voice] Failed to swap video track for player ${playerId}:`, err));
+        });
+    }, []);
 
     // Fetch voice status of all players
     const fetchVoiceStatus = useCallback(async () => {
@@ -339,8 +416,13 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
 
         teardownAnalyser(playerId);
 
-        // Remove remote video
+        // Remove remote video + muted state
         setRemoteVideos(prev => {
+            const next = new Map(prev);
+            next.delete(playerId);
+            return next;
+        });
+        setRemoteVideoMuted(prev => {
             const next = new Map(prev);
             next.delete(playerId);
             return next;
@@ -355,15 +437,8 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
         if (!shouldInitiateCallTo(playerId)) return;
 
         const peerId = getPeerId(playerId);
-
-        // Create stream with audio + video (if enabled)
-        let streamToSend = localStreamRef.current;
-        if (localVideoStreamRef.current && localVideoStreamRef.current.getVideoTracks().length > 0) {
-            streamToSend = new MediaStream([
-                ...localStreamRef.current.getTracks(),
-                ...localVideoStreamRef.current.getTracks()
-            ]);
-        }
+        const streamToSend = buildSendStream();
+        if (!streamToSend) return;
 
         console.log(`[Voice] Calling player ${playerId} (${peerId}) with stream:`, streamToSend);
 
@@ -402,8 +477,9 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
                         const track = event.track;
                         const stream = event.streams[0];
 
-                        // Always try to add video immediately (removed !track.muted check)
-                        // The muted state can be temporary and doesn't mean no video data
+                        // Always attach the stream — track.muted may be true
+                        // initially (the remote starts on the placeholder
+                        // track) but it'll unmute when they enable camera.
                         if (stream) {
                             console.log(`[Voice] Adding video from player ${playerId}`);
                             setRemoteVideos(prev => {
@@ -412,15 +488,20 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
                                 return next;
                             });
                         }
+                        // Seed muted state from the current track. With the
+                        // placeholder approach this is true at connection time
+                        // for any peer whose camera is off, so we must not
+                        // assume false.
+                        setRemoteVideoMuted(prev => new Map(prev).set(playerId, track.muted));
 
-                        // Listen for track mute/unmute events
                         track.addEventListener('mute', () => {
                             console.log(`[Voice] Video track muted from player ${playerId}`);
-                            // Don't remove - mute just means no data temporarily
+                            setRemoteVideoMuted(prev => new Map(prev).set(playerId, true));
                         });
 
                         track.addEventListener('unmute', () => {
                             console.log(`[Voice] Video track unmuted from player ${playerId}`);
+                            setRemoteVideoMuted(prev => new Map(prev).set(playerId, false));
                             if (stream) {
                                 setRemoteVideos(prev => {
                                     const next = new Map(prev);
@@ -433,6 +514,11 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
                         track.addEventListener('ended', () => {
                             console.log(`[Voice] Video track ended from player ${playerId}`);
                             setRemoteVideos(prev => {
+                                const next = new Map(prev);
+                                next.delete(playerId);
+                                return next;
+                            });
+                            setRemoteVideoMuted(prev => {
                                 const next = new Map(prev);
                                 next.delete(playerId);
                                 return next;
@@ -471,7 +557,7 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
         } catch (err) {
             console.error(`[Voice] Failed to call player ${playerId}:`, err);
         }
-    }, [getPeerId, shouldInitiateCallTo, handleStream, cleanupCall]);
+    }, [getPeerId, shouldInitiateCallTo, handleStream, cleanupCall, buildSendStream]);
 
     // Connect to voice chat
     const connect = useCallback(async () => {
@@ -612,15 +698,11 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
                 const playerId = match ? parseInt(match[1], 10) : 0;
 
                 if (playerId && localStreamRef.current) {
-                    // Create stream with audio + video (if enabled)
-                    let streamToSend = localStreamRef.current;
-                    if (localVideoStreamRef.current && localVideoStreamRef.current.getVideoTracks().length > 0) {
-                        streamToSend = new MediaStream([
-                            ...localStreamRef.current.getTracks(),
-                            ...localVideoStreamRef.current.getTracks()
-                        ]);
+                    const streamToSend = buildSendStream();
+                    if (!streamToSend) {
+                        console.warn(`[Voice] No send stream available; cannot answer call from player ${playerId}`);
+                        return;
                     }
-
                     console.log(`[Voice] Answering call from player ${playerId} with stream:`, streamToSend);
                     call.answer(streamToSend);
 
@@ -664,8 +746,6 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
                                 const track = event.track;
                                 const stream = event.streams[0];
 
-                                // Always try to add video immediately (removed !track.muted check)
-                                // The muted state can be temporary and doesn't mean no video data
                                 if (stream) {
                                     console.log(`[Voice] Adding video from player ${playerId} (incoming)`);
                                     setRemoteVideos(prev => {
@@ -674,15 +754,16 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
                                         return next;
                                     });
                                 }
+                                setRemoteVideoMuted(prev => new Map(prev).set(playerId, track.muted));
 
-                                // Listen for track mute/unmute events
                                 track.addEventListener('mute', () => {
                                     console.log(`[Voice] Video track muted from player ${playerId}`);
-                                    // Don't remove - mute just means no data temporarily
+                                    setRemoteVideoMuted(prev => new Map(prev).set(playerId, true));
                                 });
 
                                 track.addEventListener('unmute', () => {
                                     console.log(`[Voice] Video track unmuted from player ${playerId}`);
+                                    setRemoteVideoMuted(prev => new Map(prev).set(playerId, false));
                                     if (stream) {
                                         setRemoteVideos(prev => {
                                             const next = new Map(prev);
@@ -695,6 +776,11 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
                                 track.addEventListener('ended', () => {
                                     console.log(`[Voice] Video track ended from player ${playerId}`);
                                     setRemoteVideos(prev => {
+                                        const next = new Map(prev);
+                                        next.delete(playerId);
+                                        return next;
+                                    });
+                                    setRemoteVideoMuted(prev => {
                                         const next = new Map(prev);
                                         next.delete(playerId);
                                         return next;
@@ -755,7 +841,7 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
             setIsConnecting(false);
             setError('Failed to connect to voice server. Please try again.');
         }
-    }, [gameSlug, roomCode, currentPlayerId, getPeerId, shouldInitiateCallTo, fetchVoiceStatus, callPlayer, handleStream, cleanupCall]);
+    }, [gameSlug, roomCode, currentPlayerId, getPeerId, shouldInitiateCallTo, fetchVoiceStatus, callPlayer, handleStream, cleanupCall, buildSendStream]);
 
     // Disconnect from voice chat
     const disconnect = useCallback(() => {
@@ -800,6 +886,12 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
             silentAudioContextRef.current = null;
         }
 
+        // Stop the placeholder video track on disconnect.
+        if (silentVideoTrackRef.current) {
+            silentVideoTrackRef.current.stop();
+            silentVideoTrackRef.current = null;
+        }
+
         setIsConnected(false);
         setIsMuted(true);
         setIsVideoEnabled(false);
@@ -808,55 +900,9 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
         setSpeakingPlayers(new Set());
         setConnectionStates(new Map());
         setRemoteVideos(new Map());
+        setRemoteVideoMuted(new Map());
         setLocalVideoStream(null);
     }, [cleanupCall, teardownAnalyser]);
-
-    // Re-establish all calls (used when video state changes)
-    const reestablishCalls = useCallback(() => {
-        if (!peerRef.current || !localStreamRef.current) return;
-
-        const videoTrack = localVideoStreamRef.current?.getVideoTracks()[0] || null;
-        console.log('[Voice] Updating video track on existing calls:', videoTrack ? 'adding' : 'removing');
-
-        callsRef.current.forEach(({ call, playerId }) => {
-            if (!call.peerConnection) {
-                console.log(`[Voice] No peerConnection for player ${playerId}, skipping`);
-                return;
-            }
-
-            const senders = call.peerConnection.getSenders();
-            const videoSender = senders.find(s => s.track?.kind === 'video' || (s.track === null && !senders.some(other => other !== s && other.track?.kind === 'video')));
-
-            console.log(`[Voice] Player ${playerId} senders:`, senders.map(s => ({ kind: s.track?.kind, id: s.track?.id })));
-
-            if (videoTrack) {
-                if (videoSender && videoSender.track?.kind === 'video') {
-                    // Replace existing video track
-                    videoSender.replaceTrack(videoTrack)
-                        .then(() => console.log(`[Voice] Replaced video track for player ${playerId}`))
-                        .catch(err => console.error(`[Voice] Failed to replace track for player ${playerId}:`, err));
-                } else {
-                    // Need to add a new track - this requires renegotiation
-                    // Fall back to re-establishing this specific call
-                    console.log(`[Voice] No video sender for player ${playerId}, re-calling`);
-                    call.close();
-                    callsRef.current.delete(playerId);
-                    // Also remove remote video for this player
-                    setRemoteVideos(prev => {
-                        const next = new Map(prev);
-                        next.delete(playerId);
-                        return next;
-                    });
-                    setTimeout(() => callPlayer(playerId), 500);
-                }
-            } else if (videoSender?.track) {
-                // Remove video by replacing with null
-                videoSender.replaceTrack(null)
-                    .then(() => console.log(`[Voice] Removed video track for player ${playerId}`))
-                    .catch(err => console.error(`[Voice] Failed to remove track for player ${playerId}:`, err));
-            }
-        });
-    }, [callPlayer]);
 
     // Toggle mute
     const toggleMute = useCallback(async () => {
@@ -891,8 +937,10 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
                         .catch(err => console.error(`[Voice] replaceTrack failed for player ${playerId}:`, err));
                 });
 
-                // Stop the old silent stream tracks
-                localStreamRef.current.getTracks().forEach(track => track.stop());
+                // Stop the old silent AUDIO tracks only — keep the placeholder
+                // video track alive (silentVideoTrackRef still references it
+                // and it's spliced into every active peer connection).
+                localStreamRef.current.getAudioTracks().forEach(track => track.stop());
 
                 // Clean up silent AudioContext
                 if (silentAudioContextRef.current) {
@@ -900,7 +948,7 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
                     silentAudioContextRef.current = null;
                 }
 
-                // Update local stream reference
+                // Update local stream reference (now real mic, no video tracks)
                 localStreamRef.current = stream;
                 setHasMicrophoneAccess(true);
 
@@ -949,11 +997,13 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
         }
     }, [hasMicrophoneAccess, isMuted, gameSlug, roomCode, currentPlayerId, setupAudioLevelDetection]);
 
-    // Toggle video
+    // Toggle video. Swaps the camera track in/out via replaceTrack on the
+    // existing video sender (the placeholder is always there, so the m=video
+    // line and sender are stable). No close-and-recreate, no audio gap.
     const toggleVideo = useCallback(async () => {
         if (!isConnected) return;
 
-        // If we don't have camera access yet and trying to enable video, request it
+        // First-time enable: request camera permission, then swap.
         if (!hasCameraAccess && !isVideoEnabled) {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
@@ -970,10 +1020,9 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
                 setHasCameraAccess(true);
                 setIsVideoEnabled(true);
 
-                // Re-establish all calls to include video
-                reestablishCalls();
+                const realVideoTrack = stream.getVideoTracks()[0] ?? null;
+                swapVideoTrack(realVideoTrack);
 
-                // Sync state with backend
                 try {
                     await axios.post(route('rooms.voice.toggleVideo', [gameSlug, roomCode]));
                 } catch {
@@ -991,28 +1040,37 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
             }
         }
 
-        // Normal video toggle (already have camera access)
+        // Subsequent toggle (already have camera access).
         const newVideoState = !isVideoEnabled;
 
-        if (localVideoStreamRef.current) {
-            localVideoStreamRef.current.getVideoTracks().forEach(track => {
-                track.enabled = newVideoState;
-            });
+        if (newVideoState) {
+            // Re-enable the real camera track and swap it back in.
+            if (localVideoStreamRef.current) {
+                localVideoStreamRef.current.getVideoTracks().forEach(track => {
+                    track.enabled = true;
+                });
+                const realVideoTrack = localVideoStreamRef.current.getVideoTracks()[0] ?? null;
+                swapVideoTrack(realVideoTrack);
+            }
+        } else {
+            // Disable the real track and put the placeholder back on the wire.
+            if (localVideoStreamRef.current) {
+                localVideoStreamRef.current.getVideoTracks().forEach(track => {
+                    track.enabled = false;
+                });
+            }
+            swapVideoTrack(silentVideoTrackRef.current);
         }
 
         setIsVideoEnabled(newVideoState);
         console.log(`[Voice] Toggle video: ${newVideoState ? 'enabled' : 'disabled'}`);
 
-        // Re-establish calls to update video state
-        reestablishCalls();
-
-        // Sync state with backend
         try {
             await axios.post(route('rooms.voice.toggleVideo', [gameSlug, roomCode]));
         } catch {
             // Silently fail
         }
-    }, [isConnected, hasCameraAccess, isVideoEnabled, gameSlug, roomCode, reestablishCalls]);
+    }, [isConnected, hasCameraAccess, isVideoEnabled, gameSlug, roomCode, swapVideoTrack]);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -1056,6 +1114,7 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
         players,
         speakingPlayers,
         remoteVideos,
+        remoteVideoMuted,
         connectionStates,
         localVideoStream,
         connect,
@@ -1073,6 +1132,7 @@ export function VoiceChatProvider({ children, gameSlug, roomCode, currentPlayerI
         players,
         speakingPlayers,
         remoteVideos,
+        remoteVideoMuted,
         connectionStates,
         localVideoStream,
         connect,

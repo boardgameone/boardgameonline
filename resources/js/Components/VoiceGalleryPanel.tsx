@@ -351,6 +351,7 @@ export default function VoiceGalleryPanel({ currentPlayerId }: VoiceGalleryPanel
                             isCurrentUser={player.id === currentPlayerId}
                             isSpeaking={isPlayerSpeaking(player)}
                             remoteStream={voiceChat.remoteVideos.get(player.id) ?? null}
+                            remoteVideoMuted={voiceChat.remoteVideoMuted.get(player.id) ?? true}
                             localStream={voiceChat.localVideoStream}
                             currentUserMuted={voiceChat.isMuted}
                             currentUserVideoOn={voiceChat.isVideoEnabled}
@@ -390,6 +391,7 @@ interface VoiceTileProps {
     isCurrentUser: boolean;
     isSpeaking: boolean;
     remoteStream: MediaStream | null;
+    remoteVideoMuted: boolean;
     localStream: MediaStream | null;
     currentUserMuted: boolean;
     currentUserVideoOn: boolean;
@@ -403,6 +405,7 @@ function VoiceTile({
     isCurrentUser,
     isSpeaking,
     remoteStream,
+    remoteVideoMuted,
     localStream,
     currentUserMuted,
     currentUserVideoOn,
@@ -415,7 +418,9 @@ function VoiceTile({
     const isMuted = isCurrentUser ? currentUserMuted : player.is_muted;
     const hasVideoOn = isCurrentUser ? currentUserVideoOn : (player.is_video_enabled ?? false);
     const stream = isCurrentUser ? localStream : remoteStream;
-    const showVideo = !!stream && (isCurrentUser ? currentUserVideoOn : true);
+    // Receivers gate on remoteVideoMuted: the placeholder track arrives muted,
+    // and only flips to unmuted when the remote actually unlocks their camera.
+    const showVideo = !!stream && (isCurrentUser ? currentUserVideoOn : !remoteVideoMuted);
 
     // Keep the <video> element mounted across stream-availability changes; toggle
     // visibility via class. Conditionally mounting tears down the playback
