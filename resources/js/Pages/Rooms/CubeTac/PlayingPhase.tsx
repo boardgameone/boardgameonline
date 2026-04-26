@@ -348,7 +348,7 @@ export default function PlayingPhase({
                     </div>
                 )}
 
-                <ShortcutHints />
+                <ShortcutHints variant={variant} />
 
                 <Leaderboard
                     players={players}
@@ -670,7 +670,7 @@ function countMarksBySlot(marks: Marks, n: number): number[] {
  * mobile where keyboard input isn't available; pointer-events-none so it
  * never intercepts cube drags.
  */
-function ShortcutHints() {
+function ShortcutHints({ variant }: { variant: 'cube' | 'megaminx' | 'pyraminx' }) {
     return (
         <div
             className="pointer-events-none absolute bottom-3 left-3 hidden rounded-lg bg-white/80 px-3 py-2 shadow-md backdrop-blur-xs sm:block"
@@ -685,20 +685,40 @@ function ShortcutHints() {
                 </span>
                 <span className="text-gray-500">orbit camera</span>
             </div>
-            <div className="mt-1.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-700">
-                <span className="inline-flex items-center gap-0.5">
-                    <Kbd>U</Kbd>
-                    <Kbd>D</Kbd>
-                    <Kbd>L</Kbd>
-                    <Kbd>R</Kbd>
-                    <Kbd>F</Kbd>
-                    <Kbd>P</Kbd>
-                </span>
-                <span className="text-gray-500">rotate face</span>
-            </div>
-            <div className="mt-1 text-[9px] font-semibold tracking-wide text-gray-400">
-                +Shift for counter-clockwise
-            </div>
+            {variant === 'cube' && (
+                <>
+                    <div className="mt-1.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-700">
+                        <span className="inline-flex items-center gap-0.5">
+                            <Kbd>U</Kbd>
+                            <Kbd>D</Kbd>
+                            <Kbd>L</Kbd>
+                            <Kbd>R</Kbd>
+                            <Kbd>F</Kbd>
+                            <Kbd>P</Kbd>
+                        </span>
+                        <span className="text-gray-500">rotate face</span>
+                    </div>
+                    <div className="mt-1 text-[9px] font-semibold tracking-wide text-gray-400">
+                        +Shift for counter-clockwise
+                    </div>
+                </>
+            )}
+            {variant === 'pyraminx' && (
+                <>
+                    <div className="mt-1.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-700">
+                        <span className="inline-flex items-center gap-0.5">
+                            <Kbd>1</Kbd>
+                            <Kbd>2</Kbd>
+                            <Kbd>3</Kbd>
+                            <Kbd>4</Kbd>
+                        </span>
+                        <span className="text-gray-500">rotate face</span>
+                    </div>
+                    <div className="mt-1 text-[9px] font-semibold tracking-wide text-gray-400">
+                        +Shift for counter-clockwise
+                    </div>
+                </>
+            )}
         </div>
     );
 }

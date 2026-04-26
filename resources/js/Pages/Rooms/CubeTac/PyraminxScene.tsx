@@ -439,10 +439,11 @@ function FaceMesh({
                 const designIdx = mark !== null ? designs?.[mark] ?? mark : null;
 
                 // Up-triangles get the face color when empty; the player's
-                // avatar color when marked. Down-triangles always show a
-                // dimmed slate so they read as "dead" — never markable.
+                // avatar color when marked. Down-triangles show a clearly
+                // distinct dim slate so they read as "dead" but stay
+                // visible against the near-black backdrop grout.
                 const baseColor = !playable
-                    ? '#1e293b'
+                    ? '#64748b'
                     : mark !== null
                         ? playerColors[mark] ?? FALLBACK_GLYPH_COLOR
                         : faceColor;

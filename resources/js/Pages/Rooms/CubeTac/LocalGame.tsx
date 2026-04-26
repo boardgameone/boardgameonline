@@ -15,6 +15,7 @@ import PlayingPhase, { SLOT_CHARS } from '@/Pages/Rooms/CubeTac/PlayingPhase';
 import FinishedPhase from '@/Pages/Rooms/CubeTac/FinishedPhase';
 import type { CubeSceneHandle } from '@/Pages/Rooms/CubeTac/CubeScene';
 import type { MegaminxSceneHandle } from '@/Pages/Rooms/CubeTac/MegaminxScene';
+import type { PyraminxSceneHandle } from '@/Pages/Rooms/CubeTac/PyraminxScene';
 import { Head, router } from '@inertiajs/react';
 import { useReducer, useRef, useState, type CSSProperties } from 'react';
 import {
@@ -38,12 +39,22 @@ import {
     isComplete as megaIsComplete,
     winningLines as megaWinningLines,
 } from '@/lib/megaminx';
+import {
+    Direction as PyraDirection,
+    Marks as PyraMarks,
+    apply as pyraApply,
+    faceSlot as pyraFaceSlot,
+    indexOf as pyraIndexOf,
+    initialMarks as pyraInitialMarks,
+    isComplete as pyraIsComplete,
+    winningLines as pyraWinningLines,
+} from '@/lib/pyraminx';
 
 const MOVES_PER_PLAYER = 30;
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 6;
 
-type Variant = 'cube' | 'megaminx';
+type Variant = 'cube' | 'megaminx' | 'pyraminx';
 
 /** Palette mirrors the backend SLOT_COLORS in CubeTacGameController.php. */
 const PALETTE = ['#ff4d2e', '#3a90ff', '#16a34a', '#a855f7', '#f59e0b', '#c2813a'];
