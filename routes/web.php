@@ -51,6 +51,7 @@ Route::post('/rooms/{game:slug}/{room:room_code}/select-accomplice', [GameRoomCo
 Route::post('/rooms/{game:slug}/{room:room_code}/vote', [GameRoomController::class, 'vote'])->middleware('throttle:60,1')->name('rooms.vote');
 Route::post('/rooms/{game:slug}/{room:room_code}/chat', [GameRoomController::class, 'sendMessage'])->middleware('throttle:30,1')->name('rooms.chat');
 Route::get('/rooms/{game:slug}/{room:room_code}/messages', [GameRoomController::class, 'getMessages'])->name('rooms.messages');
+Route::post('/rooms/{game:slug}/{room:room_code}/ping', [GameRoomController::class, 'ping'])->middleware('throttle:120,1')->name('rooms.ping');
 
 // Voice chat routes
 Route::post('/rooms/{game:slug}/{room:room_code}/voice/signal', [GameRoomController::class, 'sendSignal'])->middleware('throttle:60,1')->name('rooms.voice.signal');
