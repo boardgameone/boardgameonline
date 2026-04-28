@@ -151,17 +151,6 @@ export default function RotateControls({ onRotate, disabled }: RotateControlsPro
 
     return (
         <div className="flex w-full flex-col items-center gap-2">
-            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-gray-500">
-                <span>Rotate a face</span>
-                <span className="text-gray-400">·</span>
-                <span className="inline-flex items-center gap-1">
-                    <RotateCwIcon className="h-3 w-3" /> cw
-                </span>
-                <span className="text-gray-300">/</span>
-                <span className="inline-flex items-center gap-1">
-                    <RotateCcwIcon className="h-3 w-3" /> ccw
-                </span>
-            </div>
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
                 {FACES.map((face) => (
                     <div key={face.name} className="flex flex-col items-center gap-1">
