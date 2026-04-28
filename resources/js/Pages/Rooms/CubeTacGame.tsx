@@ -16,9 +16,11 @@ import type { OctahedronSceneHandle } from '@/Pages/Rooms/CubeTac/OctahedronScen
 import type { IcosahedronSceneHandle } from '@/Pages/Rooms/CubeTac/IcosahedronScene';
 import { VoiceChatProvider } from '@/Contexts/VoiceChatContext';
 import VoiceGalleryPanel from '@/Components/VoiceGalleryPanel';
+import RoomChat from '@/Components/RoomChat';
 import { GamePlayer, GameRoom, PageProps } from '@/types';
 import { Head, Link, router, useForm, usePoll } from '@inertiajs/react';
-import { FormEventHandler, ReactNode, useRef } from 'react';
+import { FormEventHandler, ReactNode, useEffect, useRef, useState } from 'react';
+import axios from 'axios';
 import { Marks, Move } from '@/lib/rubikCube';
 import type { Direction as MegaDirection } from '@/lib/megaminx';
 import type { Direction as PyraDirection } from '@/lib/pyraminx';
@@ -31,6 +33,7 @@ interface CubeTacPlayer {
     avatar_color: string;
     is_host: boolean;
     is_connected: boolean;
+    is_stale: boolean;
     wins: number;
     design: number;
 }
@@ -67,6 +70,12 @@ interface CubeTacGameState {
     my_slot: number | null;
     /** One entry per slot (0..N-1). `null` means that slot's player disconnected. */
     players: Array<CubeTacPlayer | null>;
+    /** ISO timestamp of when the active turn started; null on legacy games. */
+    current_turn_started_at: string | null;
+    /** Per-turn budget in seconds (frontend renders draining ring against this). */
+    turn_seconds: number;
+    /** Server time when the payload was built — used to align the timer ring across clients. */
+    server_time: string;
 }
 
 interface Props extends PageProps {
@@ -97,6 +106,45 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
                         : 'cube');
 
     const gameSlug = room.game?.slug || 'cubetac';
+
+    // Heartbeat-driven connection signal. Pings every 5s while the tab is
+    // visible and the game isn't finished; on 3 consecutive failures (or
+    // navigator.onLine === false) we surface a "Reconnecting…" overlay.
+    // The server uses each ping to (a) update last_seen_at for stale detection
+    // and (b) opportunistically advance turns past their timeout deadline.
+    const [isReconnecting, setIsReconnecting] = useState(false);
+    const failuresRef = useRef(0);
+
+    useEffect(() => {
+        if (!currentPlayer || room.status === 'finished') return;
+
+        const ping = async () => {
+            if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+                failuresRef.current += 1;
+                if (failuresRef.current >= 3) setIsReconnecting(true);
+                return;
+            }
+            try {
+                await axios.post(route('rooms.ping', [gameSlug, room.room_code]));
+                failuresRef.current = 0;
+                setIsReconnecting(false);
+            } catch {
+                failuresRef.current += 1;
+                if (failuresRef.current >= 3) setIsReconnecting(true);
+            }
+        };
+
+        ping();
+        const id = window.setInterval(ping, 5000);
+        const onlineHandler = () => ping();
+        window.addEventListener('online', onlineHandler);
+
+        return () => {
+            window.clearInterval(id);
+            window.removeEventListener('online', onlineHandler);
+        };
+    }, [currentPlayer?.id, gameSlug, room.room_code, room.status]);
+
     const isGuest = !auth.user;
     const needsToJoin = !currentPlayer && room.status === 'waiting' && !room.is_full;
     const wasKicked = currentPlayer !== null && !currentPlayer.is_connected && room.status === 'waiting';
@@ -269,6 +317,9 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
             isMyTurn={gameState.is_my_turn}
             pendingAction={gameState.pending_action}
             lastAction={gameState.last_action}
+            currentTurnStartedAt={gameState.current_turn_started_at}
+            turnSeconds={gameState.turn_seconds}
+            serverTime={gameState.server_time}
             onMark={handleMark}
             onRotate={handleRotate}
             onMegaMark={handleMegaMark}
@@ -313,6 +364,8 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
         </div>
     );
 
+    const showChat = currentPlayer && (room.status === 'playing' || room.status === 'finished');
+
     return (
         <GameLayout fullHeight={true}>
             <Head title={`CubeTac — ${room.room_code}`} />
@@ -330,8 +383,42 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
                 ) : (
                     content
                 )}
+
+                {showChat && (
+                    <RoomChat
+                        gameSlug={gameSlug}
+                        roomCode={room.room_code}
+                        currentPlayerId={currentPlayer.id}
+                    />
+                )}
+
+                {isReconnecting && <ReconnectingOverlay />}
             </div>
         </GameLayout>
+    );
+}
+
+function ReconnectingOverlay() {
+    return (
+        <div className="pointer-events-auto fixed inset-0 z-50 grid place-items-center bg-black/60 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-4 rounded-3xl bg-white px-8 py-6 shadow-2xl border-4 border-yellow-400">
+                <svg
+                    className="h-10 w-10 animate-spin text-yellow-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    aria-hidden
+                >
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+                <div className="text-center">
+                    <div className="text-lg font-black text-gray-900">Reconnecting…</div>
+                    <div className="mt-1 text-xs font-bold uppercase tracking-widest text-gray-500">
+                        Lost network — retrying
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 }
 
@@ -380,8 +467,15 @@ function GuestJoinForm({ nickname, onChange, onSubmit, processing, error }: Gues
 }
 
 function toPlayerInfo(p: CubeTacPlayer | null, slot: number) {
-    if (!p) return { id: null, nickname: 'Waiting…', avatar_color: '#5b9bd5', design: slot, wins: 0 };
-    return { id: p.id, nickname: p.nickname, avatar_color: p.avatar_color, design: p.design ?? slot, wins: p.wins };
+    if (!p) return { id: null, nickname: 'Waiting…', avatar_color: '#5b9bd5', design: slot, wins: 0, isStale: false };
+    return {
+        id: p.id,
+        nickname: p.nickname,
+        avatar_color: p.avatar_color,
+        design: p.design ?? slot,
+        wins: p.wins,
+        isStale: !!p.is_stale,
+    };
 }
 
 function KickedNotice({ gameSlug }: { gameSlug: string }) {

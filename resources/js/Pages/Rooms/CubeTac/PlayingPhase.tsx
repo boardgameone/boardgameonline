@@ -11,6 +11,7 @@
  */
 
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type Ref } from 'react';
+import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
 import { Marks, Move, indexOf } from '@/lib/rubikCube';
 import { indexOf as megaIndexOf, type Direction as MegaDirection } from '@/lib/megaminx';
 import { indexOf as pyraIndexOf, type Direction as PyraDirection } from '@/lib/pyraminx';
@@ -20,6 +21,7 @@ import RotateControls from './components/RotateControls';
 import PyraRotateControls from './components/PyraRotateControls';
 import OctaRotateControls from './components/OctaRotateControls';
 import IcosaRotateControls from './components/IcosaRotateControls';
+import TutorialOverlay from './components/TutorialOverlay';
 import type { CubeSceneHandle } from './CubeScene';
 import type { MegaminxSceneHandle } from './MegaminxScene';
 import type { PyraminxSceneHandle } from './PyraminxScene';
@@ -43,6 +45,8 @@ export interface CubeTacPlayerInfo {
     design: number;
     /** Cumulative wins in this lobby (online) or session (local hotseat). */
     wins: number;
+    /** True when the server hasn't heard a heartbeat from this player in ~15s. */
+    isStale?: boolean;
 }
 
 export interface PlayingPhaseProps {
@@ -113,6 +117,12 @@ export interface PlayingPhaseProps {
      * indicator in the leaderboard — a round is one game per player.
      */
     gamesPlayed: number;
+    /** ISO timestamp the active turn started; null in local mode (no timer). */
+    currentTurnStartedAt?: string | null;
+    /** Per-turn budget in seconds. Frontend ignores the timer when undefined. */
+    turnSeconds?: number;
+    /** Server time when the payload was built — aligns the timer across clients. */
+    serverTime?: string;
 }
 
 /** 2D HUD chips for each slot — Unicode chars so the badges stay cheap. */
@@ -150,6 +160,9 @@ export default function PlayingPhase({
     octaRef,
     icosaRef,
     gamesPlayed,
+    currentTurnStartedAt = null,
+    turnSeconds,
+    serverTime,
 }: PlayingPhaseProps) {
     const voiceChat = useVoiceChatOptional();
     const voiceReady = !!voiceChat?.isConnected && currentPlayerId !== null;
@@ -163,6 +176,70 @@ export default function PlayingPhase({
     const markCounts = useMemo(() => countMarksBySlot(marks, players.length), [marks, players.length]);
     const playerColors = useMemo(() => players.map((p) => p.avatar_color), [players]);
     const playerDesigns = useMemo(() => players.map((p, slot) => p.design ?? slot), [players]);
+
+    // Turn timer. The server stamps `current_turn_started_at` and tells us
+    // `turn_seconds`; we tick locally at 250ms cadence and compute remaining
+    // time aligned to server clock (accounting for client/server skew via
+    // `serverTime`). Auto-skip is enforced server-side; we only render.
+    const timerEnabled = currentTurnStartedAt !== null && typeof turnSeconds === 'number' && turnSeconds > 0;
+    const clockSkewMs = useMemo(() => {
+        if (!serverTime) return 0;
+        const server = Date.parse(serverTime);
+        return Number.isFinite(server) ? Date.now() - server : 0;
+    }, [serverTime]);
+    const turnStartMs = useMemo(() => {
+        if (!currentTurnStartedAt) return 0;
+        const t = Date.parse(currentTurnStartedAt);
+        return Number.isFinite(t) ? t : 0;
+    }, [currentTurnStartedAt]);
+
+    const [now, setNow] = useState(() => Date.now());
+    useEffect(() => {
+        if (!timerEnabled) return;
+        const id = window.setInterval(() => setNow(Date.now()), 250);
+        return () => window.clearInterval(id);
+    }, [timerEnabled]);
+
+    const remainingSeconds = timerEnabled
+        ? Math.max(0, (turnSeconds as number) - Math.floor((now - clockSkewMs - turnStartMs) / 1000))
+        : null;
+
+    // Fire a one-shot warning beep when crossing into the final 5s of the active player's turn.
+    const { play: playWarning } = useSound('/sounds/ui/error.mp3', { volume: 0.4 });
+    const { play: playTurnFlip } = useSound('/sounds/ui/toggle.mp3', { volume: 0.35 });
+
+    // Turn-flip animation. Pulse the turn-label scale + colour glow on every
+    // currentTurn change, and play a soft chime so distracted players don't
+    // miss that play has rotated to them. We track previous turn in a ref so
+    // the very first render doesn't fire the chime.
+    const previousTurnRef = useRef<number | null>(null);
+    const [flipPulse, setFlipPulse] = useState(false);
+    const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+    const [tutorialReplayKey, setTutorialReplayKey] = useState(0);
+    const [tutorialForceOpen, setTutorialForceOpen] = useState(false);
+    useEffect(() => {
+        if (previousTurnRef.current === null) {
+            previousTurnRef.current = currentTurn;
+            return;
+        }
+        if (previousTurnRef.current !== currentTurn) {
+            previousTurnRef.current = currentTurn;
+            setFlipPulse(true);
+            playTurnFlip();
+            const id = window.setTimeout(() => setFlipPulse(false), 600);
+            return () => window.clearTimeout(id);
+        }
+    }, [currentTurn, playTurnFlip]);
+    const warnedForTurnRef = useRef<string | null>(null);
+    useEffect(() => {
+        if (!timerEnabled || !isMyTurn || remainingSeconds === null) return;
+        const turnKey = currentTurnStartedAt ?? '';
+        if (warnedForTurnRef.current === turnKey) return;
+        if (remainingSeconds <= 5 && remainingSeconds > 0) {
+            playWarning();
+            warnedForTurnRef.current = turnKey;
+        }
+    }, [timerEnabled, isMyTurn, remainingSeconds, currentTurnStartedAt, playWarning]);
 
     const currentPlayer = players[currentTurn];
     const currentColor = currentPlayer?.avatar_color ?? '#5b9bd5';
@@ -227,14 +304,45 @@ export default function PlayingPhase({
                         ? icosaIndexOf(pendingIcosaMark.face, pendingIcosaMark.slot)
                         : null;
     const hasPending = pendingCubeMark !== null || pendingMegaMark !== null || pendingPyraMark !== null || pendingOctaMark !== null || pendingIcosaMark !== null;
+    const isUrgent = remainingSeconds !== null && remainingSeconds <= 5 && remainingSeconds > 0 && isMyTurn;
+
+    // "Last move" caption. Format depends on the action type stamped by the
+    // backend. We deliberately don't render this during a player's pending
+    // action (it's redundant with their own visible mark).
+    const lastMoveCaption = (() => {
+        if (!lastAction || pendingAction) return null;
+        const slot = lastAction.player as number | undefined;
+        if (typeof slot !== 'number') return null;
+        const actor = players[slot];
+        if (!actor) return null;
+        const name = actor.nickname || `Player ${slot + 1}`;
+        const type = lastAction.type as string;
+        if (type === 'mark') {
+            return `${name} marked ${faceLabel(lastAction.face as number)} · row ${(lastAction.row as number) + 1} col ${(lastAction.col as number) + 1}`;
+        }
+        if (type === 'rotate') {
+            return `${name} rotated ${rotateLabel(lastAction.move as string)}`;
+        }
+        if (type === 'mega_mark' || type === 'pyra_mark' || type === 'octa_mark' || type === 'icosa_mark') {
+            return `${name} marked face ${(lastAction.face as number) + 1}`;
+        }
+        if (type === 'mega_rotate' || type === 'pyra_rotate' || type === 'octa_rotate' || type === 'icosa_rotate') {
+            return `${name} rotated face ${(lastAction.face as number) + 1} ${(lastAction.direction as string) === 'cw' ? '↻' : '↺'}`;
+        }
+        return `${name} moved`;
+    })();
     const subLabel = pendingAction && isMyTurn
-        ? 'Confirm · or tap your mark to undo'
+        ? (isUrgent
+            ? `${remainingSeconds}s left — your mark will lock in`
+            : 'Confirm · or tap your mark to undo')
         : canAct || turnLabelOverride
-            ? isMegaminx
-                ? 'Tap a cell · or use a face center to rotate ↺ ↻'
-                : isPyraminx || isOctahedron || isIcosahedron
-                    ? 'Tap a perimeter cell · or rotate a face below'
-                    : 'Tap a sticker · or rotate a face'
+            ? isUrgent
+                ? `${remainingSeconds}s left — make a move`
+                : isMegaminx
+                    ? 'Tap a cell · or use a face center to rotate ↺ ↻'
+                    : isPyraminx || isOctahedron || isIcosahedron
+                        ? 'Tap a perimeter cell · or rotate a face below'
+                        : 'Tap a sticker · or rotate a face'
             : 'Waiting…';
 
     // Cube click: tap the pending mark to undo, otherwise mark an empty cell.
@@ -342,7 +450,16 @@ export default function PlayingPhase({
                 {onLeave ? (
                     <button
                         type="button"
-                        onClick={onLeave}
+                        onClick={() => {
+                            // In local mode (no online turn timer) or when not actively playing,
+                            // leave immediately. In an online active game, prompt for confirmation
+                            // so a stray tap doesn't drop a player out mid-match.
+                            if (turnLabelOverride || !timerEnabled) {
+                                onLeave();
+                            } else {
+                                setShowLeaveConfirm(true);
+                            }
+                        }}
                         className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1.5 text-sm font-bold text-yellow-900 shadow-md backdrop-blur-xs transition hover:bg-white hover:text-yellow-700"
                         aria-label="Leave game"
                     >
@@ -365,14 +482,47 @@ export default function PlayingPhase({
             {/* Turn banner */}
             <div className="mt-3 flex flex-col items-center">
                 <div
-                    className="text-3xl font-black leading-none sm:text-4xl drop-shadow-xs"
-                    style={{ color: currentColor }}
+                    className={`text-3xl font-black leading-none sm:text-4xl drop-shadow-xs transition-transform duration-500 ${flipPulse ? 'scale-110' : 'scale-100'}`}
+                    style={{
+                        color: currentColor,
+                        textShadow: flipPulse ? `0 0 18px ${hexWithAlpha(currentColor, 0.8)}` : undefined,
+                    }}
                 >
                     {turnLabel}
                 </div>
-                <div className="mt-1 text-[11px] font-bold uppercase tracking-[0.3em] text-gray-600">
-                    {subLabel}
-                </div>
+                {lastMoveCaption && (
+                    <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.25em] text-gray-500">
+                        Last: {lastMoveCaption}
+                    </div>
+                )}
+                {pendingAction && isMyTurn ? (
+                    <div
+                        className="mt-2 inline-flex items-center gap-2 rounded-full bg-white px-4 py-1.5 shadow-md ring-2"
+                        style={{ '--tw-ring-color': hexWithAlpha(currentColor, 0.4) } as CSSProperties}
+                    >
+                        <svg
+                            aria-hidden
+                            className="h-3.5 w-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2.5}
+                            viewBox="0 0 24 24"
+                            style={{ color: currentColor }}
+                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 14l-4-4 4-4M5 10h11a4 4 0 010 8h-1" />
+                        </svg>
+                        <span className="text-xs font-bold tracking-wide text-gray-700">
+                            {isUrgent
+                                ? <span className="text-red-600">{remainingSeconds}s left — your mark will lock in</span>
+                                : <>Confirm Turn <span className="text-gray-400 mx-1">·</span><span style={{ color: currentColor }}>tap your mark to undo</span></>
+                            }
+                        </span>
+                    </div>
+                ) : (
+                    <div className={`mt-1 text-[11px] font-bold uppercase tracking-[0.3em] ${isUrgent ? 'text-red-600' : 'text-gray-600'}`}>
+                        {subLabel}
+                    </div>
+                )}
             </div>
 
             {/* 3D canvas — cube or dodecahedron depending on variant */}
@@ -458,6 +608,21 @@ export default function PlayingPhase({
 
                 <ShortcutHints variant={variant} />
 
+                {/* Help pill — replays the tutorial. Floats opposite the
+                    keyboard hints so they don't collide on desktop. */}
+                <button
+                    type="button"
+                    onClick={() => {
+                        setTutorialForceOpen(true);
+                        setTutorialReplayKey((k) => k + 1);
+                    }}
+                    className="absolute bottom-4 right-4 grid h-9 w-9 place-items-center rounded-full bg-white text-sm font-black text-yellow-700 shadow-md ring-2 ring-yellow-300 hover:bg-yellow-50 hover:scale-110 transition"
+                    aria-label="How to play"
+                    title="How to play"
+                >
+                    ?
+                </button>
+
                 <Leaderboard
                     players={players}
                     currentTurn={currentTurn}
@@ -476,6 +641,8 @@ export default function PlayingPhase({
                             isActive={currentTurn === slot}
                             markCount={markCounts[slot] ?? 0}
                             currentPlayerId={currentPlayerId}
+                            remainingSeconds={currentTurn === slot ? remainingSeconds : null}
+                            turnSeconds={turnSeconds ?? null}
                         />
                     ))}
                     {voiceReady && (
@@ -528,6 +695,46 @@ export default function PlayingPhase({
                     </div>
                 )}
             </div>
+
+            <TutorialOverlay
+                key={tutorialReplayKey}
+                variant={variant}
+                forceOpen={tutorialForceOpen}
+                onClose={() => setTutorialForceOpen(false)}
+            />
+
+            <Dialog open={showLeaveConfirm} onClose={() => setShowLeaveConfirm(false)} className="relative z-50">
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" aria-hidden />
+                <div className="fixed inset-0 grid place-items-center p-4">
+                    <DialogPanel className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border-4 border-yellow-300">
+                        <DialogTitle className="text-xl font-black text-gray-900">
+                            Leave game?
+                        </DialogTitle>
+                        <p className="mt-2 text-sm text-gray-600">
+                            Other players will be notified and the match will continue without you.
+                        </p>
+                        <div className="mt-5 flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setShowLeaveConfirm(false)}
+                                className="flex-1 rounded-full border-2 border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50"
+                            >
+                                Stay
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowLeaveConfirm(false);
+                                    onLeave?.();
+                                }}
+                                className="flex-1 rounded-full bg-linear-to-r from-orange-500 to-red-500 px-4 py-2 text-sm font-bold text-white shadow-md border-b-2 border-red-700 hover:scale-[1.02] active:scale-95"
+                            >
+                                Leave
+                            </button>
+                        </div>
+                    </DialogPanel>
+                </div>
+            </Dialog>
         </div>
     );
 }
@@ -540,11 +747,16 @@ interface PlayerBadgeProps {
     isActive: boolean;
     markCount: number;
     currentPlayerId: number | null;
+    /** Seconds left on the active turn. `null` when not the active player or timer disabled. */
+    remainingSeconds: number | null;
+    /** Total per-turn budget (drives the ring's full circumference). */
+    turnSeconds: number | null;
 }
 
-function PlayerBadge({ player, slot, isActive, markCount, currentPlayerId }: PlayerBadgeProps) {
+function PlayerBadge({ player, slot, isActive, markCount, currentPlayerId, remainingSeconds, turnSeconds }: PlayerBadgeProps) {
     const color = player.avatar_color;
     const char = SLOT_CHARS[player.design ?? slot] ?? '?';
+    const isStale = !!player.isStale;
 
     const voiceChat = useVoiceChatOptional();
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -580,20 +792,66 @@ function PlayerBadge({ player, slot, isActive, markCount, currentPlayerId }: Pla
           }
         : {};
 
+    // Timer ring: a circular SVG ring around the avatar that drains over the
+    // turn budget. Color shifts to amber at 10s and red at 5s. Only visible
+    // when this badge belongs to the active player and a budget is set.
+    const showTimer = isActive && remainingSeconds !== null && turnSeconds !== null && turnSeconds > 0;
+    const timerColor = showTimer
+        ? remainingSeconds! <= 5
+            ? '#dc2626'
+            : remainingSeconds! <= 10
+                ? '#f59e0b'
+                : '#16a34a'
+        : color;
+    const timerProgress = showTimer ? Math.max(0, Math.min(1, remainingSeconds! / turnSeconds!)) : 1;
+    const ringRadius = 18;
+    const ringCircumference = 2 * Math.PI * ringRadius;
+    const ringDashOffset = ringCircumference * (1 - timerProgress);
+
     return (
         <>
             <div
                 className={`flex items-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-2.5 py-1.5 shadow-xs transition ${
                     isSpeaking ? 'ring-2 ring-green-400' : ''
-                }`}
+                } ${isStale ? 'opacity-50 grayscale' : ''}`}
                 style={activeStyle}
             >
+                <div className="relative h-9 w-9 shrink-0">
+                    {showTimer && (
+                        <svg
+                            aria-hidden
+                            className="pointer-events-none absolute -inset-1"
+                            viewBox="0 0 40 40"
+                        >
+                            <circle
+                                cx={20}
+                                cy={20}
+                                r={ringRadius}
+                                fill="none"
+                                stroke="rgba(0,0,0,0.08)"
+                                strokeWidth={3}
+                            />
+                            <circle
+                                cx={20}
+                                cy={20}
+                                r={ringRadius}
+                                fill="none"
+                                stroke={timerColor}
+                                strokeWidth={3}
+                                strokeLinecap="round"
+                                strokeDasharray={ringCircumference}
+                                strokeDashoffset={ringDashOffset}
+                                transform="rotate(-90 20 20)"
+                                style={{ transition: 'stroke-dashoffset 250ms linear, stroke 250ms linear' }}
+                            />
+                        </svg>
+                    )}
                 <button
                     type="button"
                     onClick={() => hasVideo && setShowModal(true)}
                     disabled={!hasVideo}
                     title={hasVideo ? 'Click to maximize' : undefined}
-                    className={`relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full ring-2 ring-white text-lg font-black ${
+                    className={`relative grid h-9 w-9 place-items-center overflow-hidden rounded-full ring-2 ring-white text-lg font-black ${
                         hasVideo ? 'cursor-pointer group' : 'cursor-default'
                     } ${isSpeaking ? 'animate-pulse' : ''}`}
                     style={hasVideo ? { backgroundColor: '#000' } : { backgroundColor: hexWithAlpha(color, 0.15), color }}
@@ -618,13 +876,23 @@ function PlayerBadge({ player, slot, isActive, markCount, currentPlayerId }: Pla
                         </span>
                     )}
                 </button>
+                </div>
                 <div className="flex flex-col leading-tight">
                     <span className="max-w-[96px] truncate text-xs font-black text-gray-900">
                         {player.nickname || 'Waiting…'}
                     </span>
-                    <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">
-                        {markCount} marks
-                    </span>
+                    {isStale ? (
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-amber-600">
+                            reconnecting…
+                        </span>
+                    ) : (
+                        <span
+                            className="text-[10px] font-black uppercase tracking-wider"
+                            style={{ color: markCount > 0 ? color : '#9ca3af' }}
+                        >
+                            {markCount} mark{markCount === 1 ? '' : 's'}
+                        </span>
+                    )}
                 </div>
             </div>
 
@@ -760,6 +1028,18 @@ function LeaderboardRow({ player, slot, isActive }: LeaderboardRowProps) {
             </span>
         </div>
     );
+}
+
+function faceLabel(face: number): string {
+    return ['Up', 'Down', 'Left', 'Right', 'Front', 'Peeché'][face] ?? `face ${face + 1}`;
+}
+
+function rotateLabel(move: string): string {
+    const map: Record<string, string> = { U: 'Up', D: 'Down', L: 'Left', R: 'Right', F: 'Front', P: 'Peeché' };
+    const inverse = move.endsWith("'");
+    const key = inverse ? move.slice(0, -1) : move;
+    const name = map[key] ?? key;
+    return `${name} ${inverse ? '↺' : '↻'}`;
 }
 
 function countMarksBySlot(marks: Marks, n: number): number[] {
