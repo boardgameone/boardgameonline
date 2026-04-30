@@ -32,7 +32,7 @@
         "@react-three/fiber": "^9.5.0",
         "peerjs": "^1.5.5",
         "three": "^0.183.2",
-        "vite-plugin-pwa": "^1.2.0"
+        "vite-plugin-pwa": "^0.19.8"
     },
     "overrides": {
         "vite-plugin-pwa": {
