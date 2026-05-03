@@ -39,24 +39,6 @@ class CubeTacGameController extends Controller
 
     private const HISTORY_CAP = 20;
 
-    /**
-     * Active player has this many seconds to act before their turn auto-skips.
-     * Frontend renders a draining ring around the active badge from this value.
-     */
-    private const TURN_SECONDS = 20;
-
-    /**
-     * Server-side grace period on top of TURN_SECONDS to absorb clock skew
-     * between client and server. Auto-skip fires only after both budgets elapse.
-     */
-    private const TURN_GRACE_SECONDS = 5;
-
-    /**
-     * A player is considered stale (probably disconnected) if the server hasn't
-     * heard a heartbeat from them in this many seconds. Frontend dims the badge.
-     */
-    private const STALE_AFTER_SECONDS = 15;
-
     private const VARIANT_CUBE = 'cube';
 
     private const VARIANT_MEGAMINX = 'megaminx';
@@ -198,8 +180,6 @@ class CubeTacGameController extends Controller
             return back()->withErrors(['error' => 'Game is not in progress.']);
         }
 
-        $this->enforceTurnTimeout($room);
-
         $settings = $room->settings ?? [];
 
         if (($settings['winner'] ?? null) !== null) {
@@ -278,8 +258,6 @@ class CubeTacGameController extends Controller
         if (! $room->isPlaying()) {
             return back()->withErrors(['error' => 'Game is not in progress.']);
         }
-
-        $this->enforceTurnTimeout($room);
 
         $settings = $room->settings ?? [];
 
@@ -482,9 +460,6 @@ class CubeTacGameController extends Controller
             'my_slot' => $mySlot,
             'players' => $playersBySlot,
             'designs' => $designsBySlot,
-            'current_turn_started_at' => $settings['current_turn_started_at'] ?? null,
-            'turn_seconds' => self::TURN_SECONDS,
-            'server_time' => now()->toISOString(),
         ];
     }
 
@@ -507,7 +482,6 @@ class CubeTacGameController extends Controller
             'move_history' => [],
             'pending_action' => false,
             'player_ids' => array_values($playerIds),
-            'current_turn_started_at' => now()->toISOString(),
         ];
     }
 
@@ -534,7 +508,6 @@ class CubeTacGameController extends Controller
             'move_history' => [],
             'pending_action' => false,
             'player_ids' => array_values($playerIds),
-            'current_turn_started_at' => now()->toISOString(),
         ];
     }
 
@@ -560,7 +533,6 @@ class CubeTacGameController extends Controller
             'move_history' => [],
             'pending_action' => false,
             'player_ids' => array_values($playerIds),
-            'current_turn_started_at' => now()->toISOString(),
         ];
     }
 
@@ -586,7 +558,6 @@ class CubeTacGameController extends Controller
             'move_history' => [],
             'pending_action' => false,
             'player_ids' => array_values($playerIds),
-            'current_turn_started_at' => now()->toISOString(),
         ];
     }
 
@@ -612,7 +583,6 @@ class CubeTacGameController extends Controller
             'move_history' => [],
             'pending_action' => false,
             'player_ids' => array_values($playerIds),
-            'current_turn_started_at' => now()->toISOString(),
         ];
     }
 
@@ -658,8 +628,6 @@ class CubeTacGameController extends Controller
         if (! $room->isPlaying()) {
             return back()->withErrors(['error' => 'Game is not in progress.']);
         }
-
-        $this->enforceTurnTimeout($room);
 
         $settings = $room->settings ?? [];
 
@@ -739,8 +707,6 @@ class CubeTacGameController extends Controller
             return back()->withErrors(['error' => 'Game is not in progress.']);
         }
 
-        $this->enforceTurnTimeout($room);
-
         $settings = $room->settings ?? [];
 
         if (($settings['winner'] ?? null) !== null) {
@@ -814,8 +780,6 @@ class CubeTacGameController extends Controller
         if (! $room->isPlaying()) {
             return back()->withErrors(['error' => 'Game is not in progress.']);
         }
-
-        $this->enforceTurnTimeout($room);
 
         $settings = $room->settings ?? [];
 
@@ -895,8 +859,6 @@ class CubeTacGameController extends Controller
             return back()->withErrors(['error' => 'Game is not in progress.']);
         }
 
-        $this->enforceTurnTimeout($room);
-
         $settings = $room->settings ?? [];
 
         if (($settings['winner'] ?? null) !== null) {
@@ -970,8 +932,6 @@ class CubeTacGameController extends Controller
         if (! $room->isPlaying()) {
             return back()->withErrors(['error' => 'Game is not in progress.']);
         }
-
-        $this->enforceTurnTimeout($room);
 
         $settings = $room->settings ?? [];
 
@@ -1051,8 +1011,6 @@ class CubeTacGameController extends Controller
             return back()->withErrors(['error' => 'Game is not in progress.']);
         }
 
-        $this->enforceTurnTimeout($room);
-
         $settings = $room->settings ?? [];
 
         if (($settings['winner'] ?? null) !== null) {
@@ -1126,8 +1084,6 @@ class CubeTacGameController extends Controller
         if (! $room->isPlaying()) {
             return back()->withErrors(['error' => 'Game is not in progress.']);
         }
-
-        $this->enforceTurnTimeout($room);
 
         $settings = $room->settings ?? [];
 
@@ -1206,8 +1162,6 @@ class CubeTacGameController extends Controller
         if (! $room->isPlaying()) {
             return back()->withErrors(['error' => 'Game is not in progress.']);
         }
-
-        $this->enforceTurnTimeout($room);
 
         $settings = $room->settings ?? [];
 
@@ -1345,7 +1299,6 @@ class CubeTacGameController extends Controller
         $n = max(1, count($playerIds));
         $settings['current_turn'] = ($currentSlot + 1) % $n;
         $settings['pending_action'] = false;
-        $settings['current_turn_started_at'] = now()->toISOString();
 
         return $settings;
     }
@@ -1370,8 +1323,6 @@ class CubeTacGameController extends Controller
         if (! $room->isPlaying()) {
             return back()->withErrors(['error' => 'Game is not in progress.']);
         }
-
-        $this->enforceTurnTimeout($room);
 
         $settings = $room->settings ?? [];
 
@@ -1437,8 +1388,6 @@ class CubeTacGameController extends Controller
             return back()->withErrors(['error' => 'Game is not in progress.']);
         }
 
-        $this->enforceTurnTimeout($room);
-
         $settings = $room->settings ?? [];
 
         if (($settings['winner'] ?? null) !== null) {
@@ -1460,69 +1409,10 @@ class CubeTacGameController extends Controller
         $currentSlot = (int) $settings['current_turn'];
         $settings['current_turn'] = ($currentSlot + 1) % $n;
         $settings['pending_action'] = false;
-        $settings['current_turn_started_at'] = now()->toISOString();
 
         $room->update(['settings' => $settings]);
 
         return redirect()->route('rooms.show', [$game->slug, $room->room_code]);
-    }
-
-    /**
-     * Opportunistic turn-timeout enforcement. Called from every CubeTac action
-     * handler and from the shared heartbeat ping. If the active player has
-     * exceeded TURN_SECONDS + TURN_GRACE_SECONDS without acting:
-     *
-     *   - any pending mark auto-confirms (the player committed visibly to it),
-     *   - the turn advances to the next slot,
-     *   - current_turn_started_at resets so the new player gets a full clock.
-     *
-     * Because every connected client pings every 5s, this fires within ~5–10s
-     * of a deadline even if the active player is fully offline — that's the
-     * whole point. There is no dedicated skip-turn route (it would fail in
-     * exactly the case that needs handling).
-     */
-    public function enforceTurnTimeout(GameRoom $room): void
-    {
-        if (! $room->isPlaying()) {
-            return;
-        }
-
-        $settings = $room->settings ?? [];
-
-        if (($settings['winner'] ?? null) !== null) {
-            return;
-        }
-
-        $startedAt = $settings['current_turn_started_at'] ?? null;
-        if (! is_string($startedAt) || $startedAt === '') {
-            // Old game with no timestamp yet — stamp it now so the timer starts.
-            $settings['current_turn_started_at'] = now()->toISOString();
-            $room->update(['settings' => $settings]);
-
-            return;
-        }
-
-        try {
-            $deadline = (new \DateTimeImmutable($startedAt))
-                ->modify('+'.(self::TURN_SECONDS + self::TURN_GRACE_SECONDS).' seconds');
-        } catch (\Exception) {
-            return;
-        }
-
-        if (now() < $deadline) {
-            return;
-        }
-
-        // Time's up — auto-confirm any pending mark, then advance.
-        /** @var list<int> $playerIds */
-        $playerIds = $settings['player_ids'] ?? [];
-        $n = max(1, count($playerIds));
-        $currentSlot = (int) ($settings['current_turn'] ?? 0);
-        $settings['current_turn'] = ($currentSlot + 1) % $n;
-        $settings['pending_action'] = false;
-        $settings['current_turn_started_at'] = now()->toISOString();
-
-        $room->update(['settings' => $settings]);
     }
 
     /**
@@ -1561,17 +1451,12 @@ class CubeTacGameController extends Controller
      */
     private function serializePlayer(GamePlayer $player, int $fallbackDesign = 0): array
     {
-        $lastSeen = $player->last_seen_at;
-        $isStale = $lastSeen !== null
-            && $lastSeen->lt(now()->subSeconds(self::STALE_AFTER_SECONDS));
-
         return [
             'id' => $player->id,
             'nickname' => $player->nickname,
             'avatar_color' => $player->avatar_color,
             'is_host' => $player->is_host,
             'is_connected' => $player->is_connected,
-            'is_stale' => $isStale,
             'wins' => $player->wins,
             'design' => $this->designFor($player, $fallbackDesign),
         ];
