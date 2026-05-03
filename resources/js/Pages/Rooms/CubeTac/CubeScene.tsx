@@ -46,7 +46,6 @@ import {
     sticker3D,
 } from '@/lib/rubikCube';
 import MarkGlyph from './MarkGlyph';
-import { FACE_COLORS, faceColorByIndex } from './face-colors';
 
 const FACE_DISPLAY_NAMES: Record<Face, string> = {
     0: 'Up',
@@ -66,16 +65,13 @@ const FACE_CENTER_LETTER: Record<Face, string> = {
     5: 'P',
 };
 
-// Pulled from the shared face-colors source-of-truth so the cube and the
-// rotation buttons stay visually correlated. amber gets dark text because
-// the hue is too light for white to read.
 const FACE_LABEL_COLORS: Record<Face, { bg: string; text: string }> = {
-    0: { bg: FACE_COLORS.U, text: '#ffffff' },
-    1: { bg: FACE_COLORS.D, text: '#ffffff' },
-    2: { bg: FACE_COLORS.L, text: '#ffffff' },
-    3: { bg: FACE_COLORS.R, text: '#ffffff' },
-    4: { bg: FACE_COLORS.F, text: '#ffffff' },
-    5: { bg: FACE_COLORS.P, text: '#1f2937' },
+    0: { bg: '#14b8a6', text: '#ffffff' }, // teal
+    1: { bg: '#8b5cf6', text: '#ffffff' }, // violet
+    2: { bg: '#10b981', text: '#ffffff' }, // emerald
+    3: { bg: '#0ea5e9', text: '#ffffff' }, // sky
+    4: { bg: '#ec4899', text: '#ffffff' }, // pink
+    5: { bg: '#f59e0b', text: '#1f2937' }, // amber (dark text — light hue)
 };
 
 export type StickerClickHandler = (face: number, row: number, col: number) => void;
@@ -662,12 +658,12 @@ function Sticker({ face, row, col, mark, design, glyphColor, isWinning, isPendin
                 />
             </mesh>
 
-            {/* Frame — tinted with the face's signature color so a player can
-                visually correlate "the teal Up button rotates the teal-rimmed
-                Up face." Subtle by default; brighter when the sticker pending. */}
+            {/* Frame — quiet grey by default. When pending, layer a second
+                slightly-larger outline in the player color so the "tap again
+                to undo" cue is clear without a noisy animated halo. */}
             <lineSegments>
                 <edgesGeometry args={[new THREE.PlaneGeometry(STICKER_SIZE, STICKER_SIZE)]} />
-                <lineBasicMaterial color={faceColorByIndex(face)} transparent opacity={0.55} />
+                <lineBasicMaterial color="#8ba3c9" transparent opacity={0.35} />
             </lineSegments>
             {isPending && glyphColor && (
                 <lineSegments position={[0, 0, 0.01]}>
@@ -687,10 +683,10 @@ function Sticker({ face, row, col, mark, design, glyphColor, isWinning, isPendin
             {row === 1 && col === 1 && (mark === null || mark === undefined) && (
                 <Text
                     position={[0, 0, GLYPH_OFFSET]}
-                    fontSize={0.55}
+                    fontSize={0.5}
                     anchorX="center"
                     anchorY="middle"
-                    color={faceColorByIndex(face)}
+                    color="#cfd8ff"
                     characters="UDLRFP"
                 >
                     {FACE_CENTER_LETTER[face]}

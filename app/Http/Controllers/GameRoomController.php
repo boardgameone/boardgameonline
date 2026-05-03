@@ -650,39 +650,6 @@ class GameRoomController extends Controller
     }
 
     /**
-     * Heartbeat endpoint. Marks the current player as recently seen and, for CubeTac
-     * rooms, opportunistically advances the active turn if it has timed out. Every
-     * connected client pings every 5s, so an unresponsive active player still gets
-     * skipped within ~10s of their deadline.
-     */
-    public function ping(Game $game, GameRoom $room): JsonResponse
-    {
-        if ($room->game_id !== $game->id) {
-            abort(404, 'Room not found for this game.');
-        }
-
-        $currentPlayer = $this->findCurrentPlayer($room);
-
-        if (! $currentPlayer) {
-            return response()->json(['error' => 'You are not a player in this room.'], 403);
-        }
-
-        $currentPlayer->update([
-            'last_seen_at' => now(),
-            'is_connected' => true,
-        ]);
-
-        if ($room->game?->slug === 'cubetac' && $room->status === 'playing') {
-            app(CubeTacGameController::class)->enforceTurnTimeout($room);
-        }
-
-        return response()->json([
-            'ok' => true,
-            'server_time' => now()->toISOString(),
-        ]);
-    }
-
-    /**
      * Find the current player in a room by user_id (if authenticated) or session_id (if guest).
      */
     private function findCurrentPlayer(GameRoom $room): ?GamePlayer
