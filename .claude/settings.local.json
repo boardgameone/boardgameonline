@@ -73,7 +73,9 @@
       "Bash(find:*)",
       "Bash(npx:*)",
       "Bash(npm list:*)",
-      "mcp__perplexity__perplexity_research"
+      "mcp__perplexity__perplexity_research",
+      "Bash(git pull *)",
+      "Bash(git stash *)"
     ]
   },
   "enableAllProjectMcpServers": true,
