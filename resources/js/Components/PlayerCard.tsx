@@ -122,7 +122,7 @@ export default function PlayerCard({
                 } ${
                     isCurrentUser
                         ? 'bg-blue-100 border-2 border-blue-400 dark:bg-blue-900/30 dark:border-blue-600'
-                        : 'bg-gray-50 border-2 border-transparent dark:bg-gray-700/50'
+                        : 'bg-gray-50 border-2 border-transparent dark:bg-gray-700/50 sepia:bg-sepia-raised/50'
                 } ${
                     isSpeaking && canShowVoiceControls ? 'ring-2 ring-green-400' : ''
                 }`}
@@ -184,12 +184,12 @@ export default function PlayerCard({
 
                 {/* Player Info */}
                 <div className="flex-1 min-w-0">
-                    <p className={`font-bold text-gray-900 truncate dark:text-gray-100 ${compact ? 'text-sm' : ''}`}>
+                    <p className={`font-bold text-gray-900 truncate dark:text-gray-100 sepia:text-sepia-text ${compact ? 'text-sm' : ''}`}>
                         {player.nickname}
                         {isCurrentUser && <span className="text-blue-600 dark:text-blue-400"> (You)</span>}
                     </p>
                     {player.is_host && (
-                        <span className="inline-flex items-center text-xs text-yellow-600 font-bold dark:text-yellow-400">
+                        <span className="inline-flex items-center text-xs text-yellow-600 font-bold dark:text-yellow-400 sepia:text-sepia-accent">
                             <GameIcon name="crown" size="xs" className="inline-block mr-1" /> Host
                         </span>
                     )}

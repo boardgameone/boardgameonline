@@ -21,18 +21,18 @@ export default function ScoreBoard({
                 <div className="flex items-center gap-1">
                     <span className="inline-block w-2 h-2 rounded-full bg-blue-500" />
                     <span className="font-bold text-blue-700 dark:text-blue-300">{points.team_a}pts</span>
-                    <span className="text-gray-400 dark:text-gray-500">({gameScores.team_a})</span>
+                    <span className="text-gray-400 dark:text-gray-500 sepia:text-sepia-faint">({gameScores.team_a})</span>
                 </div>
-                <div className="text-gray-300 dark:text-gray-600">|</div>
+                <div className="text-gray-300 dark:text-gray-600 sepia:text-sepia-faint">|</div>
                 <div className="flex items-center gap-1">
                     <span className="inline-block w-2 h-2 rounded-full bg-rose-500" />
                     <span className="font-bold text-rose-700 dark:text-rose-300">{points.team_b}pts</span>
-                    <span className="text-gray-400 dark:text-gray-500">({gameScores.team_b})</span>
+                    <span className="text-gray-400 dark:text-gray-500 sepia:text-sepia-faint">({gameScores.team_b})</span>
                 </div>
                 {bidTeam && (
                     <>
-                        <div className="text-gray-300 dark:text-gray-600">|</div>
-                        <span className="text-gray-500 dark:text-gray-400">Bid: {bidValue}</span>
+                        <div className="text-gray-300 dark:text-gray-600 sepia:text-sepia-faint">|</div>
+                        <span className="text-gray-500 dark:text-gray-400 sepia:text-sepia-muted">Bid: {bidValue}</span>
                     </>
                 )}
             </div>
@@ -40,8 +40,8 @@ export default function ScoreBoard({
     }
 
     return (
-        <div className="rounded-xl bg-white border border-gray-200 shadow-xs overflow-hidden dark:bg-gray-800 dark:border-gray-700">
-            <div className="grid grid-cols-2 divide-x divide-gray-200 dark:divide-gray-700">
+        <div className="rounded-xl bg-white border border-gray-200 shadow-xs overflow-hidden dark:bg-gray-800 sepia:bg-sepia-surface dark:border-gray-700 sepia:border-sepia-border">
+            <div className="grid grid-cols-2 divide-x divide-gray-200 dark:divide-gray-700 sepia:divide-sepia-border">
                 <TeamScore
                     label="Team A"
                     color="blue"
@@ -102,15 +102,15 @@ function TeamScore({
             </div>
             <div className="space-y-1">
                 <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">Points</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 sepia:text-sepia-muted">Points</span>
                     <span className={`text-lg font-black ${textClass}`}>{points}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">Tricks</span>
-                    <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{tricks}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 sepia:text-sepia-muted">Tricks</span>
+                    <span className="text-sm font-bold text-gray-700 dark:text-gray-300 sepia:text-sepia-text">{tricks}</span>
                 </div>
-                <div className="flex justify-between items-center border-t border-gray-200 pt-1 mt-1 dark:border-gray-700">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">Game Score</span>
+                <div className="flex justify-between items-center border-t border-gray-200 pt-1 mt-1 dark:border-gray-700 sepia:border-sepia-border">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 sepia:text-sepia-muted">Game Score</span>
                     <span className={`text-sm font-black ${gameScore >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                         {gameScore > 0 ? '+' : ''}{gameScore}
                     </span>

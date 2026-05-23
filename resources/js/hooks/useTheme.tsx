@@ -6,47 +6,38 @@ import {
     useEffect,
     useState,
 } from 'react';
+import {
+    getTheme as getThemeFromDom,
+    normalizeTheme,
+    setTheme as setThemeModule,
+    STORAGE_KEY,
+    Theme,
+    THEMES,
+} from '@/theme';
 
-export type Theme = 'light' | 'dark';
+export type { Theme };
 
 interface ThemeContextValue {
     theme: Theme;
     setTheme: (theme: Theme) => void;
     toggleTheme: () => void;
+    cycleTheme: () => void;
 }
-
-const STORAGE_KEY = 'theme';
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 /**
  * Read the initial theme from the DOM (set by the FOUC script in app.blade.php).
- * Falling through to 'light' keeps this SSR-safe — the effect below will reconcile
- * once the document is available.
+ * Falling through to 'light' keeps this SSR-safe — the effect below will
+ * reconcile once the document is available.
  */
-const getInitialTheme = (): Theme => {
-    if (typeof document === 'undefined') {
-        return 'light';
-    }
-
-    return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-};
+const getInitialTheme = (): Theme => getThemeFromDom();
 
 export function ThemeProvider({ children }: PropsWithChildren) {
     const [theme, setThemeState] = useState<Theme>(getInitialTheme);
 
     useEffect(() => {
-        if (typeof document === 'undefined') {
-            return;
-        }
-
-        document.documentElement.classList.toggle('dark', theme === 'dark');
-
-        try {
-            localStorage.setItem(STORAGE_KEY, theme);
-        } catch (e) {
-            // Private-mode or disabled storage — ignore.
-        }
+        setThemeModule(theme);
     }, [theme]);
 
     useEffect(() => {
@@ -59,9 +50,7 @@ export function ThemeProvider({ children }: PropsWithChildren) {
                 return;
             }
 
-            if (event.newValue === 'light' || event.newValue === 'dark') {
-                setThemeState(event.newValue);
-            }
+            setThemeState(normalizeTheme(event.newValue));
         };
 
         window.addEventListener('storage', handleStorage);
@@ -69,15 +58,24 @@ export function ThemeProvider({ children }: PropsWithChildren) {
     }, []);
 
     const setTheme = useCallback((next: Theme) => {
-        setThemeState(next);
+        setThemeState(normalizeTheme(next));
     }, []);
 
     const toggleTheme = useCallback(() => {
         setThemeState((current) => (current === 'dark' ? 'light' : 'dark'));
     }, []);
 
+    const cycleTheme = useCallback(() => {
+        setThemeState((current) => {
+            const index = THEMES.indexOf(current);
+            return THEMES[(index + 1) % THEMES.length];
+        });
+    }, []);
+
     return (
-        <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
+        <ThemeContext.Provider
+            value={{ theme, setTheme, toggleTheme, cycleTheme }}
+        >
             {children}
         </ThemeContext.Provider>
     );

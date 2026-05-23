@@ -47,7 +47,7 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                 {/* Back button - compact */}
                 <Link
                     href={route('games.index')}
-                    className="inline-flex items-center gap-1.5 text-yellow-900 hover:text-yellow-700 font-bold transition text-sm dark:text-yellow-300 dark:hover:text-yellow-100"
+                    className="inline-flex items-center gap-1.5 text-yellow-900 hover:text-yellow-700 font-bold transition text-sm dark:text-yellow-300 sepia:text-sepia-accent dark:hover:text-yellow-100 sepia:hover:text-sepia-accent-strong"
                 >
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -56,7 +56,7 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                 </Link>
 
                 {/* Game Hero - compact card */}
-                <div className="rounded-xl bg-linear-to-br from-blue-50 to-indigo-100 p-3 shadow-lg border border-blue-200 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
+                <div className="rounded-xl bg-linear-to-br from-blue-50 to-indigo-100 p-3 shadow-lg border border-blue-200 dark:from-gray-800 sepia:from-sepia-surface dark:to-gray-800 sepia:to-sepia-surface dark:border-gray-700 sepia:border-sepia-border">
                     <div className="flex items-center gap-3">
                         <div className={`w-16 h-16 rounded-xl bg-linear-to-br ${gradient} flex items-center justify-center shrink-0`}>
                             {game.slug === 'trio' ? (
@@ -70,7 +70,7 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                             )}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <h1 className="text-xl font-black text-gray-900 truncate dark:text-gray-100">{game.name}</h1>
+                            <h1 className="text-xl font-black text-gray-900 truncate dark:text-gray-100 sepia:text-sepia-text">{game.name}</h1>
                             <div className="flex items-center gap-2 mt-1 text-sm">
                                 <span className="inline-flex items-center gap-1 text-blue-700 font-semibold dark:text-blue-300">
                                     <UsersIcon className="h-4 w-4" />
@@ -85,18 +85,18 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                             </div>
                         </div>
                     </div>
-                    <p className="mt-2 text-gray-600 text-sm line-clamp-2 dark:text-gray-300">{game.description}</p>
+                    <p className="mt-2 text-gray-600 text-sm line-clamp-2 dark:text-gray-300 sepia:text-sepia-muted">{game.description}</p>
                 </div>
 
                 {/* Create Room */}
-                <div className="rounded-xl bg-linear-to-br from-emerald-50 to-teal-100 p-4 shadow-lg border border-teal-200 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
-                    <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 mb-3 dark:text-gray-100">
+                <div className="rounded-xl bg-linear-to-br from-emerald-50 to-teal-100 p-4 shadow-lg border border-teal-200 dark:from-gray-800 sepia:from-sepia-surface dark:to-gray-800 sepia:to-sepia-surface dark:border-gray-700 sepia:border-sepia-border">
+                    <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 mb-3 dark:text-gray-100 sepia:text-sepia-text">
                         <GameIcon name="gamepad" size="sm" /> Create a Room
                     </h2>
                     <form onSubmit={submit} className="space-y-3">
                         {!auth.user && (
                             <div>
-                                <label htmlFor="nickname-mobile" className="block text-xs font-bold text-gray-700 mb-1 dark:text-gray-300">
+                                <label htmlFor="nickname-mobile" className="block text-xs font-bold text-gray-700 mb-1 dark:text-gray-300 sepia:text-sepia-muted">
                                     Your Nickname
                                 </label>
                                 <input
@@ -106,14 +106,14 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                                     onChange={(e) => setData('nickname', e.target.value)}
                                     placeholder="Enter your nickname"
                                     maxLength={20}
-                                    className="w-full px-3 py-2 rounded-lg border-2 border-gray-200 focus:border-teal-400 focus:ring-teal-400 transition-colors font-medium text-sm dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
+                                    className="w-full px-3 py-2 rounded-lg border-2 border-gray-200 focus:border-teal-400 focus:ring-teal-400 transition-colors font-medium text-sm dark:bg-gray-900 sepia:bg-sepia-bg dark:border-gray-700 sepia:border-sepia-border dark:text-gray-100 sepia:text-sepia-text dark:placeholder-gray-500 sepia:placeholder-sepia-faint"
                                     required
                                 />
                                 {errors.nickname && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.nickname}</p>}
                             </div>
                         )}
                         <div>
-                            <label htmlFor="name-mobile" className="block text-xs font-bold text-gray-700 mb-1 dark:text-gray-300">
+                            <label htmlFor="name-mobile" className="block text-xs font-bold text-gray-700 mb-1 dark:text-gray-300 sepia:text-sepia-muted">
                                 Room Name (optional)
                             </label>
                             <input
@@ -122,13 +122,13 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                                 value={data.name}
                                 onChange={(e) => setData('name', e.target.value)}
                                 placeholder="My Awesome Game Room"
-                                className="w-full px-3 py-2 rounded-lg border-2 border-gray-200 focus:border-teal-400 focus:ring-teal-400 transition-colors font-medium text-sm dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
+                                className="w-full px-3 py-2 rounded-lg border-2 border-gray-200 focus:border-teal-400 focus:ring-teal-400 transition-colors font-medium text-sm dark:bg-gray-900 sepia:bg-sepia-bg dark:border-gray-700 sepia:border-sepia-border dark:text-gray-100 sepia:text-sepia-text dark:placeholder-gray-500 sepia:placeholder-sepia-faint"
                             />
                             {errors.name && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.name}</p>}
                         </div>
                         <label
                             htmlFor="is-private-mobile"
-                            className="flex items-start gap-2 rounded-lg border-2 border-gray-200 bg-white/60 p-2.5 cursor-pointer transition hover:border-teal-300 dark:bg-gray-900 dark:border-gray-700 dark:hover:border-teal-700"
+                            className="flex items-start gap-2 rounded-lg border-2 border-gray-200 bg-white/60 p-2.5 cursor-pointer transition hover:border-teal-300 dark:bg-gray-900 sepia:bg-sepia-bg dark:border-gray-700 sepia:border-sepia-border dark:hover:border-teal-700"
                         >
                             <input
                                 id="is-private-mobile"
@@ -138,8 +138,8 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                                 className="mt-0.5 h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                             />
                             <span className="flex-1">
-                                <span className="block text-xs font-bold text-gray-900 dark:text-gray-100">Private room</span>
-                                <span className="block text-[11px] text-gray-600 dark:text-gray-400">
+                                <span className="block text-xs font-bold text-gray-900 dark:text-gray-100 sepia:text-sepia-text">Private room</span>
+                                <span className="block text-[11px] text-gray-600 dark:text-gray-400 sepia:text-sepia-muted">
                                     Hidden from Open Rooms — join via code only
                                 </span>
                             </span>
@@ -156,8 +156,8 @@ export default function Show({ auth, game, waitingRooms }: Props) {
 
                 {/* Open Rooms */}
                 {waitingRooms.length > 0 && (
-                    <div className="rounded-xl bg-linear-to-br from-green-50 to-emerald-100 p-4 shadow-lg border border-green-200 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
-                        <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 mb-3 dark:text-gray-100">
+                    <div className="rounded-xl bg-linear-to-br from-green-50 to-emerald-100 p-4 shadow-lg border border-green-200 dark:from-gray-800 sepia:from-sepia-surface dark:to-gray-800 sepia:to-sepia-surface dark:border-gray-700 sepia:border-sepia-border">
+                        <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 mb-3 dark:text-gray-100 sepia:text-sepia-text">
                             <GameIcon name="circle" size="sm" className="text-green-600 dark:text-green-400" /> Open Rooms
                         </h2>
                         <ul className="space-y-2">
@@ -165,14 +165,14 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                                 <li key={room.id}>
                                     <Link
                                         href={route('rooms.show', [game.slug, room.room_code])}
-                                        className="block rounded-lg border-2 border-green-200 bg-white/50 p-3 transition hover:border-green-400 hover:bg-green-50 dark:bg-gray-700/40 dark:border-gray-600 dark:hover:bg-green-900/20 dark:hover:border-green-700"
+                                        className="block rounded-lg border-2 border-green-200 bg-white/50 p-3 transition hover:border-green-400 hover:bg-green-50 dark:bg-gray-700/40 sepia:bg-sepia-raised/40 dark:border-gray-600 sepia:border-sepia-border-strong dark:hover:bg-green-900/20 dark:hover:border-green-700"
                                     >
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <p className="font-bold text-gray-900 text-sm dark:text-gray-100">
+                                                <p className="font-bold text-gray-900 text-sm dark:text-gray-100 sepia:text-sepia-text">
                                                     {room.name || `Room ${room.room_code}`}
                                                 </p>
-                                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 sepia:text-sepia-muted">
                                                     Hosted by {room.host?.name || 'Unknown'}
                                                 </p>
                                             </div>
@@ -191,24 +191,24 @@ export default function Show({ auth, game, waitingRooms }: Props) {
 
                 {/* Rules - scrollable */}
                 {game.rules && (
-                    <div className="rounded-xl bg-linear-to-br from-amber-50 to-yellow-100 p-4 shadow-lg border border-yellow-200 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
-                        <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 mb-3 dark:text-gray-100">
+                    <div className="rounded-xl bg-linear-to-br from-amber-50 to-yellow-100 p-4 shadow-lg border border-yellow-200 dark:from-gray-800 sepia:from-sepia-surface dark:to-gray-800 sepia:to-sepia-surface dark:border-gray-700 sepia:border-sepia-border">
+                        <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 mb-3 dark:text-gray-100 sepia:text-sepia-text">
                             <GameIcon name="book" size="sm" /> How to Play
                         </h2>
                         <div className="space-y-3">
                             {Object.entries(game.rules).map(([key, value]) => (
-                                <div key={key} className="bg-white/60 rounded-lg p-3 dark:bg-gray-700/40">
-                                    <h3 className="font-bold text-yellow-800 capitalize text-sm dark:text-yellow-300">
+                                <div key={key} className="bg-white/60 rounded-lg p-3 dark:bg-gray-700/40 sepia:bg-sepia-raised/40">
+                                    <h3 className="font-bold text-yellow-800 capitalize text-sm dark:text-yellow-300 sepia:text-sepia-accent">
                                         {key.replace(/_/g, ' ')}
                                     </h3>
                                     {typeof value === 'string' ? (
-                                        <p className="mt-1 text-gray-700 text-sm dark:text-gray-300">{value}</p>
+                                        <p className="mt-1 text-gray-700 text-sm dark:text-gray-300 sepia:text-sepia-muted">{value}</p>
                                     ) : (
                                         <ul className="mt-1 space-y-1">
                                             {Object.entries(value as Record<string, string>).map(
                                                 ([subKey, subValue]) => (
-                                                    <li key={subKey} className="flex gap-1 text-gray-700 text-sm dark:text-gray-300">
-                                                        <span className="font-bold text-yellow-700 dark:text-yellow-400">{subKey}:</span>
+                                                    <li key={subKey} className="flex gap-1 text-gray-700 text-sm dark:text-gray-300 sepia:text-sepia-muted">
+                                                        <span className="font-bold text-yellow-700 dark:text-yellow-400 sepia:text-sepia-accent">{subKey}:</span>
                                                         <span>{subValue}</span>
                                                     </li>
                                                 )
@@ -222,16 +222,16 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                 )}
 
                 {/* Join with Code */}
-                <div className="rounded-xl bg-linear-to-br from-purple-50 to-violet-100 p-4 shadow-lg border border-purple-200 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
-                    <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 dark:text-gray-100">
+                <div className="rounded-xl bg-linear-to-br from-purple-50 to-violet-100 p-4 shadow-lg border border-purple-200 dark:from-gray-800 sepia:from-sepia-surface dark:to-gray-800 sepia:to-sepia-surface dark:border-gray-700 sepia:border-sepia-border">
+                    <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 dark:text-gray-100 sepia:text-sepia-text">
                         <GameIcon name="link" size="sm" /> Have a Room Code?
                     </h2>
-                    <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                    <p className="mt-1 text-xs text-gray-600 dark:text-gray-400 sepia:text-sepia-muted">
                         Join a friend's room directly using their room code.
                     </p>
                     <Link
                         href={route('rooms.join')}
-                        className="mt-3 block w-full rounded-full bg-white px-4 py-2 text-center font-bold text-purple-600 shadow-md hover:scale-105 transition border-b-4 border-purple-300 text-sm dark:bg-gray-700 dark:text-purple-300 dark:border-purple-700"
+                        className="mt-3 block w-full rounded-full bg-white px-4 py-2 text-center font-bold text-purple-600 shadow-md hover:scale-105 transition border-b-4 border-purple-300 text-sm dark:bg-gray-700 sepia:bg-sepia-raised dark:text-purple-300 dark:border-purple-700"
                     >
                         Join with Code
                     </Link>
@@ -245,7 +245,7 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                     {/* Back button - inline */}
                     <Link
                         href={route('games.index')}
-                        className="inline-flex items-center gap-2 text-yellow-900 hover:text-yellow-700 font-bold transition w-fit dark:text-yellow-300 dark:hover:text-yellow-100"
+                        className="inline-flex items-center gap-2 text-yellow-900 hover:text-yellow-700 font-bold transition w-fit dark:text-yellow-300 sepia:text-sepia-accent dark:hover:text-yellow-100 sepia:hover:text-sepia-accent-strong"
                     >
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -254,7 +254,7 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                     </Link>
 
                     {/* Game Hero - compact */}
-                    <div className={`rounded-2xl bg-linear-to-br from-blue-50 to-indigo-100 shadow-lg border border-blue-200 overflow-hidden dark:from-gray-800 dark:to-gray-800 dark:border-gray-700`}>
+                    <div className={`rounded-2xl bg-linear-to-br from-blue-50 to-indigo-100 shadow-lg border border-blue-200 overflow-hidden dark:from-gray-800 sepia:from-sepia-surface dark:to-gray-800 sepia:to-sepia-surface dark:border-gray-700 sepia:border-sepia-border`}>
                         <div className="flex">
                             <div className={`w-48 aspect-square bg-linear-to-br ${gradient} flex items-center justify-center shrink-0 relative`}>
                                 {game.slug === 'trio' ? (
@@ -275,8 +275,8 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                                 </div>
                             </div>
                             <div className="flex-1 p-5 flex flex-col justify-center">
-                                <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100">{game.name}</h1>
-                                <p className="mt-2 text-gray-600 dark:text-gray-300">{game.description}</p>
+                                <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 sepia:text-sepia-text">{game.name}</h1>
+                                <p className="mt-2 text-gray-600 dark:text-gray-300 sepia:text-sepia-muted">{game.description}</p>
                                 <div className="mt-3 flex items-center gap-3">
                                     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-100 text-blue-700 font-bold text-sm dark:bg-blue-900/40 dark:text-blue-200">
                                         <UsersIcon className="h-4 w-4" />
@@ -295,27 +295,27 @@ export default function Show({ auth, game, waitingRooms }: Props) {
 
                     {/* Rules - scrollable within container */}
                     {game.rules && (
-                        <div className="flex-1 rounded-2xl bg-linear-to-br from-amber-50 to-yellow-100 shadow-lg border border-yellow-200 flex flex-col min-h-0 overflow-hidden dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
-                            <div className="p-4 border-b border-yellow-200/50 dark:border-gray-700">
-                                <h2 className="text-lg font-black text-gray-900 flex items-center gap-2 dark:text-gray-100">
+                        <div className="flex-1 rounded-2xl bg-linear-to-br from-amber-50 to-yellow-100 shadow-lg border border-yellow-200 flex flex-col min-h-0 overflow-hidden dark:from-gray-800 sepia:from-sepia-surface dark:to-gray-800 sepia:to-sepia-surface dark:border-gray-700 sepia:border-sepia-border">
+                            <div className="p-4 border-b border-yellow-200/50 dark:border-gray-700 sepia:border-sepia-border">
+                                <h2 className="text-lg font-black text-gray-900 flex items-center gap-2 dark:text-gray-100 sepia:text-sepia-text">
                                     <GameIcon name="book" /> How to Play
                                 </h2>
                             </div>
                             <div className="flex-1 overflow-y-auto p-4">
                                 <div className="space-y-4">
                                     {Object.entries(game.rules).map(([key, value]) => (
-                                        <div key={key} className="bg-white/60 rounded-xl p-4 dark:bg-gray-700/40">
-                                            <h3 className="font-bold text-yellow-800 capitalize dark:text-yellow-300">
+                                        <div key={key} className="bg-white/60 rounded-xl p-4 dark:bg-gray-700/40 sepia:bg-sepia-raised/40">
+                                            <h3 className="font-bold text-yellow-800 capitalize dark:text-yellow-300 sepia:text-sepia-accent">
                                                 {key.replace(/_/g, ' ')}
                                             </h3>
                                             {typeof value === 'string' ? (
-                                                <p className="mt-2 text-gray-700 dark:text-gray-300">{value}</p>
+                                                <p className="mt-2 text-gray-700 dark:text-gray-300 sepia:text-sepia-muted">{value}</p>
                                             ) : (
                                                 <ul className="mt-2 space-y-1.5">
                                                     {Object.entries(value as Record<string, string>).map(
                                                         ([subKey, subValue]) => (
-                                                            <li key={subKey} className="flex gap-2 text-gray-700 dark:text-gray-300">
-                                                                <span className="font-bold text-yellow-700 dark:text-yellow-400">{subKey}:</span>
+                                                            <li key={subKey} className="flex gap-2 text-gray-700 dark:text-gray-300 sepia:text-sepia-muted">
+                                                                <span className="font-bold text-yellow-700 dark:text-yellow-400 sepia:text-sepia-accent">{subKey}:</span>
                                                                 <span>{subValue}</span>
                                                             </li>
                                                         )
@@ -333,7 +333,7 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                 {/* Right Column - Actions */}
                 <div className="col-span-4 flex flex-col gap-4 min-h-0">
                     {/* Create Room */}
-                    <div className="rounded-2xl bg-linear-to-br from-emerald-50 to-teal-100 shadow-lg border border-teal-200 overflow-hidden dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
+                    <div className="rounded-2xl bg-linear-to-br from-emerald-50 to-teal-100 shadow-lg border border-teal-200 overflow-hidden dark:from-gray-800 sepia:from-sepia-surface dark:to-gray-800 sepia:to-sepia-surface dark:border-gray-700 sepia:border-sepia-border">
                         <div className="bg-linear-to-r from-teal-600 to-teal-700 px-4 py-3">
                             <h2 className="text-base font-bold text-white flex items-center gap-2">
                                 <GameIcon name="gamepad" size="sm" /> Create a Room
@@ -343,7 +343,7 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                             <form onSubmit={submit} className="space-y-3">
                                 {!auth.user && (
                                     <div>
-                                        <label htmlFor="nickname" className="block text-xs font-bold text-gray-700 mb-1 dark:text-gray-300">
+                                        <label htmlFor="nickname" className="block text-xs font-bold text-gray-700 mb-1 dark:text-gray-300 sepia:text-sepia-muted">
                                             Your Nickname
                                         </label>
                                         <input
@@ -353,14 +353,14 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                                             onChange={(e) => setData('nickname', e.target.value)}
                                             placeholder="Enter your nickname"
                                             maxLength={20}
-                                            className="w-full px-3 py-2.5 rounded-xl border-2 border-gray-200 focus:border-teal-400 focus:ring-teal-400 transition-colors font-medium dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
+                                            className="w-full px-3 py-2.5 rounded-xl border-2 border-gray-200 focus:border-teal-400 focus:ring-teal-400 transition-colors font-medium dark:bg-gray-900 sepia:bg-sepia-bg dark:border-gray-700 sepia:border-sepia-border dark:text-gray-100 sepia:text-sepia-text dark:placeholder-gray-500 sepia:placeholder-sepia-faint"
                                             required
                                         />
                                         {errors.nickname && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.nickname}</p>}
                                     </div>
                                 )}
                                 <div>
-                                    <label htmlFor="name" className="block text-xs font-bold text-gray-700 mb-1 dark:text-gray-300">
+                                    <label htmlFor="name" className="block text-xs font-bold text-gray-700 mb-1 dark:text-gray-300 sepia:text-sepia-muted">
                                         Room Name (optional)
                                     </label>
                                     <input
@@ -369,13 +369,13 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                                         value={data.name}
                                         onChange={(e) => setData('name', e.target.value)}
                                         placeholder="My Awesome Game Room"
-                                        className="w-full px-3 py-2.5 rounded-xl border-2 border-gray-200 focus:border-teal-400 focus:ring-teal-400 transition-colors font-medium dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
+                                        className="w-full px-3 py-2.5 rounded-xl border-2 border-gray-200 focus:border-teal-400 focus:ring-teal-400 transition-colors font-medium dark:bg-gray-900 sepia:bg-sepia-bg dark:border-gray-700 sepia:border-sepia-border dark:text-gray-100 sepia:text-sepia-text dark:placeholder-gray-500 sepia:placeholder-sepia-faint"
                                     />
                                     {errors.name && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name}</p>}
                                 </div>
                                 <label
                                     htmlFor="is-private"
-                                    className="flex items-start gap-2 rounded-xl border-2 border-gray-200 bg-white/60 p-3 cursor-pointer transition hover:border-teal-300 dark:bg-gray-900 dark:border-gray-700 dark:hover:border-teal-700"
+                                    className="flex items-start gap-2 rounded-xl border-2 border-gray-200 bg-white/60 p-3 cursor-pointer transition hover:border-teal-300 dark:bg-gray-900 sepia:bg-sepia-bg dark:border-gray-700 sepia:border-sepia-border dark:hover:border-teal-700"
                                 >
                                     <input
                                         id="is-private"
@@ -385,8 +385,8 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                                         className="mt-0.5 h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                                     />
                                     <span className="flex-1">
-                                        <span className="block text-xs font-bold text-gray-900 dark:text-gray-100">Private room</span>
-                                        <span className="block text-[11px] text-gray-600 dark:text-gray-400">
+                                        <span className="block text-xs font-bold text-gray-900 dark:text-gray-100 sepia:text-sepia-text">Private room</span>
+                                        <span className="block text-[11px] text-gray-600 dark:text-gray-400 sepia:text-sepia-muted">
                                             Hidden from Open Rooms — join via code only
                                         </span>
                                     </span>
@@ -404,7 +404,7 @@ export default function Show({ auth, game, waitingRooms }: Props) {
 
                     {/* Open Rooms */}
                     {waitingRooms.length > 0 && (
-                        <div className="rounded-2xl bg-linear-to-br from-green-50 to-emerald-100 shadow-lg border border-green-200 overflow-hidden flex-1 min-h-0 flex flex-col dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
+                        <div className="rounded-2xl bg-linear-to-br from-green-50 to-emerald-100 shadow-lg border border-green-200 overflow-hidden flex-1 min-h-0 flex flex-col dark:from-gray-800 sepia:from-sepia-surface dark:to-gray-800 sepia:to-sepia-surface dark:border-gray-700 sepia:border-sepia-border">
                             <div className="bg-linear-to-r from-green-500 to-green-600 px-4 py-3">
                                 <h2 className="text-base font-bold text-white flex items-center gap-2">
                                     <GameIcon name="circle" size="sm" className="text-green-300" /> Open Rooms
@@ -416,14 +416,14 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                                         <li key={room.id}>
                                             <Link
                                                 href={route('rooms.show', [game.slug, room.room_code])}
-                                                className="block rounded-xl border-2 border-green-200 bg-white/50 p-3 transition hover:border-green-400 hover:bg-green-50 dark:bg-gray-700/40 dark:border-gray-600 dark:hover:bg-green-900/20 dark:hover:border-green-700"
+                                                className="block rounded-xl border-2 border-green-200 bg-white/50 p-3 transition hover:border-green-400 hover:bg-green-50 dark:bg-gray-700/40 sepia:bg-sepia-raised/40 dark:border-gray-600 sepia:border-sepia-border-strong dark:hover:bg-green-900/20 dark:hover:border-green-700"
                                             >
                                                 <div className="flex items-center justify-between">
                                                     <div>
-                                                        <p className="font-bold text-gray-900 text-sm dark:text-gray-100">
+                                                        <p className="font-bold text-gray-900 text-sm dark:text-gray-100 sepia:text-sepia-text">
                                                             {room.name || `Room ${room.room_code}`}
                                                         </p>
-                                                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                        <p className="text-xs text-gray-500 dark:text-gray-400 sepia:text-sepia-muted">
                                                             Hosted by {room.host?.name || 'Unknown'}
                                                         </p>
                                                     </div>
@@ -442,16 +442,16 @@ export default function Show({ auth, game, waitingRooms }: Props) {
                     )}
 
                     {/* Join with Code */}
-                    <div className="rounded-2xl bg-linear-to-br from-purple-50 to-violet-100 shadow-lg border border-purple-200 p-4 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
-                        <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 dark:text-gray-100">
+                    <div className="rounded-2xl bg-linear-to-br from-purple-50 to-violet-100 shadow-lg border border-purple-200 p-4 dark:from-gray-800 sepia:from-sepia-surface dark:to-gray-800 sepia:to-sepia-surface dark:border-gray-700 sepia:border-sepia-border">
+                        <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 dark:text-gray-100 sepia:text-sepia-text">
                             <GameIcon name="link" size="sm" /> Have a Room Code?
                         </h2>
-                        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 sepia:text-sepia-muted">
                             Join a friend's room directly using their room code.
                         </p>
                         <Link
                             href={route('rooms.join')}
-                            className="mt-3 block w-full rounded-full bg-white px-4 py-2.5 text-center font-bold text-purple-600 shadow-md hover:scale-105 transition border-b-4 border-purple-300 dark:bg-gray-700 dark:text-purple-300 dark:border-purple-700"
+                            className="mt-3 block w-full rounded-full bg-white px-4 py-2.5 text-center font-bold text-purple-600 shadow-md hover:scale-105 transition border-b-4 border-purple-300 dark:bg-gray-700 sepia:bg-sepia-raised dark:text-purple-300 dark:border-purple-700"
                         >
                             Join with Code
                         </Link>

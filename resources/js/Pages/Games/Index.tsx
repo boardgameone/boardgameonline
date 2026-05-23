@@ -97,11 +97,11 @@ export default function Index({ games }: Props) {
 function EmptyState() {
     return (
         <div className="text-center py-12">
-            <div className="inline-flex items-center justify-center w-24 h-24 bg-linear-to-br from-gray-100 to-gray-200 rounded-full mb-4 shadow-inner dark:from-gray-800 dark:to-gray-900">
-                <GameIcon name="dice" size="xl" className="opacity-40 text-gray-500 dark:text-gray-500" />
+            <div className="inline-flex items-center justify-center w-24 h-24 bg-linear-to-br from-gray-100 to-gray-200 rounded-full mb-4 shadow-inner dark:from-gray-800 sepia:from-sepia-surface dark:to-gray-900 sepia:to-sepia-bg">
+                <GameIcon name="dice" size="xl" className="opacity-40 text-gray-500 dark:text-gray-500 sepia:text-sepia-faint" />
             </div>
-            <p className="text-gray-600 font-bold text-lg dark:text-gray-300">No games available yet</p>
-            <p className="text-gray-500 mt-1 text-sm dark:text-gray-400">Check back soon for exciting new games!</p>
+            <p className="text-gray-600 font-bold text-lg dark:text-gray-300 sepia:text-sepia-muted">No games available yet</p>
+            <p className="text-gray-500 mt-1 text-sm dark:text-gray-400 sepia:text-sepia-muted">Check back soon for exciting new games!</p>
         </div>
     );
 }
@@ -154,7 +154,7 @@ function GameCardCompact({ game }: Readonly<{ game: Game }>) {
     return (
         <Link
             href={route('games.show', game.slug)}
-            className="group relative bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-xl dark:bg-gray-800"
+            className="group relative bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-xl dark:bg-gray-800 sepia:bg-sepia-surface"
         >
             <div className="flex">
                 {/* Game Visual - Left */}
@@ -181,10 +181,10 @@ function GameCardCompact({ game }: Readonly<{ game: Game }>) {
 
                 {/* Game Info - Right */}
                 <div className="flex-1 p-3 flex flex-col justify-center min-w-0">
-                    <h3 className="text-base font-black text-gray-900 truncate dark:text-gray-100">
+                    <h3 className="text-base font-black text-gray-900 truncate dark:text-gray-100 sepia:text-sepia-text">
                         {game.name}
                     </h3>
-                    <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400 sepia:text-sepia-muted">
                         <span className="inline-flex items-center gap-1">
                             <UsersIcon className="h-3 w-3" />
                             {game.min_players}-{game.max_players}
@@ -217,7 +217,7 @@ function GameCard({ game }: Readonly<{ game: Game }>) {
     return (
         <Link
             href={route('games.show', game.slug)}
-            className="group relative bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-xl dark:bg-gray-800"
+            className="group relative bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-xl dark:bg-gray-800 sepia:bg-sepia-surface"
         >
             {/* Game Image Area */}
             <div className={`aspect-4/3 bg-linear-to-br ${gradient} flex items-center justify-center relative overflow-hidden`}>
@@ -264,10 +264,10 @@ function GameCard({ game }: Readonly<{ game: Game }>) {
 
             {/* Game Info */}
             <div className="p-4">
-                <h3 className="text-xl font-black text-gray-900 group-hover:text-purple-600 transition-colors dark:text-gray-100 dark:group-hover:text-purple-300">
+                <h3 className="text-xl font-black text-gray-900 group-hover:text-purple-600 transition-colors dark:text-gray-100 sepia:text-sepia-text dark:group-hover:text-purple-300">
                     {game.name}
                 </h3>
-                <p className="mt-1 text-gray-500 line-clamp-2 text-sm dark:text-gray-400">
+                <p className="mt-1 text-gray-500 line-clamp-2 text-sm dark:text-gray-400 sepia:text-sepia-muted">
                     {game.description}
                 </p>
 

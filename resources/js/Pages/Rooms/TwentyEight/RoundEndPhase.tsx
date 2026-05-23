@@ -40,30 +40,30 @@ export default function RoundEndPhase({
                 <div className="text-4xl mb-2">
                     {bidTeamWon ? '\uD83C\uDF89' : '\uD83D\uDE14'}
                 </div>
-                <h2 className="text-xl font-black text-gray-900 mb-1 dark:text-gray-100">
+                <h2 className="text-xl font-black text-gray-900 mb-1 dark:text-gray-100 sepia:text-sepia-text">
                     Round {gameState.round_number} Complete
                 </h2>
                 <p className={`text-lg font-bold ${bidTeamWon ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
                     {bidTeamLabel} {bidTeamWon ? 'made' : 'missed'} their bid!
                 </p>
-                <p className="text-sm text-gray-600 mt-1 dark:text-gray-400">
+                <p className="text-sm text-gray-600 mt-1 dark:text-gray-400 sepia:text-sepia-muted">
                     Bid: {bidValue} &middot; Won: {bidTeamPoints} points
                 </p>
             </div>
 
             {/* Points breakdown */}
-            <div className="rounded-xl bg-white shadow-md border border-gray-200 p-4 dark:bg-gray-800 dark:border-gray-700">
-                <h4 className="text-sm font-bold text-gray-600 mb-3 dark:text-gray-400">Round Summary</h4>
+            <div className="rounded-xl bg-white shadow-md border border-gray-200 p-4 dark:bg-gray-800 sepia:bg-sepia-surface dark:border-gray-700 sepia:border-sepia-border">
+                <h4 className="text-sm font-bold text-gray-600 mb-3 dark:text-gray-400 sepia:text-sepia-muted">Round Summary</h4>
                 <div className="grid grid-cols-2 gap-4 text-center">
-                    <div className={`p-3 rounded-lg ${bidTeam === 'team_a' ? 'bg-blue-50 border border-blue-200 dark:bg-blue-900/30 dark:border-blue-700' : 'bg-gray-50 dark:bg-gray-900/40'}`}>
-                        <div className="text-xs text-gray-500 mb-1 dark:text-gray-400">Team A Points</div>
+                    <div className={`p-3 rounded-lg ${bidTeam === 'team_a' ? 'bg-blue-50 border border-blue-200 dark:bg-blue-900/30 dark:border-blue-700' : 'bg-gray-50 dark:bg-gray-900/40 sepia:bg-sepia-bg/40'}`}>
+                        <div className="text-xs text-gray-500 mb-1 dark:text-gray-400 sepia:text-sepia-muted">Team A Points</div>
                         <div className="text-2xl font-black text-blue-700 dark:text-blue-300">{gameState.points.team_a}</div>
-                        <div className="text-xs text-gray-400 dark:text-gray-500">of 28</div>
+                        <div className="text-xs text-gray-400 dark:text-gray-500 sepia:text-sepia-faint">of 28</div>
                     </div>
-                    <div className={`p-3 rounded-lg ${bidTeam === 'team_b' ? 'bg-rose-50 border border-rose-200 dark:bg-rose-900/30 dark:border-rose-700' : 'bg-gray-50 dark:bg-gray-900/40'}`}>
-                        <div className="text-xs text-gray-500 mb-1 dark:text-gray-400">Team B Points</div>
+                    <div className={`p-3 rounded-lg ${bidTeam === 'team_b' ? 'bg-rose-50 border border-rose-200 dark:bg-rose-900/30 dark:border-rose-700' : 'bg-gray-50 dark:bg-gray-900/40 sepia:bg-sepia-bg/40'}`}>
+                        <div className="text-xs text-gray-500 mb-1 dark:text-gray-400 sepia:text-sepia-muted">Team B Points</div>
                         <div className="text-2xl font-black text-rose-700 dark:text-rose-300">{gameState.points.team_b}</div>
-                        <div className="text-xs text-gray-400 dark:text-gray-500">of 28</div>
+                        <div className="text-xs text-gray-400 dark:text-gray-500 sepia:text-sepia-faint">of 28</div>
                     </div>
                 </div>
             </div>
@@ -78,8 +78,8 @@ export default function RoundEndPhase({
             />
 
             {/* Score progress bar */}
-            <div className="rounded-xl bg-white shadow-md border border-gray-200 p-4 dark:bg-gray-800 dark:border-gray-700">
-                <h4 className="text-sm font-bold text-gray-600 mb-3 dark:text-gray-400">Game Progress (first to +6 or -6)</h4>
+            <div className="rounded-xl bg-white shadow-md border border-gray-200 p-4 dark:bg-gray-800 sepia:bg-sepia-surface dark:border-gray-700 sepia:border-sepia-border">
+                <h4 className="text-sm font-bold text-gray-600 mb-3 dark:text-gray-400 sepia:text-sepia-muted">Game Progress (first to +6 or -6)</h4>
                 <div className="space-y-3">
                     <ScoreBar label="Team A" score={gameState.game_scores.team_a} color="blue" />
                     <ScoreBar label="Team B" score={gameState.game_scores.team_b} color="rose" />
@@ -97,7 +97,7 @@ export default function RoundEndPhase({
             )}
 
             {!isHost && (
-                <div className="text-center text-gray-500 text-sm dark:text-gray-400">
+                <div className="text-center text-gray-500 text-sm dark:text-gray-400 sepia:text-sepia-muted">
                     Waiting for host to start the next round...
                 </div>
             )}

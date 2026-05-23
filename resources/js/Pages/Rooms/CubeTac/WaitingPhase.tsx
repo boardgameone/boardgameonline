@@ -117,21 +117,21 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
                 <button
                     type="button"
                     onClick={handleLeave}
-                    className="inline-flex items-center gap-1.5 text-yellow-900 hover:text-yellow-700 font-bold transition text-sm dark:text-yellow-300 dark:hover:text-yellow-200"
+                    className="inline-flex items-center gap-1.5 text-yellow-900 hover:text-yellow-700 font-bold transition text-sm dark:text-yellow-300 sepia:text-sepia-accent dark:hover:text-yellow-200 sepia:hover:text-sepia-accent-strong"
                 >
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
                     Back
                 </button>
-                <div className="text-[10px] font-black uppercase tracking-[0.35em] text-yellow-900/70 dark:text-yellow-300/70">
+                <div className="text-[10px] font-black uppercase tracking-[0.35em] text-yellow-900/70 dark:text-yellow-300/70 sepia:text-sepia-accent/70">
                     Waiting Room
                 </div>
                 <span className="h-5 w-5" />
             </div>
 
             <div className="mt-8 flex flex-1 flex-col items-center justify-center gap-6">
-                <h2 className="text-3xl font-black text-yellow-900 drop-shadow-xs sm:text-4xl dark:text-yellow-300">
+                <h2 className="text-3xl font-black text-yellow-900 drop-shadow-xs sm:text-4xl dark:text-yellow-300 sepia:text-sepia-accent">
                     Share this code
                 </h2>
 
@@ -139,12 +139,12 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
                 <button
                     type="button"
                     onClick={handleCopyCode}
-                    className="group relative rounded-3xl bg-linear-to-br from-white to-yellow-50 px-10 py-6 shadow-xl border-2 border-yellow-400 hover:border-yellow-500 hover:scale-[1.02] transition dark:from-gray-800 dark:to-gray-900 dark:border-yellow-600/60 dark:hover:border-yellow-500/80"
+                    className="group relative rounded-3xl bg-linear-to-br from-white to-yellow-50 px-10 py-6 shadow-xl border-2 border-yellow-400 hover:border-yellow-500 hover:scale-[1.02] transition dark:from-gray-800 sepia:from-sepia-surface dark:to-gray-900 sepia:to-sepia-bg dark:border-yellow-600/60 sepia:border-sepia-accent-border/60 dark:hover:border-yellow-500/80 sepia:hover:border-sepia-accent-border/80"
                 >
-                    <div className="text-5xl font-black tracking-[0.18em] text-yellow-900 sm:text-6xl dark:text-yellow-300">
+                    <div className="text-5xl font-black tracking-[0.18em] text-yellow-900 sm:text-6xl dark:text-yellow-300 sepia:text-sepia-accent">
                         {room.room_code}
                     </div>
-                    <div className="mt-2 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-yellow-700 group-hover:text-yellow-800 dark:text-yellow-400 dark:group-hover:text-yellow-300">
+                    <div className="mt-2 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-yellow-700 group-hover:text-yellow-800 dark:text-yellow-400 sepia:text-sepia-accent dark:group-hover:text-yellow-300 sepia:group-hover:text-sepia-accent-strong">
                         {copied ? '✓ Copied!' : 'Tap to copy'}
                     </div>
                 </button>
@@ -171,10 +171,10 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
 
                 {/* Variant picker — host chooses the playing surface; locked once the match starts. */}
                 <div className="mt-2 flex flex-col items-center gap-2">
-                    <div className="text-[10px] font-black uppercase tracking-[0.35em] text-yellow-900/70 dark:text-yellow-300/70">
+                    <div className="text-[10px] font-black uppercase tracking-[0.35em] text-yellow-900/70 dark:text-yellow-300/70 sepia:text-sepia-accent/70">
                         Playing surface
                     </div>
-                    <div className="inline-flex flex-wrap justify-center rounded-full border-2 border-yellow-400 bg-white/80 p-1 shadow-md dark:bg-gray-800/80 dark:border-yellow-600/60">
+                    <div className="inline-flex flex-wrap justify-center rounded-full border-2 border-yellow-400 bg-white/80 p-1 shadow-md dark:bg-gray-800/80 sepia:bg-sepia-surface/80 dark:border-yellow-600/60 sepia:border-sepia-accent-border/60">
                         {(['cube', 'megaminx', 'pyraminx', 'octahedron', 'icosahedron'] as const).map((v) => {
                             const selected = v === variant;
                             const label =
@@ -197,7 +197,7 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
                                     className={`rounded-full px-4 py-1.5 text-xs font-black uppercase tracking-[0.18em] transition ${
                                         selected
                                             ? 'bg-linear-to-r from-orange-500 to-pink-500 text-white shadow-md'
-                                            : 'text-yellow-900 hover:bg-yellow-100/70 dark:text-yellow-300 dark:hover:bg-yellow-900/30'
+                                            : 'text-yellow-900 hover:bg-yellow-100/70 dark:text-yellow-300 sepia:text-sepia-accent dark:hover:bg-yellow-900/30 sepia:hover:bg-sepia-accent-bg/30'
                                     } ${!isHost ? 'cursor-not-allowed opacity-70' : ''}`}
                                 >
                                     {label}
@@ -206,7 +206,7 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
                         })}
                     </div>
                     {!isHost && (
-                        <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-yellow-900/50 dark:text-yellow-300/50">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-yellow-900/50 dark:text-yellow-300/50 sepia:text-sepia-accent/50">
                             Host picks the variant
                         </div>
                     )}
@@ -221,7 +221,7 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
                         Start Match
                     </button>
                 ) : (
-                    <div className="mt-4 rounded-full bg-white/80 px-6 py-3 text-xs font-bold uppercase tracking-[0.3em] text-gray-600 shadow-md dark:bg-gray-800/80 dark:text-gray-300">
+                    <div className="mt-4 rounded-full bg-white/80 px-6 py-3 text-xs font-bold uppercase tracking-[0.3em] text-gray-600 shadow-md dark:bg-gray-800/80 sepia:bg-sepia-surface/80 dark:text-gray-300 sepia:text-sepia-muted">
                         {isBelowMin
                             ? `Waiting for players… (${players.length} / ${min})`
                             : !isHost
@@ -232,7 +232,7 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
 
                 <Link
                     href={route('games.show', gameSlug)}
-                    className="mt-2 text-xs font-bold uppercase tracking-[0.25em] text-yellow-900/40 hover:text-yellow-900/70 transition dark:text-yellow-300/40 dark:hover:text-yellow-300/70"
+                    className="mt-2 text-xs font-bold uppercase tracking-[0.25em] text-yellow-900/40 hover:text-yellow-900/70 transition dark:text-yellow-300/40 sepia:text-sepia-accent/40 dark:hover:text-yellow-300/70 sepia:hover:text-sepia-accent-strong/70"
                 >
                     ← back to main menu
                 </Link>
@@ -315,8 +315,8 @@ function SeatCard({ slot, player, isSelf, onKick, designOwners, onPickDesign }: 
     return (
         <>
             <div
-                className={`relative flex w-32 flex-col items-center gap-2 rounded-2xl border-2 bg-white px-3 py-4 sm:w-40 dark:bg-gray-800 ${
-                    filled ? '' : 'border-gray-200 dark:border-gray-700'
+                className={`relative flex w-32 flex-col items-center gap-2 rounded-2xl border-2 bg-white px-3 py-4 sm:w-40 dark:bg-gray-800 sepia:bg-sepia-surface ${
+                    filled ? '' : 'border-gray-200 dark:border-gray-700 sepia:border-sepia-border'
                 } ${isSpeaking ? 'ring-2 ring-green-400' : ''}`}
                 style={cardStyle}
             >
@@ -326,7 +326,7 @@ function SeatCard({ slot, player, isSelf, onKick, designOwners, onPickDesign }: 
                         onClick={onKick}
                         aria-label={`Kick ${player?.nickname ?? 'player'}`}
                         title="Kick player"
-                        className="absolute -top-2 -right-2 grid h-7 w-7 place-items-center rounded-full bg-white text-red-600 shadow-md border-2 border-red-400 hover:bg-red-500 hover:text-white hover:scale-110 transition dark:bg-gray-900 dark:border-red-500/70 dark:text-red-400 dark:hover:bg-red-500 dark:hover:text-white"
+                        className="absolute -top-2 -right-2 grid h-7 w-7 place-items-center rounded-full bg-white text-red-600 shadow-md border-2 border-red-400 hover:bg-red-500 hover:text-white hover:scale-110 transition dark:bg-gray-900 sepia:bg-sepia-bg dark:border-red-500/70 dark:text-red-400 dark:hover:bg-red-500 dark:hover:text-white"
                     >
                         <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
@@ -336,7 +336,7 @@ function SeatCard({ slot, player, isSelf, onKick, designOwners, onPickDesign }: 
                 {filled && player!.wins > 0 && (
                     <span
                         title={`${player!.wins} ${player!.wins === 1 ? 'win' : 'wins'} this lobby`}
-                        className="absolute -top-2 -left-2 inline-flex h-7 min-w-[1.75rem] items-center justify-center gap-0.5 rounded-full bg-yellow-300 px-2 text-xs font-black text-yellow-900 shadow-md border-2 border-yellow-500 dark:bg-yellow-400 dark:border-yellow-600 dark:text-yellow-950"
+                        className="absolute -top-2 -left-2 inline-flex h-7 min-w-[1.75rem] items-center justify-center gap-0.5 rounded-full bg-yellow-300 px-2 text-xs font-black text-yellow-900 shadow-md border-2 border-yellow-500 dark:bg-yellow-400 sepia:bg-sepia-accent-bg dark:border-yellow-600 sepia:border-sepia-accent-border dark:text-yellow-950 sepia:text-sepia-accent"
                     >
                         <span aria-hidden="true">🏆</span>
                         {player!.wins}
@@ -347,7 +347,7 @@ function SeatCard({ slot, player, isSelf, onKick, designOwners, onPickDesign }: 
                     onClick={handleAvatarClick}
                     disabled={!hasVideo}
                     title={hasVideo ? 'Click to maximize' : undefined}
-                    className={`relative grid h-14 w-14 place-items-center overflow-hidden rounded-full ring-4 ring-white shadow-md text-2xl font-black dark:ring-gray-800 ${
+                    className={`relative grid h-14 w-14 place-items-center overflow-hidden rounded-full ring-4 ring-white shadow-md text-2xl font-black dark:ring-gray-800 sepia:ring-sepia-border ${
                         hasVideo ? 'cursor-pointer group' : 'cursor-default'
                     } ${isSpeaking ? 'animate-pulse' : ''}`}
                     style={
@@ -375,11 +375,11 @@ function SeatCard({ slot, player, isSelf, onKick, designOwners, onPickDesign }: 
                         <span>{char}</span>
                     )}
                 </button>
-                <span className="max-w-full truncate text-sm font-black text-gray-900 dark:text-gray-100">
+                <span className="max-w-full truncate text-sm font-black text-gray-900 dark:text-gray-100 sepia:text-sepia-text">
                     {player ? player.nickname : 'Empty'}
                 </span>
                 {isSelf && (
-                    <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300">
+                    <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-yellow-800 dark:bg-yellow-900/40 sepia:bg-sepia-accent-bg/40 dark:text-yellow-300 sepia:text-sepia-accent">
                         you
                     </span>
                 )}
@@ -416,7 +416,7 @@ function SeatCard({ slot, player, isSelf, onKick, designOwners, onPickDesign }: 
                     </div>
                 )}
                 {voiceReady && !isSelf && (
-                    <div className="flex items-center gap-1.5 pt-1 text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center gap-1.5 pt-1 text-gray-500 dark:text-gray-400 sepia:text-sepia-muted">
                         {otherVideoOn && (
                             <span className="text-blue-500 dark:text-blue-400" title="Video on">
                                 <VideoOnIcon className="h-3.5 w-3.5" />

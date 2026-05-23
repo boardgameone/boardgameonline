@@ -350,10 +350,10 @@ function GuestJoinForm({ nickname, onChange, onSubmit, processing, error }: Gues
         <div className="flex h-full items-center justify-center px-6">
             <form
                 onSubmit={onSubmit}
-                className="flex w-full max-w-sm flex-col items-center gap-4 rounded-3xl bg-white p-8 shadow-xl border-2 border-yellow-300 dark:bg-gray-800 dark:border-yellow-600/60"
+                className="flex w-full max-w-sm flex-col items-center gap-4 rounded-3xl bg-white p-8 shadow-xl border-2 border-yellow-300 dark:bg-gray-800 sepia:bg-sepia-surface dark:border-yellow-600/60 sepia:border-sepia-accent-border/60"
             >
-                <h3 className="text-3xl font-black text-yellow-900 dark:text-yellow-300">Join Match</h3>
-                <p className="text-center text-xs font-bold uppercase tracking-[0.25em] text-gray-500 dark:text-gray-400">
+                <h3 className="text-3xl font-black text-yellow-900 dark:text-yellow-300 sepia:text-sepia-accent">Join Match</h3>
+                <p className="text-center text-xs font-bold uppercase tracking-[0.25em] text-gray-500 dark:text-gray-400 sepia:text-sepia-muted">
                     Pick a nickname to sit down
                 </p>
                 <input
@@ -364,7 +364,7 @@ function GuestJoinForm({ nickname, onChange, onSubmit, processing, error }: Gues
                     maxLength={20}
                     autoFocus
                     required
-                    className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-center text-lg font-bold text-gray-900 focus:border-teal-400 focus:ring-teal-400 transition dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
+                    className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-center text-lg font-bold text-gray-900 focus:border-teal-400 focus:ring-teal-400 transition dark:bg-gray-900 sepia:bg-sepia-bg dark:border-gray-700 sepia:border-sepia-border dark:text-gray-100 sepia:text-sepia-text dark:placeholder-gray-400 sepia:placeholder-sepia-muted"
                 />
                 {error && <p className="text-xs font-bold text-red-600 dark:text-red-400">{error}</p>}
                 <button
@@ -387,14 +387,14 @@ function toPlayerInfo(p: CubeTacPlayer | null, slot: number) {
 function KickedNotice({ gameSlug }: { gameSlug: string }) {
     return (
         <div className="flex h-full items-center justify-center px-6">
-            <div className="flex w-full max-w-sm flex-col items-center gap-4 rounded-3xl bg-white p-8 shadow-xl border-2 border-red-300 dark:bg-gray-800 dark:border-red-600/60">
+            <div className="flex w-full max-w-sm flex-col items-center gap-4 rounded-3xl bg-white p-8 shadow-xl border-2 border-red-300 dark:bg-gray-800 sepia:bg-sepia-surface dark:border-red-600/60">
                 <div className="grid h-16 w-16 place-items-center rounded-full bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300">
                     <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </div>
                 <h3 className="text-2xl font-black text-red-700 dark:text-red-300">Removed from lobby</h3>
-                <p className="text-center text-sm font-bold text-gray-600 dark:text-gray-300">
+                <p className="text-center text-sm font-bold text-gray-600 dark:text-gray-300 sepia:text-sepia-muted">
                     You were removed from the lobby by the host.
                 </p>
                 <Link

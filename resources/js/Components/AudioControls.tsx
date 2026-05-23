@@ -17,7 +17,7 @@ const PILL_BASE = 'flex items-center shadow-lg';
 
 const PILL_VARIANTS: Record<Variant, string> = {
     guest:
-        'bg-white/60 dark:bg-gray-800/70 border-b-4 border-yellow-500 dark:border-gray-700 rounded-full px-3 py-1.5',
+        'bg-white/60 dark:bg-gray-800/70 sepia:bg-sepia-surface/70 border-b-4 border-yellow-500 dark:border-gray-700 sepia:border-sepia-border rounded-full px-3 py-1.5',
     authenticated:
         'bg-white/15 backdrop-blur-xs rounded-full px-3 py-1.5',
     game:
@@ -25,20 +25,20 @@ const PILL_VARIANTS: Record<Variant, string> = {
 };
 
 const TOGGLE_CLASS: Record<Variant, string> = {
-    guest: 'rounded-full bg-white dark:bg-gray-800 p-1.5 text-yellow-600 dark:text-yellow-300 hover:scale-105 transition',
+    guest: 'rounded-full bg-white dark:bg-gray-800 sepia:bg-sepia-surface p-1.5 text-yellow-600 dark:text-yellow-300 sepia:text-sepia-accent hover:scale-105 transition',
     authenticated:
-        'rounded-full bg-white/80 dark:bg-gray-800/80 p-1.5 text-yellow-600 dark:text-yellow-300 hover:scale-105 transition',
-    game: 'rounded-full bg-white/80 dark:bg-gray-800/80 p-1.5 text-yellow-600 dark:text-yellow-300 hover:scale-105 transition',
+        'rounded-full bg-white/80 dark:bg-gray-800/80 sepia:bg-sepia-surface/80 p-1.5 text-yellow-600 dark:text-yellow-300 sepia:text-sepia-accent hover:scale-105 transition',
+    game: 'rounded-full bg-white/80 dark:bg-gray-800/80 sepia:bg-sepia-surface/80 p-1.5 text-yellow-600 dark:text-yellow-300 sepia:text-sepia-accent hover:scale-105 transition',
 };
 
 const SLIDER_COLOR: Record<Variant, string> = {
-    guest: 'text-yellow-700 dark:text-yellow-300',
+    guest: 'text-yellow-700 dark:text-yellow-300 sepia:text-sepia-accent',
     authenticated: 'text-white',
     game: 'text-white',
 };
 
 const DIVIDER_CLASS: Record<Variant, string> = {
-    guest: 'w-px h-5 bg-yellow-500/50 dark:bg-gray-600 mx-1',
+    guest: 'w-px h-5 bg-yellow-500/50 dark:bg-gray-600 sepia:bg-sepia-sunken mx-1',
     authenticated: 'w-px h-5 bg-white/40 mx-1',
     game: 'w-px h-5 bg-white/40 mx-1',
 };

@@ -23,7 +23,7 @@ export default function GameLayout({
         useState(false);
 
     return (
-        <div className={`bg-linear-to-b from-yellow-400 to-yellow-500 dark:from-gray-900 dark:to-gray-950 transition-colors duration-200 ${
+        <div className={`bg-linear-to-b from-yellow-400 to-yellow-500 dark:from-gray-900 sepia:from-sepia-bg dark:to-gray-950 sepia:to-sepia-surface transition-colors duration-200 ${
             fullHeight ? 'h-screen flex flex-col overflow-hidden' : 'min-h-screen'
         }`}>
             {/* Nav */}
@@ -117,26 +117,26 @@ export default function GameLayout({
                                     </Dropdown.Trigger>
 
                                     <Dropdown.Content align="right">
-                                        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-                                            <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{user.name}</p>
-                                            <p className="text-xs text-gray-500 truncate dark:text-gray-400">{user.email}</p>
+                                        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 sepia:border-sepia-border">
+                                            <p className="text-sm font-bold text-gray-900 dark:text-gray-100 sepia:text-sepia-text">{user.name}</p>
+                                            <p className="text-xs text-gray-500 truncate dark:text-gray-400 sepia:text-sepia-muted">{user.email}</p>
                                         </div>
                                         <ThemeToggle
                                             showLabel
-                                            className="block w-full px-4 py-2 text-start text-sm leading-5 text-gray-700 transition duration-150 ease-in-out hover:bg-gray-100 focus:bg-gray-100 focus:outline-hidden dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:bg-gray-700"
+                                            className="flex w-full items-center justify-between gap-3 px-4 py-2 text-sm leading-5 text-gray-700 dark:text-gray-200 sepia:text-sepia-muted"
                                         />
                                         <div className="px-4 py-3">
                                             <AudioControls
                                                 variant="guest"
                                                 layout="stacked"
                                                 showLabel
-                                                className="text-gray-700 dark:text-gray-200"
+                                                className="text-gray-700 dark:text-gray-200 sepia:text-sepia-muted"
                                             />
                                         </div>
-                                        <div className="border-t border-gray-100 dark:border-gray-700" />
+                                        <div className="border-t border-gray-100 dark:border-gray-700 sepia:border-sepia-border" />
                                         <Dropdown.Link href={route('profile.edit')}>
                                             <span className="flex items-center gap-2">
-                                                <svg className="h-4 w-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <svg className="h-4 w-4 text-gray-400 dark:text-gray-500 sepia:text-sepia-faint" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                                 </svg>
                                                 Profile Settings
@@ -158,7 +158,7 @@ export default function GameLayout({
                                 </Dropdown>
                             ) : (
                                 <div className="flex items-center gap-2 sm:gap-3">
-                                    <ThemeToggle className="rounded-full bg-white/15 backdrop-blur-xs hover:bg-white/25 p-2 text-white transition" />
+                                    <ThemeToggle />
                                     <Link
                                         href={route('login')}
                                         className="text-white/90 hover:text-white font-bold text-sm px-3 sm:px-4 py-2 rounded-full hover:bg-white/10 transition"
@@ -167,7 +167,7 @@ export default function GameLayout({
                                     </Link>
                                     <Link
                                         href={route('register')}
-                                        className="bg-white hover:bg-gray-100 text-gray-900 font-bold text-sm px-4 sm:px-6 py-2 sm:py-2.5 rounded-full transition dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+                                        className="bg-white hover:bg-gray-100 text-gray-900 font-bold text-sm px-4 sm:px-6 py-2 sm:py-2.5 rounded-full transition dark:bg-gray-800 sepia:bg-sepia-surface dark:text-gray-100 sepia:text-sepia-text dark:hover:bg-gray-700 sepia:hover:bg-sepia-raised"
                                     >
                                         Sign up
                                     </Link>
@@ -265,7 +265,7 @@ export default function GameLayout({
                                 <div className="space-y-1">
                                     <ThemeToggle
                                         showLabel
-                                        className="w-full flex items-center px-4 py-3 text-white/80 hover:text-white hover:bg-white/10 rounded-xl font-medium transition"
+                                        className="w-full flex items-center justify-between gap-3 px-4 py-3 text-white/80 rounded-xl font-medium"
                                     />
                                     <div className="px-4 py-3">
                                         <AudioControls
@@ -298,7 +298,7 @@ export default function GameLayout({
                             <div className="border-t border-white/20 px-4 py-4 space-y-2">
                                 <ThemeToggle
                                     showLabel
-                                    className="w-full flex items-center justify-center py-3 text-white/90 hover:text-white hover:bg-white/10 rounded-xl font-bold transition"
+                                    className="w-full flex items-center justify-between gap-3 px-4 py-3 text-white/90 rounded-xl font-bold"
                                 />
                                 <div className="px-4 py-3">
                                     <AudioControls
@@ -316,7 +316,7 @@ export default function GameLayout({
                                 </Link>
                                 <Link
                                     href={route('register')}
-                                    className="block w-full text-center py-3 bg-white hover:bg-gray-100 text-gray-900 font-bold rounded-xl transition dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+                                    className="block w-full text-center py-3 bg-white hover:bg-gray-100 text-gray-900 font-bold rounded-xl transition dark:bg-gray-800 sepia:bg-sepia-surface dark:text-gray-100 sepia:text-sepia-text dark:hover:bg-gray-700 sepia:hover:bg-sepia-raised"
                                 >
                                     Sign up
                                 </Link>
@@ -330,7 +330,7 @@ export default function GameLayout({
             </nav>
 
             {header && (
-                <header className="bg-white/80 backdrop-blur-xs shadow-xs dark:bg-gray-800/80">
+                <header className="bg-white/80 backdrop-blur-xs shadow-xs dark:bg-gray-800/80 sepia:bg-sepia-surface/80">
                     <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
                         {header}
                     </div>
@@ -348,7 +348,7 @@ export default function GameLayout({
             {/* Footer - hidden in fullHeight mode */}
             {!fullHeight && (
                 <footer className="py-6 text-center">
-                    <p className="text-yellow-800 font-medium text-sm flex items-center justify-center gap-2 dark:text-yellow-300">
+                    <p className="text-yellow-800 font-medium text-sm flex items-center justify-center gap-2 dark:text-yellow-300 sepia:text-sepia-accent">
                         <GameIcon name="dice" size="sm" /> Play together, anywhere! <GameIcon name="gamepad" size="sm" />
                     </p>
                 </footer>

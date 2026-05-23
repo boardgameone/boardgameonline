@@ -29,10 +29,21 @@
             (function () {
                 try {
                     var stored = localStorage.getItem('theme');
-                    var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                    var isDark = stored ? stored === 'dark' : prefersDark;
-                    if (isDark) {
-                        document.documentElement.classList.add('dark');
+                    var theme;
+                    if (stored === 'light' || stored === 'dark' || stored === 'sepia') {
+                        theme = stored;
+                    } else {
+                        // No explicit choice: fall back to the OS preference.
+                        // Sepia is never auto-selected.
+                        theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                    }
+                    var root = document.documentElement;
+                    root.classList.remove('dark', 'theme-sepia');
+                    if (theme === 'dark') {
+                        root.classList.add('dark');
+                    } else if (theme === 'sepia') {
+                        // `theme-sepia`, not `sepia`, to avoid Tailwind's sepia filter utility.
+                        root.classList.add('theme-sepia');
                     }
                 } catch (e) {}
             })();
@@ -44,7 +55,7 @@
         @vite(['resources/js/app.tsx', "resources/js/Pages/{$page['component']}.tsx"])
         @inertiaHead
     </head>
-    <body class="font-sans antialiased w-full min-h-screen dark:bg-gray-900 dark:text-gray-100 transition-colors duration-200">
+    <body class="font-sans antialiased w-full min-h-screen dark:bg-gray-900 sepia:bg-sepia-bg dark:text-gray-100 sepia:text-sepia-text transition-colors duration-200">
         @inertia
     </body>
 </html>

@@ -114,7 +114,7 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
             <div className="mb-6 flex items-center justify-between">
                 <Link
                     href={room.game ? route('games.show', room.game.slug) : route('games.index')}
-                    className="inline-flex items-center gap-2 text-yellow-900 hover:text-yellow-700 font-bold transition dark:text-yellow-300 dark:hover:text-yellow-100"
+                    className="inline-flex items-center gap-2 text-yellow-900 hover:text-yellow-700 font-bold transition dark:text-yellow-300 sepia:text-sepia-accent dark:hover:text-yellow-100 sepia:hover:text-sepia-accent-strong"
                 >
                     <svg
                         className="h-5 w-5"
@@ -152,7 +152,7 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                 <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
                     {/* Main content */}
                     <div>
-                        <div className="bg-white rounded-2xl shadow-xl overflow-hidden dark:bg-gray-800">
+                        <div className="bg-white rounded-2xl shadow-xl overflow-hidden dark:bg-gray-800 sepia:bg-sepia-surface">
                             {/* Room Header */}
                             <div className="bg-linear-to-r from-blue-600 to-blue-700 px-6 py-5">
                                 <div className="flex items-center gap-4">
@@ -181,10 +181,10 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                                         <div className="inline-flex items-center justify-center w-20 h-20 bg-linear-to-br from-green-400 to-green-500 rounded-full mb-4 shadow-lg text-white">
                                             <GameIcon name="wave" size="xl" />
                                         </div>
-                                        <h3 className="text-xl font-black text-gray-900 mb-2 dark:text-gray-100">
+                                        <h3 className="text-xl font-black text-gray-900 mb-2 dark:text-gray-100 sepia:text-sepia-text">
                                             Join this game!
                                         </h3>
-                                        <p className="text-gray-500 mb-6 dark:text-gray-400">
+                                        <p className="text-gray-500 mb-6 dark:text-gray-400 sepia:text-sepia-muted">
                                             Enter your nickname to join the room
                                         </p>
                                         <form onSubmit={handleJoin} className="max-w-xs mx-auto space-y-4">
@@ -195,7 +195,7 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                                                     onChange={(e) => setData('nickname', e.target.value)}
                                                     placeholder="Your nickname"
                                                     maxLength={20}
-                                                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-400 focus:ring-green-400 transition-colors font-medium text-center dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
+                                                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-400 focus:ring-green-400 transition-colors font-medium text-center dark:bg-gray-900 sepia:bg-sepia-bg dark:border-gray-700 sepia:border-sepia-border dark:text-gray-100 sepia:text-sepia-text dark:placeholder-gray-400 sepia:placeholder-sepia-muted"
                                                     autoFocus
                                                     required
                                                 />
@@ -220,10 +220,10 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                                 {!needsToJoin || !isGuest ? (
                                     <>
                                         <div className="flex items-center justify-between mb-6">
-                                            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 dark:text-gray-100">
+                                            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 dark:text-gray-100 sepia:text-sepia-text">
                                                 <GameIcon name="users" className="inline-block mr-1" /> Players
                                             </h3>
-                                            <p className="text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full dark:bg-gray-700 dark:text-gray-300">
+                                            <p className="text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full dark:bg-gray-700 sepia:bg-sepia-raised dark:text-gray-300 sepia:text-sepia-muted">
                                                 {Math.max(0, minPlayers - connectedPlayers.length) > 0
                                                     ? `Need ${minPlayers - connectedPlayers.length} more`
                                                     : 'Ready to start!'}
@@ -254,7 +254,7 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                     {/* Sidebar */}
                     <div className="space-y-6">
                         {/* Room Code & Link */}
-                        <div className="bg-white rounded-2xl shadow-lg overflow-hidden dark:bg-gray-800">
+                        <div className="bg-white rounded-2xl shadow-lg overflow-hidden dark:bg-gray-800 sepia:bg-sepia-surface">
                             <div className="bg-linear-to-r from-yellow-400 to-yellow-500 px-6 py-4">
                                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
                                     <GameIcon name="key" className="inline-block mr-1" /> Invite Friends
@@ -263,11 +263,11 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                             <div className="p-6 space-y-4">
                                 {/* Room Code */}
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2 dark:text-gray-300">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2 dark:text-gray-300 sepia:text-sepia-muted">
                                         Room Code
                                     </label>
                                     <div className="flex items-center gap-2">
-                                        <code className="flex-1 rounded-xl bg-gray-100 px-4 py-3 text-center text-2xl font-mono font-black tracking-[0.3em] text-gray-900 dark:bg-gray-700 dark:text-gray-100">
+                                        <code className="flex-1 rounded-xl bg-gray-100 px-4 py-3 text-center text-2xl font-mono font-black tracking-[0.3em] text-gray-900 dark:bg-gray-700 sepia:bg-sepia-raised dark:text-gray-100 sepia:text-sepia-text">
                                             {room.room_code}
                                         </code>
                                         <button
@@ -275,7 +275,7 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                                             className={`rounded-xl p-3 transition hover:scale-105 ${
                                                 copiedCode
                                                     ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-300'
-                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 sepia:bg-sepia-raised dark:text-gray-300 sepia:text-sepia-muted dark:hover:bg-gray-600 sepia:hover:bg-sepia-sunken'
                                             }`}
                                             title="Copy room code"
                                         >
@@ -295,20 +295,20 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                                 {/* Divider */}
                                 <div className="relative">
                                     <div className="absolute inset-0 flex items-center">
-                                        <div className="w-full border-t border-gray-200 dark:border-gray-700" />
+                                        <div className="w-full border-t border-gray-200 dark:border-gray-700 sepia:border-sepia-border" />
                                     </div>
                                     <div className="relative flex justify-center text-sm">
-                                        <span className="bg-white px-3 text-gray-500 dark:bg-gray-800 dark:text-gray-400">or share link</span>
+                                        <span className="bg-white px-3 text-gray-500 dark:bg-gray-800 sepia:bg-sepia-surface dark:text-gray-400 sepia:text-sepia-muted">or share link</span>
                                     </div>
                                 </div>
 
                                 {/* Room Link */}
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2 dark:text-gray-300">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2 dark:text-gray-300 sepia:text-sepia-muted">
                                         Direct Link
                                     </label>
                                     <div className="flex items-center gap-2">
-                                        <div className="flex-1 rounded-xl bg-gray-100 px-3 py-3 text-sm text-gray-600 truncate font-medium dark:bg-gray-700 dark:text-gray-300">
+                                        <div className="flex-1 rounded-xl bg-gray-100 px-3 py-3 text-sm text-gray-600 truncate font-medium dark:bg-gray-700 sepia:bg-sepia-raised dark:text-gray-300 sepia:text-sepia-muted">
                                             {roomLink}
                                         </div>
                                         <button
@@ -333,15 +333,15 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                                     </div>
                                 </div>
 
-                                <p className="text-xs text-gray-500 text-center dark:text-gray-400">
+                                <p className="text-xs text-gray-500 text-center dark:text-gray-400 sepia:text-sepia-muted">
                                     Friends can join directly with the link!
                                 </p>
                             </div>
                         </div>
 
                         {/* Actions */}
-                        <div className="bg-white rounded-2xl shadow-lg p-6 dark:bg-gray-800">
-                            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4 dark:text-gray-100">
+                        <div className="bg-white rounded-2xl shadow-lg p-6 dark:bg-gray-800 sepia:bg-sepia-surface">
+                            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4 dark:text-gray-100 sepia:text-sepia-text">
                                 <GameIcon name="gamepad" className="inline-block mr-1" /> Actions
                             </h3>
                             <div className="space-y-3">
@@ -354,15 +354,15 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                                         {canStart ? "Start Game!" : `Need ${minPlayers} players`}
                                     </button>
                                 ) : (
-                                    <div className="text-center py-3 bg-yellow-50 rounded-xl dark:bg-yellow-900/20">
-                                        <p className="text-sm text-yellow-700 font-medium dark:text-yellow-300">
+                                    <div className="text-center py-3 bg-yellow-50 rounded-xl dark:bg-yellow-900/20 sepia:bg-sepia-accent-bg/20">
+                                        <p className="text-sm text-yellow-700 font-medium dark:text-yellow-300 sepia:text-sepia-accent">
                                             <GameIcon name="hourglass" className="inline-block mr-1" /> Waiting for host to start...
                                         </p>
                                     </div>
                                 )}
                                 <button
                                     onClick={handleLeave}
-                                    className="w-full rounded-full bg-gray-100 px-6 py-3 font-bold text-gray-700 shadow-md transition hover:scale-105 hover:bg-gray-200 border-b-4 border-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 dark:border-gray-600"
+                                    className="w-full rounded-full bg-gray-100 px-6 py-3 font-bold text-gray-700 shadow-md transition hover:scale-105 hover:bg-gray-200 border-b-4 border-gray-300 dark:bg-gray-700 sepia:bg-sepia-raised dark:text-gray-200 sepia:text-sepia-text dark:hover:bg-gray-600 sepia:hover:bg-sepia-sunken dark:border-gray-600 sepia:border-sepia-border-strong"
                                 >
                                     Leave Room
                                 </button>
@@ -371,7 +371,7 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
 
                         {/* Game Info */}
                         {room.game && (
-                            <div className="bg-white/80 backdrop-blur-xs rounded-2xl shadow-lg p-6 dark:bg-gray-800/80">
+                            <div className="bg-white/80 backdrop-blur-xs rounded-2xl shadow-lg p-6 dark:bg-gray-800/80 sepia:bg-sepia-surface/80">
                                 <div className="flex items-center gap-4">
                                     <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-linear-to-br from-yellow-400 to-yellow-500 shadow-md text-white">
                                         {room.game.slug === 'cheese-thief' ? (
@@ -381,10 +381,10 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
                                         )}
                                     </div>
                                     <div>
-                                        <h3 className="font-bold text-gray-900 dark:text-gray-100">
+                                        <h3 className="font-bold text-gray-900 dark:text-gray-100 sepia:text-sepia-text">
                                             {room.game.name}
                                         </h3>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 sepia:text-sepia-muted">
                                             {room.game.min_players}-{room.game.max_players} players
                                         </p>
                                     </div>
@@ -426,10 +426,10 @@ export default function Show({ auth, room, currentPlayer, isHost, gameState }: P
 
 function EmptySlot() {
     return (
-        <div className="flex items-center gap-3 rounded-xl border-2 border-dashed border-gray-200 p-4 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-700/20">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700">
+        <div className="flex items-center gap-3 rounded-xl border-2 border-dashed border-gray-200 p-4 bg-gray-50/50 dark:border-gray-700 sepia:border-sepia-border dark:bg-gray-700/20 sepia:bg-sepia-raised/20">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 sepia:bg-sepia-raised">
                 <svg
-                    className="h-6 w-6 text-gray-400 dark:text-gray-500"
+                    className="h-6 w-6 text-gray-400 dark:text-gray-500 sepia:text-sepia-faint"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -442,7 +442,7 @@ function EmptySlot() {
                     />
                 </svg>
             </div>
-            <p className="text-sm text-gray-400 font-medium dark:text-gray-500">Waiting for player...</p>
+            <p className="text-sm text-gray-400 font-medium dark:text-gray-500 sepia:text-sepia-muted">Waiting for player...</p>
         </div>
     );
 }

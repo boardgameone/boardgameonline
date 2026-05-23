@@ -36,7 +36,7 @@ export default function SoundVolumeSlider({
                 onChange={handleChange}
                 disabled={isMuted}
                 aria-label="Sound effects volume"
-                className="flex-1 min-w-20 h-2 rounded-full appearance-none cursor-pointer bg-yellow-200 dark:bg-gray-700 accent-yellow-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 min-w-20 h-2 rounded-full appearance-none cursor-pointer bg-yellow-200 dark:bg-gray-700 sepia:bg-sepia-raised accent-yellow-500 disabled:opacity-40 disabled:cursor-not-allowed"
             />
             {showLabel && (
                 <span className="text-xs tabular-nums w-10 text-right opacity-80">
