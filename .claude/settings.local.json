@@ -75,7 +75,16 @@
       "Bash(npm list:*)",
       "mcp__perplexity__perplexity_research",
       "Bash(git pull *)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(ls -la .claude/)",
+      "Bash(cat .claude/settings.json)",
+      "Bash(cat .claude/settings.local.json)",
+      "Bash(grep -n \"claude\" .gitignore)",
+      "Bash(grep -q \"^.claude/handoff/\" .gitignore)",
+      "Bash(printf '\\\\n# rnr session handoff — per-developer runtime state\\\\n.claude/handoff/\\\\n')",
+      "Bash(python3 -m json.tool .claude/settings.json)",
+      "Bash(bash -n .claude/hooks/rnr-context-nudge.sh)",
+      "Bash(bash -n .claude/hooks/handoff-loader.sh)"
     ]
   },
   "enableAllProjectMcpServers": true,
