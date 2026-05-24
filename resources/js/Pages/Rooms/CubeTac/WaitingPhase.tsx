@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { SLOT_CHARS } from './PlayingPhase';
 import { useVoiceChatOptional } from '@/Contexts/VoiceChatContext';
 import VideoModal from '@/Components/VideoModal';
+import SolidPreview, { type SolidVariant } from './SolidPreview';
 
 /** Mirrors SLOT_COLORS in CubeTacGameController.php (design index → hex). */
 const DESIGN_COLORS = ['#ff4d2e', '#3a90ff', '#16a34a', '#a855f7', '#f59e0b', '#c2813a'];
@@ -76,7 +77,7 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
         );
     };
 
-    const variant: 'cube' | 'megaminx' | 'pyraminx' | 'octahedron' | 'icosahedron' =
+    const variant: SolidVariant =
         room.variant === 'megaminx'
             ? 'megaminx'
             : room.variant === 'pyraminx'
@@ -87,13 +88,26 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
                         ? 'icosahedron'
                         : 'cube';
 
-    const handlePickVariant = (next: 'cube' | 'megaminx' | 'pyraminx' | 'octahedron' | 'icosahedron') => {
+    const handlePickVariant = (next: SolidVariant) => {
         if (next === variant) return;
         router.post(
             route('rooms.pickVariant', [gameSlug, room.room_code]),
             { variant: next },
             { preserveScroll: true, preserveState: true },
         );
+    };
+
+    // Which solid's 3D preview is open. Independent of the room's selected
+    // variant so any player (not just the host) can inspect a shape.
+    const [previewVariant, setPreviewVariant] = useState<SolidVariant | null>(null);
+
+    const handleTabClick = (next: SolidVariant) => {
+        // Clicking the open solid again dismisses it; clicking a different one
+        // switches the preview and keeps it open.
+        setPreviewVariant((current) => (current === next ? null : next));
+        if (isHost) {
+            handlePickVariant(next);
+        }
     };
 
     // Map of design-index → holder player id, so the picker can dim
@@ -177,6 +191,7 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
                     <div className="inline-flex flex-wrap justify-center rounded-full border-2 border-yellow-400 bg-white/80 p-1 shadow-md dark:bg-gray-800/80 sepia:bg-sepia-surface/80 dark:border-yellow-600/60 sepia:border-sepia-accent-border/60">
                         {(['cube', 'megaminx', 'pyraminx', 'octahedron', 'icosahedron'] as const).map((v) => {
                             const selected = v === variant;
+                            const previewing = v === previewVariant;
                             const label =
                                 v === 'cube'
                                     ? 'Cube · 6 faces'
@@ -191,14 +206,15 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
                                 <button
                                     key={v}
                                     type="button"
-                                    onClick={isHost ? () => handlePickVariant(v) : undefined}
-                                    disabled={!isHost}
+                                    onClick={() => handleTabClick(v)}
                                     aria-pressed={selected}
+                                    aria-expanded={previewing}
+                                    title={previewing ? 'Hide 3D preview' : 'Show 3D preview'}
                                     className={`rounded-full px-4 py-1.5 text-xs font-black uppercase tracking-[0.18em] transition ${
                                         selected
                                             ? 'bg-linear-to-r from-orange-500 to-pink-500 text-white shadow-md'
                                             : 'text-yellow-900 hover:bg-yellow-100/70 dark:text-yellow-300 sepia:text-sepia-accent dark:hover:bg-yellow-900/30 sepia:hover:bg-sepia-accent-bg/30'
-                                    } ${!isHost ? 'cursor-not-allowed opacity-70' : ''}`}
+                                    } ${previewing && !selected ? 'ring-2 ring-cyan-400' : ''}`}
                                 >
                                     {label}
                                 </button>
@@ -207,8 +223,12 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
                     </div>
                     {!isHost && (
                         <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-yellow-900/50 dark:text-yellow-300/50 sepia:text-sepia-accent/50">
-                            Host picks the variant
+                            Host picks the variant · tap any solid to preview
                         </div>
+                    )}
+
+                    {previewVariant && (
+                        <SolidPreview variant={previewVariant} onClose={() => setPreviewVariant(null)} />
                     )}
                 </div>
 
