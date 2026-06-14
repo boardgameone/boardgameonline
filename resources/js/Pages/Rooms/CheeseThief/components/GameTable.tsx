@@ -50,36 +50,14 @@ export default function GameTable({
 
     return (
         <div className="relative mx-auto aspect-square w-full max-w-[640px]">
-            {/* Table backdrop — top-down view of a warm-wood circular tabletop.
-                Outer wooden ring (concentric grain), inner felt-style playing surface. */}
-            <div
+            {/* Table backdrop — Blender-rendered top-down warm-wood tabletop with felt centre. */}
+            <img
+                src="/images/cheese-thief/table-top.png"
                 aria-hidden
-                className="absolute inset-0 rounded-full"
-                style={{
-                    background:
-                        'repeating-radial-gradient(circle at 50% 50%, #6b3a18 0px, #8a4f25 8px, #6b3a18 16px, #5a2f12 24px)',
-                    boxShadow: '0 18px 40px rgba(0,0,0,0.45), inset 0 0 24px rgba(0,0,0,0.45)',
-                }}
-            />
-            {/* Inner playing felt — warm cream/oak top-down surface */}
-            <div
-                aria-hidden
-                className="absolute inset-[8%] rounded-full"
-                style={{
-                    background:
-                        'radial-gradient(circle at 50% 38%, rgba(255, 245, 220, 0.18) 0%, rgba(0,0,0,0) 55%), radial-gradient(circle at 50% 50%, #c9a47a 0%, #a07a52 60%, #6b4424 100%)',
-                    boxShadow:
-                        'inset 0 0 0 3px rgba(80, 45, 20, 0.55), inset 0 30px 50px rgba(60, 30, 10, 0.45)',
-                }}
-            />
-            {/* Faint wood-grain texture overlay */}
-            <div
-                aria-hidden
-                className="absolute inset-[8%] rounded-full mix-blend-multiply opacity-25"
-                style={{
-                    backgroundImage:
-                        'repeating-linear-gradient(115deg, rgba(60,30,10,0.0) 0px, rgba(60,30,10,0.18) 2px, rgba(60,30,10,0.0) 6px, rgba(60,30,10,0.0) 14px)',
-                }}
+                alt=""
+                draggable={false}
+                className="absolute inset-0 h-full w-full select-none"
+                style={{ filter: 'drop-shadow(0 18px 40px rgba(0,0,0,0.45))' }}
             />
 
             {/* Central content slot (stage / dice / panel) */}

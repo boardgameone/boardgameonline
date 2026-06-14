@@ -188,8 +188,10 @@ export default function Dashboard({ auth, recentGames = [], activeRooms = [], st
                                         href={route('games.show', game.slug)}
                                         className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 hover:bg-purple-50 transition border-2 border-transparent hover:border-purple-300 dark:bg-gray-700/40 dark:hover:bg-purple-900/20 dark:hover:border-purple-700"
                                     >
-                                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-linear-to-br from-yellow-400 to-yellow-500 shadow-xs text-white">
-                                            {game.slug === 'cheese-thief' ? (
+                                        <div className="relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-linear-to-br from-yellow-400 to-yellow-500 shadow-xs text-white">
+                                            {game.thumbnail ? (
+                                                <img src={game.thumbnail} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                                            ) : game.slug === 'cheese-thief' ? (
                                                 <span className="text-2xl">{'\u{1F9C0}'}</span>
                                             ) : (
                                                 <GameIcon name={getGameIcon(game.slug)} size="lg" />
