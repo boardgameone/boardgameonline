@@ -159,7 +159,9 @@ function GameCardCompact({ game }: Readonly<{ game: Game }>) {
             <div className="flex">
                 {/* Game Visual - Left */}
                 <div className={`w-24 aspect-square bg-linear-to-br ${gradient} flex items-center justify-center shrink-0 relative`}>
-                    {game.slug === 'trio' ? (
+                    {game.thumbnail ? (
+                        <img src={game.thumbnail} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                    ) : game.slug === 'trio' ? (
                         <TrioGameVisualMini />
                     ) : game.slug === 'cheese-thief' ? (
                         <span className="text-4xl -rotate-100">{'\u{1F9C0}'}</span>
@@ -228,7 +230,9 @@ function GameCard({ game }: Readonly<{ game: Game }>) {
                 </div>
 
                 {/* Main game visual */}
-                {game.slug === 'trio' ? (
+                {game.thumbnail ? (
+                    <img src={game.thumbnail} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                ) : game.slug === 'trio' ? (
                     <TrioGameVisual />
                 ) : game.slug === 'cheese-thief' ? (
                     <span className="text-6xl group-hover:scale-125 transition-transform duration-500 drop-shadow-lg relative z-10 -rotate-100">{'\u{1F9C0}'}</span>

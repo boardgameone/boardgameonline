@@ -200,8 +200,10 @@ function GameCard({ game }: { game: Game }) {
             href={route('games.show', game.slug)}
             className="bg-white rounded-xl shadow-lg overflow-hidden transition hover:scale-105 hover:shadow-xl group dark:bg-gray-800"
         >
-            <div className={`aspect-square bg-linear-to-br ${gradient} flex items-center justify-center`}>
-                {game.slug === 'trio' ? (
+            <div className={`relative aspect-square overflow-hidden bg-linear-to-br ${gradient} flex items-center justify-center`}>
+                {game.thumbnail ? (
+                    <img src={game.thumbnail} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                ) : game.slug === 'trio' ? (
                     <TrioGameVisualSmall />
                 ) : game.slug === 'cheese-thief' ? (
                     <span className="text-4xl sm:text-5xl group-hover:scale-125 transition-transform duration-500 drop-shadow-lg -rotate-100">{'\u{1F9C0}'}</span>

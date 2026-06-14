@@ -87,7 +87,9 @@
       "Bash(bash -n .claude/hooks/handoff-loader.sh)",
       "Read(//Users/nitinjosephvalliamannil/**)",
       "Bash(claude *)",
-      "Skill(update-config)"
+      "Skill(update-config)",
+      "mcp__blender__get_viewport_screenshot",
+      "mcp__blender__execute_blender_code"
     ]
   },
   "enableAllProjectMcpServers": true,

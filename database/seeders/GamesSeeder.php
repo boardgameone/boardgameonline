@@ -17,7 +17,7 @@ class GamesSeeder extends Seeder
             [
                 'name' => 'Cheese Thief',
                 'description' => 'A social deduction game where players try to identify the cheese thief among them. Use your detective skills to catch the thief before all the cheese is stolen!',
-                'thumbnail' => null,
+                'thumbnail' => '/images/cheese-thief/thumbnail.png',
                 'min_players' => 4,
                 'max_players' => 10,
                 'estimated_duration_minutes' => 30,
