@@ -32,55 +32,17 @@ export default function Cheese({ present }: CheeseProps) {
                         />
                     )}
 
-                    {/* Cheese SVG */}
-                    <svg
-                        viewBox="0 0 120 90"
-                        className="h-28 w-36"
+                    {/* Cheese — Blender-rendered hero asset */}
+                    <img
+                        src="/images/cheese-thief/cheese.png"
+                        alt=""
+                        className="h-28 w-36 object-contain"
                         style={{
                             filter: present
                                 ? 'drop-shadow(0 8px 12px rgba(0,0,0,0.5)) drop-shadow(0 0 22px rgba(253,224,71,0.65))'
                                 : 'none',
                         }}
-                    >
-                        <defs>
-                            <linearGradient id="cheese-top" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#fff7c2" />
-                                <stop offset="55%" stopColor="#fde047" />
-                                <stop offset="100%" stopColor="#f59e0b" />
-                            </linearGradient>
-                            <linearGradient id="cheese-side" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#f59e0b" />
-                                <stop offset="100%" stopColor="#7c2d12" />
-                            </linearGradient>
-                        </defs>
-                        {/* Top facet */}
-                        <path
-                            d="M10 70 L60 12 L110 70 Z"
-                            fill="url(#cheese-top)"
-                            stroke="#7c2d12"
-                            strokeWidth="1.5"
-                        />
-                        {/* Front lip */}
-                        <path
-                            d="M10 70 L110 70 L110 80 L10 80 Z"
-                            fill="url(#cheese-side)"
-                            stroke="#7c2d12"
-                            strokeWidth="1.5"
-                        />
-                        {/* Highlight along top edge */}
-                        <path
-                            d="M14 68 L60 18 L106 68"
-                            fill="none"
-                            stroke="rgba(255,255,255,0.55)"
-                            strokeWidth="1.2"
-                            strokeLinecap="round"
-                        />
-                        {/* Holes */}
-                        <ellipse cx="48" cy="55" rx="6" ry="5" fill="#7c2d12" opacity="0.85" />
-                        <ellipse cx="72" cy="48" rx="4" ry="3" fill="#7c2d12" opacity="0.85" />
-                        <ellipse cx="60" cy="65" rx="5" ry="4" fill="#7c2d12" opacity="0.85" />
-                        <ellipse cx="38" cy="65" rx="3" ry="2.5" fill="#7c2d12" opacity="0.85" />
-                    </svg>
+                    />
 
                     {/* Pedestal — directly under the cheese */}
                     <div className="relative mx-auto -mt-1 w-32">
