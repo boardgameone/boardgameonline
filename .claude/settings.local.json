@@ -73,7 +73,9 @@
       "Bash(find:*)",
       "Bash(npx:*)",
       "Bash(npm list:*)",
-      "mcp__perplexity__perplexity_research"
+      "mcp__perplexity__perplexity_research",
+      "mcp__blender__get_viewport_screenshot",
+      "mcp__blender__execute_blender_code"
     ]
   },
   "enableAllProjectMcpServers": true,
