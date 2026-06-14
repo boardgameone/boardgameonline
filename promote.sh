@@ -3,18 +3,28 @@ set -e
 
 REPO="boardgameone/boardgameonline"
 
-# Ensure we're on Gyan branch
+# Determine deploy source = current branch (anything except master/main)
 BRANCH=$(git branch --show-current)
-if [ "$BRANCH" != "Gyan" ]; then
-    echo "Error: Must be on Gyan branch. Currently on: $BRANCH"
+if [ -z "$BRANCH" ]; then
+    echo "Error: Detached HEAD. Check out a branch before deploying."
     exit 1
 fi
+if [ "$BRANCH" = "master" ] || [ "$BRANCH" = "main" ]; then
+    echo "Error: Cannot deploy directly from '$BRANCH'. Switch to a feature branch."
+    exit 1
+fi
+SOURCE_BRANCH="$BRANCH"
+echo "Deploy source branch: $SOURCE_BRANCH"
 
 # Ensure working tree is clean
 if [ -n "$(git status --porcelain)" ]; then
     echo "Error: Working tree is not clean. Commit or stash changes first."
     exit 1
 fi
+
+# Push the source branch so the PR reflects local commits
+echo "Pushing $SOURCE_BRANCH to origin..."
+git push origin "$SOURCE_BRANCH"
 
 # Ensure master branch exists locally (needed for gh pr create)
 if ! git show-ref --verify --quiet refs/heads/master; then
@@ -26,19 +36,19 @@ fi
 # Fetch latest remote refs
 git fetch origin
 
-# ── Step 1: PR Gyan → master ──────────────────────────────────────────
+# ── Step 1: PR $SOURCE_BRANCH → master ────────────────────────────────
 echo ""
-echo "=== Step 1: Gyan → master ==="
+echo "=== Step 1: $SOURCE_BRANCH → master ==="
 
-if [ -z "$(git log origin/master..origin/Gyan --oneline)" ]; then
-    echo "Gyan and master are already in sync. Skipping."
+if [ -z "$(git log origin/master..origin/$SOURCE_BRANCH --oneline)" ]; then
+    echo "$SOURCE_BRANCH and master are already in sync. Skipping."
 else
-    PR_URL=$(gh pr list -R "$REPO" --state open --head Gyan --base master --json url -q '.[0].url' 2>/dev/null || true)
+    PR_URL=$(gh pr list -R "$REPO" --state open --head "$SOURCE_BRANCH" --base master --json url -q '.[0].url' 2>/dev/null || true)
 
     if [ -z "$PR_URL" ]; then
-        echo "Creating PR from Gyan → master..."
-        TITLE="Deploy Gyan → master ($(date '+%Y-%m-%d %H:%M'))"
-        PR_URL=$(gh pr create -R "$REPO" --base master --head Gyan --title "$TITLE" --body "Automated deploy from Gyan to master.")
+        echo "Creating PR from $SOURCE_BRANCH → master..."
+        TITLE="Deploy $SOURCE_BRANCH → master ($(date '+%Y-%m-%d %H:%M'))"
+        PR_URL=$(gh pr create -R "$REPO" --base master --head "$SOURCE_BRANCH" --title "$TITLE" --body "Automated deploy from $SOURCE_BRANCH to master.")
         echo "PR created: $PR_URL"
     else
         echo "Using existing PR: $PR_URL"
@@ -83,7 +93,7 @@ git pull origin master
 git checkout main
 git pull origin main
 
-git checkout Gyan
+git checkout "$SOURCE_BRANCH"
 
 # ── Step 3: Deploy on server ─────────────────────────────────────────
 echo ""
