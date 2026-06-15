@@ -43,7 +43,7 @@ class GamesSeeder extends Seeder
             [
                 'name' => 'Trio',
                 'description' => 'A 3-6 player memory and strategy game where players collect matching trios by revealing cards from hands and a middle grid. First to collect 3 trios wins!',
-                'thumbnail' => null,
+                'thumbnail' => '/images/trio/thumbnail.png',
                 'min_players' => 3,
                 'max_players' => 6,
                 'estimated_duration_minutes' => 15,
