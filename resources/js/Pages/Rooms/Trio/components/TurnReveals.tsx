@@ -97,7 +97,7 @@ export default function TurnReveals({
 
     if (compact) {
         return (
-            <div className={`rounded-lg bg-linear-to-br from-amber-50 to-orange-50 shadow-lg border-2 ${isTrioValid && canClaim ? 'border-green-500' : 'border-amber-300'} animate-slideIn`}>
+            <div className={`rounded-lg bg-amber-50/80 backdrop-blur-md shadow-[0_10px_28px_rgba(0,0,0,0.4)] border ${isTrioValid && canClaim ? 'border-green-500' : 'border-amber-200/70'} animate-slideIn`}>
                 <div className="p-3">
                     {/* Title */}
                     <h3 className="font-bold text-amber-900 text-sm mb-2 flex items-center gap-2">
@@ -156,7 +156,7 @@ export default function TurnReveals({
     }
 
     return (
-        <div className={`rounded-xl bg-linear-to-br from-amber-50 to-orange-50 p-6 shadow-lg border-2 ${isTrioValid && canClaim ? 'border-green-500' : 'border-amber-300'} animate-slideIn`}>
+        <div className={`rounded-xl bg-amber-50/80 backdrop-blur-md p-6 shadow-[0_10px_28px_rgba(0,0,0,0.4)] border ${isTrioValid && canClaim ? 'border-green-500' : 'border-amber-200/70'} animate-slideIn`}>
             <h3 className="font-bold text-amber-900 mb-4 flex items-center gap-2">
                 <span>Current Turn Reveals</span>
                 {isTrioValid && canClaim && (

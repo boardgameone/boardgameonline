@@ -67,38 +67,29 @@ export default function TrioCard({
                 className={`card-flip ${faceUp ? 'flipped' : ''} w-full h-full`}
                 onClick={!disabled && onClick ? onClick : undefined}
             >
-                {/* Front face (face down) */}
+                {/* Front face (face down) — Blender-rendered card back */}
                 <div
-                    className={`card-face-front rounded-lg bg-linear-to-br from-blue-500 via-blue-600 to-blue-700 text-white font-bold flex items-center justify-center shadow-xl border-4 border-blue-900 overflow-hidden ${interactiveClasses} ${disabledClasses}`}
+                    className={`card-face-front rounded-lg overflow-hidden bg-[#0e1b45] shadow-[0_6px_16px_rgba(0,0,0,0.4)] ${interactiveClasses} ${disabledClasses}`}
                 >
-                    {/* Decorative pattern for card back */}
-                    <div className="absolute inset-0 opacity-30">
-                        <div className="absolute inset-2 border-2 border-white/50 rounded-sm" />
-                        <div className="absolute inset-3 border border-white/30 rounded-sm" />
-                        {/* Diamond pattern */}
-                        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                            <pattern id="cardBackPattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-                                <path d="M10 0 L20 10 L10 20 L0 10 Z" fill="white" fillOpacity="0.15" />
-                            </pattern>
-                            <rect x="0" y="0" width="100" height="100" fill="url(#cardBackPattern)" />
-                        </svg>
-                    </div>
-                    {/* Center emblem */}
-                    <div className="relative z-10 flex items-center justify-center">
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/20 flex items-center justify-center border-2 border-white/40">
-                            <span className="text-white/90 font-black text-lg sm:text-xl">T</span>
-                        </div>
-                    </div>
+                    <img
+                        src="/images/trio/card-back.png"
+                        alt=""
+                        draggable={false}
+                        className="absolute inset-0 h-full w-full select-none object-cover"
+                    />
                 </div>
 
-                {/* Back face (face up) */}
+                {/* Back face (face up) — colored card stock */}
                 {value && cardColor && (
                     <div
-                        className={`card-face-back rounded-lg shadow-xl border-4 border-blue-900 relative overflow-hidden flex items-center justify-center ${interactiveClasses} ${disabledClasses}`}
+                        className={`card-face-back rounded-xl overflow-hidden relative flex items-center justify-center ring-2 ring-white/60 shadow-[0_6px_16px_rgba(0,0,0,0.4)] ${interactiveClasses} ${disabledClasses}`}
                         style={{ backgroundColor: cardColor.bg }}
                     >
                         {/* Background Pattern */}
                         <CardPattern cardValue={value} patternColor={cardColor.pattern} />
+
+                        {/* Card-stock gloss + edge shading */}
+                        <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-white/25 via-transparent to-black/15" />
 
                         {/* Corner Numbers (all 4 corners showing card value) */}
                         <span className={`absolute top-1 left-1.5 text-white font-bold drop-shadow-md ${cornerNumberClasses[effectiveSize]}`}>
@@ -114,9 +105,12 @@ export default function TrioCard({
                             {value}
                         </span>
 
-                        {/* Main Center Number */}
-                        <div className="relative z-10 text-white font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-                            {value}
+                        {/* Main Center Number on a subtle index medallion */}
+                        <div className="relative z-10 flex items-center justify-center">
+                            <div className="absolute h-[2em] w-[2em] rounded-full bg-white/10" />
+                            <span className="relative text-white font-black drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                                {value}
+                            </span>
                         </div>
                     </div>
                 )}
