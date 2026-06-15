@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
 import MiddleGrid from './components/MiddleGrid';
+import OpponentsAtTable from './components/OpponentsAtTable';
 import PlayerStats from './components/PlayerStats';
 import TurnReveals from './components/TurnReveals';
 import TrioCelebration from './components/TrioCelebration';
@@ -211,13 +212,27 @@ export default function PlayingPhase({
         });
     };
 
+    // Blender-rendered green felt playmat that sits on the wooden table (raised, with contact shadow)
+    const feltPanel =
+        "rounded-2xl bg-[url('/images/trio/table-felt.png')] bg-cover bg-center ring-1 ring-emerald-950/60 shadow-[0_14px_34px_rgba(0,0,0,0.55),inset_0_2px_16px_rgba(0,0,0,0.5)]";
+    const feltHeading = 'font-bold text-emerald-50 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]';
+
     return (
-        <div className="h-full flex flex-col gap-2 lg:gap-3">
+        <div className="relative h-full flex flex-col gap-2 lg:gap-3">
+            {/* Immersive table-room backdrop — seated tabletop POV (Blender render) */}
+            <div
+                aria-hidden
+                className="pointer-events-none fixed left-0 right-0 bottom-0 top-16 sm:top-20 z-0 bg-[url('/images/trio/table-room.png')] bg-cover bg-center"
+            />
+            <div
+                aria-hidden
+                className="pointer-events-none fixed left-0 right-0 bottom-0 top-16 sm:top-20 z-0 bg-[radial-gradient(ellipse_at_50%_42%,transparent_28%,rgba(12,6,1,0.62))]"
+            />
             {/* Compact turn banner */}
-            <div className={`rounded-lg px-4 py-2 border-2 transition-all duration-300 shrink-0 ${
+            <div className={`relative z-10 rounded-lg px-4 py-2 border transition-all duration-300 shrink-0 backdrop-blur-md ${
                 currentTurnPlayer?.id === currentPlayerId
-                    ? 'bg-linear-to-r from-yellow-50 to-yellow-100 border-yellow-400'
-                    : 'bg-blue-50 border-blue-200'
+                    ? 'bg-amber-100/80 border-amber-300/70'
+                    : 'bg-white/70 border-white/50'
             }`}>
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -239,7 +254,7 @@ export default function PlayingPhase({
             </div>
 
             {/* Mobile/Tablet: Scrollable vertical layout */}
-            <div className="flex-1 overflow-auto lg:overflow-hidden">
+            <div className="relative z-10 flex-1 overflow-auto lg:overflow-hidden">
                 {/* Mobile layout (vertical stacking) */}
                 <div className="lg:hidden space-y-4 pb-4">
                     {/* Turn reveals */}
@@ -257,8 +272,9 @@ export default function PlayingPhase({
                     )}
 
                     {/* Middle grid */}
-                    <div className="rounded-xl bg-linear-to-br from-emerald-100 to-teal-100 p-4 shadow-lg border border-teal-200">
-                        <h3 className="font-bold text-emerald-900 mb-3 text-center">
+                    <div className={`${feltPanel} p-4`}>
+                        <OpponentsAtTable players={players} currentPlayerId={currentPlayerId} reveals={currentTurn.reveals} />
+                        <h3 className={`${feltHeading} mb-3 text-center`}>
                             Middle Grid
                         </h3>
                         <MiddleGrid
@@ -269,7 +285,7 @@ export default function PlayingPhase({
                     </div>
 
                     {/* Players */}
-                    <div className="rounded-xl bg-linear-to-br from-slate-50 to-gray-100 p-4 shadow-lg border border-slate-200">
+                    <div className="rounded-xl bg-white/75 backdrop-blur-md p-4 shadow-[0_10px_28px_rgba(0,0,0,0.45)] border border-white/50">
                         <h3 className="font-bold text-slate-800 mb-3">Players</h3>
                         <PlayerStats
                             players={players}
@@ -283,8 +299,8 @@ export default function PlayingPhase({
 
                     {/* My hand */}
                     {myHand && myHand.length > 0 && (
-                        <div className="rounded-xl bg-linear-to-br from-sky-50 to-blue-100 p-4 shadow-lg border-2 border-sky-300">
-                            <h3 className="font-bold text-sky-900 mb-3 text-center">
+                        <div className={`${feltPanel} p-4`}>
+                            <h3 className={`${feltHeading} mb-3 text-center`}>
                                 Your Hand
                             </h3>
                             <div className="flex flex-wrap gap-2 justify-center">
@@ -328,7 +344,8 @@ export default function PlayingPhase({
                         )}
 
                         {/* Middle grid - compact, not stretched */}
-                        <div className="rounded-xl bg-linear-to-br from-emerald-100 to-teal-100 p-3 shadow-lg border border-teal-200 shrink-0">
+                        <div className={`${feltPanel} p-3 shrink-0`}>
+                            <OpponentsAtTable players={players} currentPlayerId={currentPlayerId} reveals={currentTurn.reveals} />
                             <div className="flex justify-center">
                                 <MiddleGrid
                                     cards={middleGrid}
@@ -340,8 +357,8 @@ export default function PlayingPhase({
                         </div>
 
                         {/* Your Hand - horizontal below middle grid */}
-                        <div className="rounded-xl bg-linear-to-br from-sky-50 to-blue-100 p-3 shadow-lg border-2 border-sky-300 shrink-0">
-                            <h3 className="font-bold text-sky-900 mb-2 text-center text-sm">
+                        <div className={`${feltPanel} p-3 shrink-0`}>
+                            <h3 className={`${feltHeading} mb-2 text-center text-sm`}>
                                 Your Hand
                             </h3>
                             {myHand && myHand.length > 0 ? (
@@ -361,7 +378,7 @@ export default function PlayingPhase({
                                     ))}
                                 </div>
                             ) : (
-                                <div className="text-center text-sky-400 text-sm py-2">
+                                <div className="text-center text-emerald-100/80 text-sm py-2">
                                     No cards in hand
                                 </div>
                             )}
@@ -370,7 +387,7 @@ export default function PlayingPhase({
 
                     {/* Right column: Players */}
                     <div className="lg:col-span-4 flex flex-col">
-                        <div className="rounded-xl bg-linear-to-br from-slate-50 to-gray-100 p-3 shadow-lg border border-slate-200 flex-1 flex flex-col min-h-0">
+                        <div className="rounded-xl bg-white/75 backdrop-blur-md p-3 shadow-[0_10px_28px_rgba(0,0,0,0.45)] border border-white/50 flex-1 flex flex-col min-h-0">
                             <h3 className="font-bold text-slate-800 mb-2 text-sm shrink-0">Players</h3>
                             <div className="flex-1 overflow-y-auto">
                                 <PlayerStats

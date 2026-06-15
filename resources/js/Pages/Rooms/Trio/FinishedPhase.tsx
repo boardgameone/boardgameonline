@@ -92,8 +92,13 @@ export default function FinishedPhase({ roomCode, gameSlug, players, winner, isH
             {/* Winner celebration - compact */}
             <div className="relative z-10 shrink-0 rounded-2xl bg-linear-to-br from-yellow-300 via-yellow-400 to-yellow-500 p-4 sm:p-6 text-center shadow-2xl border-4 border-yellow-600 animate-slideIn">
                 <div className="flex items-center justify-center gap-4">
-                    <div className="text-yellow-700 animate-bounce">
-                        <GameIcon name="trophy" className="h-12 w-12" />
+                    <div className="animate-bounce">
+                        <img
+                            src="/images/shared/trophy.png"
+                            alt="Trophy"
+                            draggable={false}
+                            className="h-20 w-20 select-none object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.35)]"
+                        />
                     </div>
                     <div>
                         <h1 className="text-2xl sm:text-3xl font-black text-yellow-900">
