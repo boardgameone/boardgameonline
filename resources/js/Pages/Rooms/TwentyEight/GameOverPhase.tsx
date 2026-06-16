@@ -37,36 +37,36 @@ export default function GameOverPhase({
             {/* Winner banner */}
             <div className={`rounded-2xl p-8 text-center shadow-xl ${
                 didWin
-                    ? 'bg-linear-to-br from-amber-100 via-yellow-100 to-amber-200 border-2 border-amber-400 dark:from-amber-900/30 dark:via-yellow-900/30 dark:to-amber-800/30 dark:border-amber-600'
-                    : 'bg-linear-to-br from-gray-100 to-gray-200 border-2 border-gray-300 dark:from-gray-800 dark:to-gray-900 dark:border-gray-700'
+                    ? 'bg-linear-to-br from-amber-100 via-yellow-100 to-amber-200 border-2 border-amber-400 dark:from-amber-900/30 sepia:from-sepia-accent-bg/30 dark:via-yellow-900/30 sepia:via-sepia-accent-bg/30 dark:to-amber-800/30 sepia:to-sepia-accent-bg/30 dark:border-amber-600 sepia:border-sepia-accent-border'
+                    : 'bg-linear-to-br from-gray-100 to-gray-200 border-2 border-gray-300 dark:from-gray-800 sepia:from-sepia-surface dark:to-gray-900 sepia:to-sepia-bg dark:border-gray-700 sepia:border-sepia-border'
             }`}>
                 <div className="text-5xl mb-3">
                     {didWin ? '\uD83C\uDFC6' : '\uD83D\uDC4F'}
                 </div>
-                <h2 className="text-2xl font-black text-gray-900 mb-2 dark:text-gray-100">
+                <h2 className="text-2xl font-black text-gray-900 mb-2 dark:text-gray-100 sepia:text-sepia-text">
                     {didWin ? 'You Won!' : 'Game Over'}
                 </h2>
-                <p className="text-lg font-bold text-amber-700 dark:text-amber-300">
+                <p className="text-lg font-bold text-amber-700 dark:text-amber-300 sepia:text-sepia-accent">
                     {winningTeamLabel} Wins!
                 </p>
-                <p className="text-sm text-gray-600 mt-2 dark:text-gray-400">
+                <p className="text-sm text-gray-600 mt-2 dark:text-gray-400 sepia:text-sepia-muted">
                     Final Score: Team A {gameState.game_scores.team_a} - Team B {gameState.game_scores.team_b}
                 </p>
             </div>
 
             {/* Winning team */}
-            <div className="rounded-xl bg-linear-to-br from-amber-50 to-yellow-50 shadow-md border border-amber-200 p-5 dark:from-amber-900/20 dark:to-yellow-900/20 dark:border-amber-800">
-                <h4 className="text-sm font-bold text-amber-700 mb-3 text-center dark:text-amber-300">Winners</h4>
+            <div className="rounded-xl bg-linear-to-br from-amber-50 to-yellow-50 shadow-md border border-amber-200 p-5 dark:from-amber-900/20 sepia:from-sepia-accent-bg/20 dark:to-yellow-900/20 sepia:to-sepia-accent-bg/20 dark:border-amber-800 sepia:border-sepia-accent-border">
+                <h4 className="text-sm font-bold text-amber-700 mb-3 text-center dark:text-amber-300 sepia:text-sepia-accent">Winners</h4>
                 <div className="flex justify-center gap-4">
                     {winningPlayers.map(player => (
                         <div key={player.id} className="text-center">
                             <div
-                                className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg mx-auto mb-1 ring-2 ring-amber-400 ring-offset-2 dark:ring-offset-gray-800"
+                                className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg mx-auto mb-1 ring-2 ring-amber-400 ring-offset-2 dark:ring-offset-gray-800 sepia:ring-offset-sepia-surface"
                                 style={{ backgroundColor: player.avatar_color }}
                             >
                                 {player.nickname.charAt(0).toUpperCase()}
                             </div>
-                            <div className="text-sm font-bold text-gray-800 dark:text-gray-200">{player.nickname}</div>
+                            <div className="text-sm font-bold text-gray-800 dark:text-gray-200 sepia:text-sepia-text">{player.nickname}</div>
                         </div>
                     ))}
                 </div>
@@ -74,13 +74,13 @@ export default function GameOverPhase({
 
             {/* Round history */}
             {gameState.round_history.length > 0 && (
-                <div className="rounded-xl bg-white shadow-md border border-gray-200 p-4 dark:bg-gray-800 dark:border-gray-700">
-                    <h4 className="text-sm font-bold text-gray-600 mb-3 dark:text-gray-400">Round History</h4>
+                <div className="rounded-xl bg-white shadow-md border border-gray-200 p-4 dark:bg-gray-800 sepia:bg-sepia-surface dark:border-gray-700 sepia:border-sepia-border">
+                    <h4 className="text-sm font-bold text-gray-600 mb-3 dark:text-gray-400 sepia:text-sepia-muted">Round History</h4>
                     <div className="space-y-2">
                         {gameState.round_history.map((round, idx) => (
-                            <div key={idx} className="flex items-center justify-between text-xs bg-gray-50 rounded-lg p-2 dark:bg-gray-900/40">
-                                <span className="font-medium text-gray-600 dark:text-gray-400">R{round.round_number}</span>
-                                <span className="text-gray-500 dark:text-gray-400">
+                            <div key={idx} className="flex items-center justify-between text-xs bg-gray-50 rounded-lg p-2 dark:bg-gray-900/40 sepia:bg-sepia-bg/40">
+                                <span className="font-medium text-gray-600 dark:text-gray-400 sepia:text-sepia-muted">R{round.round_number}</span>
+                                <span className="text-gray-500 dark:text-gray-400 sepia:text-sepia-muted">
                                     Bid: {round.bid_value} ({round.bid_team === 'team_a' ? 'A' : 'B'})
                                 </span>
                                 <div className="flex gap-2">
@@ -104,7 +104,7 @@ export default function GameOverPhase({
             )}
 
             {!isHost && (
-                <div className="text-center text-gray-500 text-sm dark:text-gray-400">
+                <div className="text-center text-gray-500 text-sm dark:text-gray-400 sepia:text-sepia-muted">
                     Waiting for host to start a new game...
                 </div>
             )}

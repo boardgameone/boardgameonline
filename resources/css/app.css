@@ -6,8 +6,28 @@
 @source '../../storage/framework/views/*.php';
 
 @custom-variant dark (&:is(.dark *));
+/* The theme class is `.theme-sepia` (NOT `.sepia`) to avoid colliding with
+   Tailwind's built-in `sepia` filter utility, which would apply
+   `filter: sepia()` to the whole page. The `sepia:` variant prefix is unaffected. */
+@custom-variant sepia (&:is(.theme-sepia *));
 
 @theme {
+  /* Sepia theme — warm parchment. Role-based tokens, not a gray ramp.
+     Used via the `sepia:` variant, e.g. `sepia:bg-sepia-surface`. */
+  --color-sepia-bg: #f4ecd8;
+  --color-sepia-surface: #ebe0c4;
+  --color-sepia-raised: #e0d2b0;
+  --color-sepia-sunken: #d8c8a2;
+  --color-sepia-text: #4a3826;
+  --color-sepia-muted: #6b5238;
+  --color-sepia-faint: #8a6f50;
+  --color-sepia-border: #cbb992;
+  --color-sepia-border-strong: #b8a173;
+  --color-sepia-accent: #9a6b1f;
+  --color-sepia-accent-strong: #7c5410;
+  --color-sepia-accent-border: #c9962f;
+  --color-sepia-accent-bg: #f0e2b8;
+
   --font-sans:
     Figtree, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
     'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';

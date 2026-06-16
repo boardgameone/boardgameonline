@@ -101,15 +101,15 @@ export default function TrioGamePage({ auth, room, currentPlayer, isHost, gameSt
             }`}>
                 {/* Show join form for guests who need to enter nickname */}
                 {needsToJoin && isGuest && (
-                    <div className="rounded-xl bg-white p-8 shadow-lg dark:bg-gray-800">
+                    <div className="rounded-xl bg-white p-8 shadow-lg dark:bg-gray-800 sepia:bg-sepia-surface">
                         <div className="text-center py-8">
                             <div className="inline-flex items-center justify-center w-20 h-20 bg-linear-to-br from-green-400 to-green-500 rounded-full mb-4 shadow-lg text-white">
                                 <GameIcon name="wave" size="xl" />
                             </div>
-                            <h3 className="text-xl font-black text-gray-900 mb-2 dark:text-gray-100">
+                            <h3 className="text-xl font-black text-gray-900 mb-2 dark:text-gray-100 sepia:text-sepia-text">
                                 Join this game!
                             </h3>
-                            <p className="text-gray-500 mb-6 dark:text-gray-400">
+                            <p className="text-gray-500 mb-6 dark:text-gray-400 sepia:text-sepia-muted">
                                 Enter your nickname to join the room
                             </p>
                             <form onSubmit={handleJoin} className="max-w-xs mx-auto space-y-4">
@@ -120,7 +120,7 @@ export default function TrioGamePage({ auth, room, currentPlayer, isHost, gameSt
                                         onChange={(e) => setData('nickname', e.target.value)}
                                         placeholder="Your nickname"
                                         maxLength={20}
-                                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-400 focus:ring-green-400 transition-colors font-medium text-center dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
+                                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-400 focus:ring-green-400 transition-colors font-medium text-center dark:bg-gray-900 sepia:bg-sepia-bg dark:border-gray-700 sepia:border-sepia-border dark:text-gray-100 sepia:text-sepia-text dark:placeholder-gray-400 sepia:placeholder-sepia-muted"
                                         autoFocus
                                         required
                                     />

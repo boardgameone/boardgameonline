@@ -7,7 +7,7 @@ interface SoundToggleProps {
 }
 
 const DEFAULT_CLASSNAME =
-    'rounded-full bg-white p-2 shadow-lg transition hover:scale-105 border-b-4 border-yellow-500 text-yellow-600 dark:bg-gray-800 dark:text-yellow-300 dark:border-gray-700';
+    'rounded-full bg-white p-2 shadow-lg transition hover:scale-105 border-b-4 border-yellow-500 text-yellow-600 dark:bg-gray-800 sepia:bg-sepia-surface dark:text-yellow-300 sepia:text-sepia-accent dark:border-gray-700 sepia:border-sepia-border';
 
 export default function SoundToggle({
     className = DEFAULT_CLASSNAME,

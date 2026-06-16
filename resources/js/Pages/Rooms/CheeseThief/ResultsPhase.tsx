@@ -127,8 +127,8 @@ export default function ResultsPhase({ gameState, roomCode, gameSlug }: ResultsP
             </GameTable>
 
             {/* Vote results */}
-            <div className="w-full rounded-xl bg-white p-5 shadow-sm dark:bg-gray-800">
-                <h3 className="mb-3 text-center text-base font-semibold text-gray-700 dark:text-gray-300">
+            <div className="w-full rounded-xl bg-white p-5 shadow-sm dark:bg-gray-800 sepia:bg-sepia-surface">
+                <h3 className="mb-3 text-center text-base font-semibold text-gray-700 dark:text-gray-300 sepia:text-sepia-muted">
                     Vote Results
                 </h3>
                 <div className="space-y-3">
@@ -149,17 +149,17 @@ export default function ResultsPhase({ gameState, roomCode, gameSlug }: ResultsP
                                 </div>
                                 <div className="flex-1">
                                     <div className="mb-1 flex items-center justify-between">
-                                        <span className="text-sm font-medium dark:text-gray-200">
+                                        <span className="text-sm font-medium dark:text-gray-200 sepia:text-sepia-text">
                                             {player.nickname}
                                             {isThiefPlayer && ' \u{1F977}'}
                                             {player.is_accomplice && ' \u{1F91D}'}
                                         </span>
-                                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                                        <span className="text-xs text-gray-500 dark:text-gray-400 sepia:text-sepia-muted">
                                             {votes} vote{votes !== 1 ? 's' : ''}
                                             {wasCaught && ' ← CAUGHT!'}
                                         </span>
                                     </div>
-                                    <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                                    <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700 sepia:bg-sepia-raised">
                                         <div
                                             className={`h-full transition-all duration-500 ${
                                                 wasCaught ? 'bg-emerald-500' : isThiefPlayer ? 'bg-red-400' : 'bg-indigo-400'

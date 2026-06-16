@@ -45,10 +45,10 @@ export default function WaitingPhase({
     };
 
     return (
-        <div className="rounded-xl bg-white p-8 shadow-lg dark:bg-gray-800">
+        <div className="rounded-xl bg-white p-8 shadow-lg dark:bg-gray-800 sepia:bg-sepia-surface">
             {/* Header with help button and sound toggle */}
             <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 sepia:text-sepia-text">
                     Waiting Room
                 </h3>
                 <div className="flex items-center gap-2">
@@ -87,11 +87,11 @@ export default function WaitingPhase({
             {/* Players list */}
             <div className="mb-6">
                 <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-semibold text-gray-700 dark:text-gray-300">
+                    <h4 className="font-semibold text-gray-700 dark:text-gray-300 sepia:text-sepia-muted">
                         Players ({connectedPlayers.length}/{maxPlayers})
                     </h4>
                     {!canStart && (
-                        <span className="text-sm text-amber-600 font-medium dark:text-amber-400">
+                        <span className="text-sm text-amber-600 font-medium dark:text-amber-400 sepia:text-sepia-accent">
                             Need {minPlayers - connectedPlayers.length} more player{minPlayers - connectedPlayers.length !== 1 ? 's' : ''}
                         </span>
                     )}

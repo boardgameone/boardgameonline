@@ -4,7 +4,9 @@
     "type": "module",
     "scripts": {
         "build": "tsc && vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "test": "vitest run",
+        "test:watch": "vitest"
     },
     "devDependencies": {
         "@headlessui/react": "^2.0.0",
@@ -19,13 +21,15 @@
         "@vitejs/plugin-react": "^6.0.0",
         "axios": "^1.14.0",
         "concurrently": "^9.0.1",
+        "jsdom": "^29.1.1",
         "laravel-vite-plugin": "^3.0.0",
         "postcss": "^8.4.31",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
         "tailwindcss": "^4.2.2",
         "typescript": "^6.0.2",
-        "vite": "^8.0.3"
+        "vite": "^8.0.3",
+        "vitest": "^4.1.7"
     },
     "dependencies": {
         "@react-three/drei": "^10.7.7",

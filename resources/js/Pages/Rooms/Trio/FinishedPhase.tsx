@@ -121,8 +121,8 @@ export default function FinishedPhase({ roomCode, gameSlug, players, winner, isH
             </div>
 
             {/* Final scores - scrollable */}
-            <div className="relative z-10 flex-1 min-h-0 rounded-xl bg-white p-4 shadow-lg overflow-y-auto dark:bg-gray-800">
-                <h2 className="text-xl font-bold text-gray-900 mb-3 text-center dark:text-gray-100">
+            <div className="relative z-10 flex-1 min-h-0 rounded-xl bg-white p-4 shadow-lg overflow-y-auto dark:bg-gray-800 sepia:bg-sepia-surface">
+                <h2 className="text-xl font-bold text-gray-900 mb-3 text-center dark:text-gray-100 sepia:text-sepia-text">
                     Final Scores
                 </h2>
                 <div className="space-y-2">
@@ -131,8 +131,8 @@ export default function FinishedPhase({ roomCode, gameSlug, players, winner, isH
                             key={player.id}
                             className={`rounded-lg p-3 border-2 transition-all animate-slideIn ${
                                 index === 0
-                                    ? 'bg-linear-to-r from-yellow-50 to-yellow-100 border-yellow-400 dark:from-yellow-900/30 dark:to-yellow-800/30 dark:border-yellow-600'
-                                    : 'bg-gray-50 border-gray-200 dark:bg-gray-900/40 dark:border-gray-700'
+                                    ? 'bg-linear-to-r from-yellow-50 to-yellow-100 border-yellow-400 dark:from-yellow-900/30 sepia:from-sepia-accent-bg/30 dark:to-yellow-800/30 sepia:to-sepia-accent-bg/30 dark:border-yellow-600 sepia:border-sepia-accent-border'
+                                    : 'bg-gray-50 border-gray-200 dark:bg-gray-900/40 sepia:bg-sepia-bg/40 dark:border-gray-700 sepia:border-sepia-border'
                             }`}
                             style={{ animationDelay: `${index * 100}ms` }}
                         >
@@ -143,7 +143,7 @@ export default function FinishedPhase({ roomCode, gameSlug, players, winner, isH
                                         index === 0 ? 'bg-yellow-500 text-white' :
                                         index === 1 ? 'bg-gray-400 text-white' :
                                         index === 2 ? 'bg-orange-600 text-white' :
-                                        'bg-gray-300 text-gray-700 dark:bg-gray-600 dark:text-gray-200'
+                                        'bg-gray-300 text-gray-700 dark:bg-gray-600 sepia:bg-sepia-sunken dark:text-gray-200 sepia:text-sepia-text'
                                     }`}>
                                         {index + 1}
                                     </div>
@@ -158,11 +158,11 @@ export default function FinishedPhase({ roomCode, gameSlug, players, winner, isH
 
                                     {/* Name and score */}
                                     <div>
-                                        <p className="font-bold text-gray-900 flex items-center gap-1 dark:text-gray-100">
+                                        <p className="font-bold text-gray-900 flex items-center gap-1 dark:text-gray-100 sepia:text-sepia-text">
                                             {player.nickname}
                                             {index === 0 && <GameIcon name="crown" size="sm" className="text-yellow-500" />}
                                         </p>
-                                        <p className="text-sm text-gray-600 font-semibold dark:text-gray-400">
+                                        <p className="text-sm text-gray-600 font-semibold dark:text-gray-400 sepia:text-sepia-muted">
                                             {player.trios_count} trio{player.trios_count !== 1 ? 's' : ''}
                                         </p>
                                     </div>

@@ -13,7 +13,7 @@ export default function Welcome({ auth, featuredGames }: Props) {
     return (
         <>
             <Head title="Board Game Online" />
-            <div className="min-h-screen w-full bg-yellow-400 dark:bg-gray-900 flex flex-col overflow-x-hidden transition-colors duration-200">
+            <div className="min-h-screen w-full bg-yellow-400 dark:bg-gray-900 sepia:bg-sepia-bg flex flex-col overflow-x-hidden transition-colors duration-200">
                 {/* Nav */}
                 <nav className="flex items-center justify-between p-4 sm:p-6 shrink-0">
                     <Link href="/" className="group">
@@ -34,7 +34,7 @@ export default function Welcome({ auth, featuredGames }: Props) {
                         {auth.user ? (
                             <Link
                                 href={route('dashboard')}
-                                className="rounded-full bg-white px-4 sm:px-6 py-2 font-bold text-yellow-600 shadow-lg transition hover:scale-105 border-b-4 border-yellow-500 text-sm sm:text-base dark:bg-gray-800 dark:text-yellow-300 dark:border-gray-700"
+                                className="rounded-full bg-white px-4 sm:px-6 py-2 font-bold text-yellow-600 shadow-lg transition hover:scale-105 border-b-4 border-yellow-500 text-sm sm:text-base dark:bg-gray-800 sepia:bg-sepia-surface dark:text-yellow-300 sepia:text-sepia-accent dark:border-gray-700 sepia:border-sepia-border"
                             >
                                 Dashboard
                             </Link>
@@ -42,7 +42,7 @@ export default function Welcome({ auth, featuredGames }: Props) {
                             <>
                                 <Link
                                     href={route('login')}
-                                    className="rounded-full bg-white px-4 sm:px-6 py-2 font-bold text-yellow-600 shadow-lg transition hover:scale-105 border-b-4 border-yellow-500 text-sm sm:text-base dark:bg-gray-800 dark:text-yellow-300 dark:border-gray-700"
+                                    className="rounded-full bg-white px-4 sm:px-6 py-2 font-bold text-yellow-600 shadow-lg transition hover:scale-105 border-b-4 border-yellow-500 text-sm sm:text-base dark:bg-gray-800 sepia:bg-sepia-surface dark:text-yellow-300 sepia:text-sepia-accent dark:border-gray-700 sepia:border-sepia-border"
                                 >
                                     Log in
                                 </Link>
@@ -61,13 +61,13 @@ export default function Welcome({ auth, featuredGames }: Props) {
                 <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 min-h-0">
                     {/* Title */}
                     <div className="text-center mb-6">
-                        <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white drop-shadow-[2px_2px_0px_rgba(0,0,0,0.2)] dark:text-gray-100">
+                        <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white drop-shadow-[2px_2px_0px_rgba(0,0,0,0.2)] dark:text-gray-100 sepia:text-sepia-text">
                             Board Game{' '}
                             <span className="text-blue-600 drop-shadow-[2px_2px_0px_rgba(255,255,255,0.5)] dark:text-blue-400">
                                 Online
                             </span>
                         </h1>
-                        <p className="text-base sm:text-lg text-yellow-900 font-medium mt-2 dark:text-yellow-300">
+                        <p className="text-base sm:text-lg text-yellow-900 font-medium mt-2 dark:text-yellow-300 sepia:text-sepia-accent">
                             Play with friends. No downloads required.
                         </p>
                     </div>
@@ -95,7 +95,7 @@ export default function Welcome({ auth, featuredGames }: Props) {
                         </Link>
                         <Link
                             href={route('rooms.join')}
-                            className="rounded-full bg-white px-8 py-3 text-base font-bold text-yellow-600 shadow-xl transition hover:scale-105 border-b-4 border-yellow-500 dark:bg-gray-800 dark:text-yellow-300 dark:border-gray-700"
+                            className="rounded-full bg-white px-8 py-3 text-base font-bold text-yellow-600 shadow-xl transition hover:scale-105 border-b-4 border-yellow-500 dark:bg-gray-800 sepia:bg-sepia-surface dark:text-yellow-300 sepia:text-sepia-accent dark:border-gray-700 sepia:border-sepia-border"
                         >
                             Join Room
                         </Link>
@@ -103,7 +103,7 @@ export default function Welcome({ auth, featuredGames }: Props) {
                 </main>
 
                 {/* Footer */}
-                <footer className="p-3 text-center text-yellow-800 font-medium text-sm shrink-0 dark:text-yellow-300">
+                <footer className="p-3 text-center text-yellow-800 font-medium text-sm shrink-0 dark:text-yellow-300 sepia:text-sepia-accent">
                     Play together, anywhere!
                 </footer>
             </div>
@@ -198,7 +198,7 @@ function GameCard({ game }: { game: Game }) {
     return (
         <Link
             href={route('games.show', game.slug)}
-            className="bg-white rounded-xl shadow-lg overflow-hidden transition hover:scale-105 hover:shadow-xl group dark:bg-gray-800"
+            className="bg-white rounded-xl shadow-lg overflow-hidden transition hover:scale-105 hover:shadow-xl group dark:bg-gray-800 sepia:bg-sepia-surface"
         >
             <div className={`relative aspect-square overflow-hidden bg-linear-to-br ${gradient} flex items-center justify-center`}>
                 {game.thumbnail ? (
@@ -220,8 +220,8 @@ function GameCard({ game }: { game: Game }) {
                 )}
             </div>
             <div className="p-2 sm:p-3 text-center">
-                <h3 className="font-bold text-gray-900 text-sm sm:text-base truncate dark:text-gray-100">{game.name}</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{game.min_players}-{game.max_players} players</p>
+                <h3 className="font-bold text-gray-900 text-sm sm:text-base truncate dark:text-gray-100 sepia:text-sepia-text">{game.name}</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 sepia:text-sepia-muted">{game.min_players}-{game.max_players} players</p>
             </div>
         </Link>
     );
@@ -229,15 +229,15 @@ function GameCard({ game }: { game: Game }) {
 
 function ComingSoonCard() {
     return (
-        <div className="bg-white/50 rounded-xl shadow-lg overflow-hidden dark:bg-gray-800/60">
-            <div className="aspect-square bg-gray-200 flex items-center justify-center dark:bg-gray-700">
-                <div className="text-3xl sm:text-4xl opacity-40 text-gray-400 dark:text-gray-500">
+        <div className="bg-white/50 rounded-xl shadow-lg overflow-hidden dark:bg-gray-800/60 sepia:bg-sepia-surface/60">
+            <div className="aspect-square bg-gray-200 flex items-center justify-center dark:bg-gray-700 sepia:bg-sepia-raised">
+                <div className="text-3xl sm:text-4xl opacity-40 text-gray-400 dark:text-gray-500 sepia:text-sepia-faint">
                     <GameIcon name="question" size="xl" />
                 </div>
             </div>
             <div className="p-2 sm:p-3 text-center">
-                <h3 className="font-bold text-gray-400 text-sm sm:text-base dark:text-gray-500">Coming Soon</h3>
-                <p className="text-xs text-gray-400 dark:text-gray-500">Stay tuned!</p>
+                <h3 className="font-bold text-gray-400 text-sm sm:text-base dark:text-gray-500 sepia:text-sepia-muted">Coming Soon</h3>
+                <p className="text-xs text-gray-400 dark:text-gray-500 sepia:text-sepia-muted">Stay tuned!</p>
             </div>
         </div>
     );

@@ -39,10 +39,10 @@ export default function Login({
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-linear-to-br from-blue-500 to-blue-600 rounded-full mb-4 shadow-lg text-white">
                     <GameIcon name="gamepad" size="lg" />
                 </div>
-                <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100">
+                <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 sepia:text-sepia-text">
                     Welcome Back!
                 </h1>
-                <p className="text-gray-500 mt-1 dark:text-gray-400">
+                <p className="text-gray-500 mt-1 dark:text-gray-400 sepia:text-sepia-muted">
                     Ready to play some games?
                 </p>
             </div>
@@ -57,7 +57,7 @@ export default function Login({
                 <div>
                     <label
                         htmlFor="email"
-                        className="block text-sm font-bold text-gray-700 mb-1 dark:text-gray-300"
+                        className="block text-sm font-bold text-gray-700 mb-1 dark:text-gray-300 sepia:text-sepia-muted"
                     >
                         Email
                     </label>
@@ -66,7 +66,7 @@ export default function Login({
                         type="email"
                         name="email"
                         value={data.email}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors font-medium dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:border-blue-500 dark:focus:ring-blue-500"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors font-medium dark:bg-gray-900 sepia:bg-sepia-bg dark:border-gray-700 sepia:border-sepia-border dark:text-gray-100 sepia:text-sepia-text dark:placeholder-gray-500 sepia:placeholder-sepia-faint dark:focus:border-blue-500 dark:focus:ring-blue-500"
                         autoComplete="username"
                         autoFocus
                         placeholder="you@example.com"
@@ -78,7 +78,7 @@ export default function Login({
                 <div>
                     <label
                         htmlFor="password"
-                        className="block text-sm font-bold text-gray-700 mb-1 dark:text-gray-300"
+                        className="block text-sm font-bold text-gray-700 mb-1 dark:text-gray-300 sepia:text-sepia-muted"
                     >
                         Password
                     </label>
@@ -87,7 +87,7 @@ export default function Login({
                         type="password"
                         name="password"
                         value={data.password}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors font-medium dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:border-blue-500 dark:focus:ring-blue-500"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors font-medium dark:bg-gray-900 sepia:bg-sepia-bg dark:border-gray-700 sepia:border-sepia-border dark:text-gray-100 sepia:text-sepia-text dark:placeholder-gray-500 sepia:placeholder-sepia-faint dark:focus:border-blue-500 dark:focus:ring-blue-500"
                         autoComplete="current-password"
                         placeholder="Enter your password"
                         onChange={(e) => setData('password', e.target.value)}
@@ -108,7 +108,7 @@ export default function Login({
                             }
                             className="rounded-md border-gray-300 text-blue-500 focus:ring-blue-400"
                         />
-                        <span className="ms-2 text-sm text-gray-600 font-medium dark:text-gray-400">
+                        <span className="ms-2 text-sm text-gray-600 font-medium dark:text-gray-400 sepia:text-sepia-muted">
                             Remember me
                         </span>
                     </label>
@@ -155,7 +155,7 @@ export default function Login({
             </form>
 
             <div className="mt-6 text-center">
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="text-gray-600 dark:text-gray-400 sepia:text-sepia-muted">
                     New player?{' '}
                     <Link
                         href={route('register')}
