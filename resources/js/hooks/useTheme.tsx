@@ -7,7 +7,12 @@ import {
     useState,
 } from 'react';
 
-export type Theme = 'light' | 'dark';
+export type Theme = 'light' | 'dark' | 'grayscale';
+
+const THEMES: readonly Theme[] = ['light', 'dark', 'grayscale'];
+
+const isTheme = (value: unknown): value is Theme =>
+    typeof value === 'string' && (THEMES as readonly string[]).includes(value);
 
 interface ThemeContextValue {
     theme: Theme;
@@ -29,7 +34,10 @@ const getInitialTheme = (): Theme => {
         return 'light';
     }
 
-    return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+    const classes = document.documentElement.classList;
+    if (classes.contains('grayscale')) return 'grayscale';
+    if (classes.contains('dark')) return 'dark';
+    return 'light';
 };
 
 export function ThemeProvider({ children }: PropsWithChildren) {
@@ -40,7 +48,9 @@ export function ThemeProvider({ children }: PropsWithChildren) {
             return;
         }
 
-        document.documentElement.classList.toggle('dark', theme === 'dark');
+        const root = document.documentElement.classList;
+        root.toggle('dark', theme === 'dark');
+        root.toggle('grayscale', theme === 'grayscale');
 
         try {
             localStorage.setItem(STORAGE_KEY, theme);
@@ -59,7 +69,7 @@ export function ThemeProvider({ children }: PropsWithChildren) {
                 return;
             }
 
-            if (event.newValue === 'light' || event.newValue === 'dark') {
+            if (isTheme(event.newValue)) {
                 setThemeState(event.newValue);
             }
         };
@@ -73,7 +83,10 @@ export function ThemeProvider({ children }: PropsWithChildren) {
     }, []);
 
     const toggleTheme = useCallback(() => {
-        setThemeState((current) => (current === 'dark' ? 'light' : 'dark'));
+        setThemeState((current) => {
+            const idx = THEMES.indexOf(current);
+            return THEMES[(idx + 1) % THEMES.length];
+        });
     }, []);
 
     return (
