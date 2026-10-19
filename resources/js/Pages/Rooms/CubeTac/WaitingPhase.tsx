@@ -8,9 +8,11 @@
 import { GamePlayer, GameRoom } from '@/types';
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { SLOT_CHARS } from './PlayingPhase';
 import { useVoiceChatOptional } from '@/Contexts/VoiceChatContext';
 import VideoModal from '@/Components/VideoModal';
+import VariantPicker, { type CubeTacVariant } from './components/VariantPicker';
+import VariantPreview from './components/VariantPreview';
+import SlotGlyph from './components/SlotGlyph';
 
 /** Mirrors SLOT_COLORS in CubeTacGameController.php (design index → hex). */
 const DESIGN_COLORS = ['#ff4d2e', '#3a90ff', '#16a34a', '#a855f7', '#f59e0b', '#c2813a'];
@@ -87,12 +89,17 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
                         ? 'icosahedron'
                         : 'cube';
 
-    const handlePickVariant = (next: 'cube' | 'megaminx' | 'pyraminx' | 'octahedron' | 'icosahedron') => {
-        if (next === variant) return;
+    // Show the host's pick immediately; the room prop catches up on response.
+    const [pickedVariant, setPickedVariant] = useState<CubeTacVariant | null>(null);
+    const shownVariant = pickedVariant ?? variant;
+
+    const handlePickVariant = (next: CubeTacVariant) => {
+        if (next === shownVariant) return;
+        setPickedVariant(next);
         router.post(
             route('rooms.pickVariant', [gameSlug, room.room_code]),
             { variant: next },
-            { preserveScroll: true, preserveState: true },
+            { preserveScroll: true, preserveState: true, onFinish: () => setPickedVariant(null) },
         );
     };
 
@@ -130,88 +137,63 @@ export default function WaitingPhase({ room, currentPlayer, players, isHost, gam
                 <span className="h-5 w-5" />
             </div>
 
-            <div className="mt-8 flex flex-1 flex-col items-center justify-center gap-6">
-                <h2 className="text-3xl font-black text-yellow-900 drop-shadow-xs sm:text-4xl dark:text-yellow-300">
-                    Share this code
-                </h2>
+            <div className="mt-6 flex flex-1 flex-col items-center justify-center gap-6 lg:flex-row lg:items-center lg:gap-10">
+                <div className="flex flex-col items-center gap-6">
+                    <h2 className="text-3xl font-black text-yellow-900 drop-shadow-xs sm:text-4xl dark:text-yellow-300">
+                        Share this code
+                    </h2>
 
-                {/* Code card */}
-                <button
-                    type="button"
-                    onClick={handleCopyCode}
-                    className="group relative rounded-3xl bg-linear-to-br from-white to-yellow-50 px-10 py-6 shadow-xl border-2 border-yellow-400 hover:border-yellow-500 hover:scale-[1.02] transition dark:from-gray-800 dark:to-gray-900 dark:border-yellow-600/60 dark:hover:border-yellow-500/80"
-                >
-                    <div className="text-5xl font-black tracking-[0.18em] text-yellow-900 sm:text-6xl dark:text-yellow-300">
-                        {room.room_code}
-                    </div>
-                    <div className="mt-2 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-yellow-700 group-hover:text-yellow-800 dark:text-yellow-400 dark:group-hover:text-yellow-300">
-                        {copied ? '✓ Copied!' : 'Tap to copy'}
-                    </div>
-                </button>
+                    {/* Code card */}
+                    <button
+                        type="button"
+                        onClick={handleCopyCode}
+                        className="group relative rounded-3xl bg-linear-to-br from-white to-yellow-50 px-10 py-6 shadow-xl border-2 border-yellow-400 hover:border-yellow-500 hover:scale-[1.02] transition dark:from-gray-800 dark:to-gray-900 dark:border-yellow-600/60 dark:hover:border-yellow-500/80"
+                    >
+                        <div className="text-5xl font-black tracking-[0.18em] text-yellow-900 sm:text-6xl dark:text-yellow-300">
+                            {room.room_code}
+                        </div>
+                        <div className="mt-2 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-yellow-700 group-hover:text-yellow-800 dark:text-yellow-400 dark:group-hover:text-yellow-300">
+                            {copied ? '✓ Copied!' : 'Tap to copy'}
+                        </div>
+                    </button>
 
-                {/* Seats grid */}
-                <div className="grid grid-cols-2 justify-items-center gap-3 sm:grid-cols-3 sm:gap-4">
-                    {Array.from({ length: seatCount }, (_, slot) => {
-                        const player = players[slot] ?? null;
-                        const isSelf = player !== null && currentPlayer?.id === player.id;
-                        const canKick = isHost && player !== null && !isSelf && !player.is_host;
-                        return (
-                            <SeatCard
-                                key={slot}
-                                slot={slot}
-                                player={player}
-                                isSelf={isSelf}
-                                onKick={canKick ? () => handleKick(player!) : undefined}
-                                designOwners={designOwners}
-                                onPickDesign={isSelf ? handlePickDesign : undefined}
-                            />
-                        );
-                    })}
-                </div>
-
-                {/* Variant picker — host chooses the playing surface; locked once the match starts. */}
-                <div className="mt-2 flex flex-col items-center gap-2">
-                    <div className="text-[10px] font-black uppercase tracking-[0.35em] text-yellow-900/70 dark:text-yellow-300/70">
-                        Playing surface
-                    </div>
-                    <div className="inline-flex flex-wrap justify-center rounded-full border-2 border-yellow-400 bg-white/80 p-1 shadow-md dark:bg-gray-800/80 dark:border-yellow-600/60">
-                        {(['cube', 'megaminx', 'pyraminx', 'octahedron', 'icosahedron'] as const).map((v) => {
-                            const selected = v === variant;
-                            const label =
-                                v === 'cube'
-                                    ? 'Cube · 6 faces'
-                                    : v === 'megaminx'
-                                        ? 'Megaminx · 12 faces'
-                                        : v === 'pyraminx'
-                                            ? 'Pyraminx · 4 faces'
-                                            : v === 'octahedron'
-                                                ? 'Octahedron · 8 faces'
-                                                : 'Icosahedron · 20 faces';
+                    {/* Seats grid */}
+                    <div className="grid grid-cols-2 justify-items-center gap-3 sm:grid-cols-3 sm:gap-4">
+                        {Array.from({ length: seatCount }, (_, slot) => {
+                            const player = players[slot] ?? null;
+                            const isSelf = player !== null && currentPlayer?.id === player.id;
+                            const canKick = isHost && player !== null && !isSelf && !player.is_host;
                             return (
-                                <button
-                                    key={v}
-                                    type="button"
-                                    onClick={isHost ? () => handlePickVariant(v) : undefined}
-                                    disabled={!isHost}
-                                    aria-pressed={selected}
-                                    className={`rounded-full px-4 py-1.5 text-xs font-black uppercase tracking-[0.18em] transition ${
-                                        selected
-                                            ? 'bg-linear-to-r from-orange-500 to-pink-500 text-white shadow-md'
-                                            : 'text-yellow-900 hover:bg-yellow-100/70 dark:text-yellow-300 dark:hover:bg-yellow-900/30'
-                                    } ${!isHost ? 'cursor-not-allowed opacity-70' : ''}`}
-                                >
-                                    {label}
-                                </button>
+                                <SeatCard
+                                    key={slot}
+                                    slot={slot}
+                                    player={player}
+                                    isSelf={isSelf}
+                                    onKick={canKick ? () => handleKick(player!) : undefined}
+                                    designOwners={designOwners}
+                                    onPickDesign={isSelf ? handlePickDesign : undefined}
+                                />
                             );
                         })}
                     </div>
+                </div>
+
+                {/* Playing surface — host chooses; everyone sees the live preview. */}
+                <div className="flex w-full max-w-xl flex-col items-center gap-3">
+                    <div className="text-[10px] font-black uppercase tracking-[0.35em] text-yellow-900/70 dark:text-yellow-300/70">
+                        Playing surface
+                    </div>
+                    <VariantPreview variant={shownVariant} className="h-[220px] w-full sm:h-[280px]" />
+                    <VariantPicker value={shownVariant} onChange={isHost ? handlePickVariant : undefined} />
                     {!isHost && (
                         <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-yellow-900/50 dark:text-yellow-300/50">
                             Host picks the variant
                         </div>
                     )}
                 </div>
+            </div>
 
+            <div className="mt-6 flex flex-col items-center gap-2">
                 {canStart ? (
                     <button
                         type="button"
@@ -258,7 +240,6 @@ function SeatCard({ slot, player, isSelf, onKick, designOwners, onPickDesign }: 
     // Only filled seats render the player's chosen glyph; empty seats show a
     // neutral "?" so an empty slot doesn't look like it's already been claimed.
     const design = designFor(player, slot);
-    const char = player ? SLOT_CHARS[design] ?? '?' : '?';
     const color = player?.avatar_color ?? '#94a3b8';
 
     const voiceChat = useVoiceChatOptional();
@@ -372,7 +353,7 @@ function SeatCard({ slot, player, isSelf, onKick, designOwners, onPickDesign }: 
                             </span>
                         </>
                     ) : (
-                        <span>{char}</span>
+                        <SlotGlyph design={player ? design : null} className="h-7 w-7" />
                     )}
                 </button>
                 <span className="max-w-full truncate text-sm font-black text-gray-900 dark:text-gray-100">
@@ -473,7 +454,7 @@ function DesignPicker({ currentDesign, designOwners, selfPlayerId, onPick }: Des
             role="radiogroup"
             aria-label="Choose your design"
         >
-            {SLOT_CHARS.map((char, design) => {
+            {DESIGN_NAMES.map((_, design) => {
                 const owner = designOwners.get(design);
                 const takenByOther = owner !== undefined && owner !== selfPlayerId;
                 const isCurrent = design === currentDesign;
@@ -500,7 +481,7 @@ function DesignPicker({ currentDesign, designOwners, selfPlayerId, onPick }: Des
                             color: isCurrent ? '#fff' : color,
                         }}
                     >
-                        {char}
+                        <SlotGlyph design={design} className="h-3.5 w-3.5" />
                     </button>
                 );
             })}

@@ -5,8 +5,11 @@
  * an inline style (Tailwind JIT can't synthesize dynamic hex colors).
  */
 
-import { Suspense, lazy, useMemo, type CSSProperties } from 'react';
+import { Suspense, lazy, useEffect, useMemo, type CSSProperties } from 'react';
 import { Marks, indexOf } from '@/lib/rubikCube';
+import Confetti from '@/Components/Confetti';
+import { useSound } from '@/hooks/useSound';
+import { toIndexGroups, vibrate } from './gameFeedback';
 
 const CubeScene = lazy(() => import('./CubeScene'));
 const MegaminxScene = lazy(() => import('./MegaminxScene'));
@@ -80,6 +83,7 @@ export default function FinishedPhase({
         return set;
     }, [winningLines]);
 
+    const lineGroups = useMemo(() => toIndexGroups(winningLines), [winningLines]);
     const playerColors = useMemo(() => players.map((p) => p.avatar_color), [players]);
     const playerDesigns = useMemo(() => players.map((p, slot) => p.design ?? slot), [players]);
 
@@ -87,6 +91,30 @@ export default function FinishedPhase({
     const winnerPlayer = !isDraw && typeof winner === 'number' ? players[winner] ?? null : null;
     const winnerColor = winnerPlayer?.avatar_color ?? '#f9b233';
     const didIWin = mySlot !== null && mySlot === winner;
+    // Hotseat (no viewer slot) celebrates every win; online only the winner's screen does.
+    const celebrate = !isDraw && (mySlot === null || didIWin);
+
+    const { play: playVictory } = useSound('/sounds/cheese-thief/victory.mp3', { volume: 0.7 });
+    const { play: playDefeat } = useSound('/sounds/cheese-thief/defeat.mp3', { volume: 0.7 });
+    useEffect(() => {
+        if (celebrate) {
+            playVictory();
+            vibrate([200, 100, 200]);
+        } else if (!isDraw) {
+            playDefeat();
+            vibrate(300);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const sceneProps = {
+        marks,
+        playerColors,
+        designs: playerDesigns,
+        winningIndices,
+        winLines: lineGroups,
+        interactive: false,
+    };
 
     const headline = isDraw
         ? 'Draw!'
@@ -110,47 +138,19 @@ export default function FinishedPhase({
             <div className="relative flex-1 min-h-0">
                 <Suspense fallback={<div className="h-full" />}>
                     {isMegaminx ? (
-                        <MegaminxScene
-                            marks={marks}
-                            playerColors={playerColors}
-                            designs={playerDesigns}
-                            winningIndices={winningIndices}
-                            interactive={false}
-                        />
+                        <MegaminxScene {...sceneProps} />
                     ) : isPyraminx ? (
-                        <PyraminxScene
-                            marks={marks}
-                            playerColors={playerColors}
-                            designs={playerDesigns}
-                            winningIndices={winningIndices}
-                            interactive={false}
-                        />
+                        <PyraminxScene {...sceneProps} />
                     ) : isOctahedron ? (
-                        <OctahedronScene
-                            marks={marks}
-                            playerColors={playerColors}
-                            designs={playerDesigns}
-                            winningIndices={winningIndices}
-                            interactive={false}
-                        />
+                        <OctahedronScene {...sceneProps} />
                     ) : isIcosahedron ? (
-                        <IcosahedronScene
-                            marks={marks}
-                            playerColors={playerColors}
-                            designs={playerDesigns}
-                            winningIndices={winningIndices}
-                            interactive={false}
-                        />
+                        <IcosahedronScene {...sceneProps} />
                     ) : (
-                        <CubeScene
-                            marks={marks}
-                            playerColors={playerColors}
-                            designs={playerDesigns}
-                            winningIndices={winningIndices}
-                            interactive={false}
-                        />
+                        <CubeScene {...sceneProps} />
                     )}
                 </Suspense>
+
+                {celebrate && <Confetti colors={[winnerColor, '#f59e0b', '#ffffff', '#ec4899', '#10b981']} />}
 
                 {/* Reveal overlay */}
                 <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-start pt-8 sm:pt-14">

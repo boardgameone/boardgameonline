@@ -9,6 +9,8 @@ import GameLayout from '@/Layouts/GameLayout';
 import WaitingPhase from '@/Pages/Rooms/CubeTac/WaitingPhase';
 import PlayingPhase from '@/Pages/Rooms/CubeTac/PlayingPhase';
 import FinishedPhase from '@/Pages/Rooms/CubeTac/FinishedPhase';
+import ActionToast from '@/Pages/Rooms/CubeTac/components/ActionToast';
+import { toIndexGroups, useFinishReveal } from '@/Pages/Rooms/CubeTac/gameFeedback';
 import type { CubeSceneHandle } from '@/Pages/Rooms/CubeTac/CubeScene';
 import type { MegaminxSceneHandle } from '@/Pages/Rooms/CubeTac/MegaminxScene';
 import type { PyraminxSceneHandle } from '@/Pages/Rooms/CubeTac/PyraminxScene';
@@ -18,12 +20,12 @@ import { VoiceChatProvider } from '@/Contexts/VoiceChatContext';
 import VoiceGalleryPanel from '@/Components/VoiceGalleryPanel';
 import { GamePlayer, GameRoom, PageProps } from '@/types';
 import { Head, Link, router, useForm, usePoll } from '@inertiajs/react';
-import { FormEventHandler, ReactNode, useRef } from 'react';
-import { Marks, Move } from '@/lib/rubikCube';
-import type { Direction as MegaDirection } from '@/lib/megaminx';
-import type { Direction as PyraDirection } from '@/lib/pyraminx';
-import type { Direction as OctaDirection } from '@/lib/octahedron';
-import type { Direction as IcosaDirection } from '@/lib/icosahedron';
+import { FormEventHandler, ReactNode, useMemo, useRef, useState } from 'react';
+import { Marks, Move, indexOf } from '@/lib/rubikCube';
+import { indexOf as megaIndexOf, type Direction as MegaDirection } from '@/lib/megaminx';
+import { indexOf as pyraIndexOf, type Direction as PyraDirection } from '@/lib/pyraminx';
+import { indexOf as octaIndexOf, type Direction as OctaDirection } from '@/lib/octahedron';
+import { indexOf as icosaIndexOf, type Direction as IcosaDirection } from '@/lib/icosahedron';
 
 interface CubeTacPlayer {
     id: number;
@@ -110,12 +112,33 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
         post(route('rooms.joinDirect', [gameSlug, room.room_code]));
     };
 
+    // Our own mark shows up instantly (as a pending mark) while the POST is
+    // in flight; the server's response replaces it either way.
+    const [optimisticMark, setOptimisticMark] = useState<{ index: number; action: Record<string, unknown> } | null>(null);
+
+    const postMark = (routeName: string, payload: Record<string, number>, index: number, actionType: string) => {
+        if (gameState && gameState.my_slot !== null) {
+            setOptimisticMark({
+                index,
+                action: { type: actionType, ...payload, player: gameState.my_slot, move_id: gameState.move_count + 1 },
+            });
+        }
+        router.post(route(routeName, [gameSlug, room.room_code]), payload, {
+            preserveScroll: true,
+            preserveState: true,
+            onFinish: () => setOptimisticMark(null),
+        });
+    };
+
+    const displayedMarks = useMemo(() => {
+        if (!gameState || !optimisticMark || gameState.my_slot === null) return gameState?.marks ?? [];
+        const next = [...gameState.marks];
+        next[optimisticMark.index] = gameState.my_slot;
+        return next;
+    }, [gameState, optimisticMark]);
+
     const handleMark = (face: number, row: number, col: number) => {
-        router.post(
-            route('rooms.cubetac.mark', [gameSlug, room.room_code]),
-            { face, row, col },
-            { preserveScroll: true, preserveState: true },
-        );
+        postMark('rooms.cubetac.mark', { face, row, col }, indexOf(face, row, col), 'mark');
     };
 
     const handleRotate = (move: Move) => {
@@ -131,11 +154,7 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
     };
 
     const handleMegaMark = (face: number, slot: number) => {
-        router.post(
-            route('rooms.cubetac.megaMark', [gameSlug, room.room_code]),
-            { face, slot },
-            { preserveScroll: true, preserveState: true },
-        );
+        postMark('rooms.cubetac.megaMark', { face, slot }, megaIndexOf(face, slot), 'mega_mark');
     };
 
     const handleMegaRotate = (face: number, direction: MegaDirection) => {
@@ -150,11 +169,7 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
     };
 
     const handlePyraMark = (face: number, slot: number) => {
-        router.post(
-            route('rooms.cubetac.pyraMark', [gameSlug, room.room_code]),
-            { face, slot },
-            { preserveScroll: true, preserveState: true },
-        );
+        postMark('rooms.cubetac.pyraMark', { face, slot }, pyraIndexOf(face, slot), 'pyra_mark');
     };
 
     const handlePyraRotate = (face: number, direction: PyraDirection) => {
@@ -168,11 +183,7 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
     };
 
     const handleOctaMark = (face: number, slot: number) => {
-        router.post(
-            route('rooms.cubetac.octaMark', [gameSlug, room.room_code]),
-            { face, slot },
-            { preserveScroll: true, preserveState: true },
-        );
+        postMark('rooms.cubetac.octaMark', { face, slot }, octaIndexOf(face, slot), 'octa_mark');
     };
 
     const handleOctaRotate = (face: number, direction: OctaDirection) => {
@@ -186,11 +197,7 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
     };
 
     const handleIcosaMark = (face: number, slot: number) => {
-        router.post(
-            route('rooms.cubetac.icosaMark', [gameSlug, room.room_code]),
-            { face, slot },
-            { preserveScroll: true, preserveState: true },
-        );
+        postMark('rooms.cubetac.icosaMark', { face, slot }, icosaIndexOf(face, slot), 'icosa_mark');
     };
 
     const handleIcosaRotate = (face: number, direction: IcosaDirection) => {
@@ -233,6 +240,27 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
 
     const connectedPlayers = (room.players ?? []).filter((p) => p.is_connected);
 
+    // Keep the live board up for a beat when the game ends so the final
+    // rotation finishes and the winning line can be seen in place.
+    const isFinished = room.status === 'finished';
+    const showFinished = useFinishReveal(isFinished, () => {
+        switch (variant) {
+            case 'megaminx': return megaRef.current;
+            case 'pyraminx': return pyraRef.current;
+            case 'octahedron': return octaRef.current;
+            case 'icosahedron': return icosaRef.current;
+            default: return cubeRef.current;
+        }
+    });
+    const winningLines = useMemo(
+        () => (gameState?.winning_lines ?? []).map((l) => ({
+            face: l.face,
+            cells: l.cells as Array<[number, number]> | number[],
+            player: l.player,
+        })),
+        [gameState?.winning_lines],
+    );
+
     const content: ReactNode = wasKicked ? (
         <KickedNotice gameSlug={gameSlug} />
     ) : needsToJoin && isGuest ? (
@@ -251,7 +279,7 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
             isHost={isHost}
             gameSlug={gameSlug}
         />
-    ) : gameState && room.status === 'playing' ? (
+    ) : gameState && (room.status === 'playing' || (isFinished && !showFinished)) ? (
         <PlayingPhase
             cubeRef={cubeRef}
             megaRef={megaRef}
@@ -259,7 +287,7 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
             octaRef={octaRef}
             icosaRef={icosaRef}
             variant={variant}
-            marks={gameState.marks}
+            marks={displayedMarks}
             currentTurn={gameState.current_turn}
             moveCount={gameState.move_count}
             moveLimit={gameState.move_limit}
@@ -267,8 +295,8 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
             mySlot={gameState.my_slot}
             currentPlayerId={currentPlayer?.id ?? null}
             isMyTurn={gameState.is_my_turn}
-            pendingAction={gameState.pending_action}
-            lastAction={gameState.last_action}
+            pendingAction={gameState.pending_action || optimisticMark !== null}
+            lastAction={optimisticMark?.action ?? gameState.last_action}
             onMark={handleMark}
             onRotate={handleRotate}
             onMegaMark={handleMegaMark}
@@ -283,17 +311,15 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
             onUndoMark={handleUndoMark}
             onLeave={handleLeave}
             gamesPlayed={room.games_played ?? 0}
+            outcome={isFinished ? gameState.winner ?? 'draw' : null}
+            winLines={isFinished ? toIndexGroups(winningLines) : undefined}
         />
-    ) : gameState && room.status === 'finished' ? (
+    ) : gameState && isFinished ? (
         <FinishedPhase
             variant={variant}
             marks={gameState.marks}
             winner={gameState.winner ?? 'draw'}
-            winningLines={gameState.winning_lines.map((l) => ({
-                face: l.face,
-                cells: l.cells as Array<[number, number]> | number[],
-                player: l.player,
-            }))}
+            winningLines={winningLines}
             players={gameState.players.map((p, slot) => ({
                 id: p?.id ?? null,
                 nickname: p?.nickname ?? `Player ${slot + 1}`,
@@ -330,6 +356,7 @@ export default function CubeTacGamePage({ auth, room, currentPlayer, isHost, gam
                 ) : (
                     content
                 )}
+                <ActionToast />
             </div>
         </GameLayout>
     );

@@ -267,4 +267,47 @@ class CubeTacOctahedronTest extends TestCase
             ])
             ->assertSessionHasErrors('error');
     }
+
+    public function test_octa_mark_can_be_undone_before_confirming(): void
+    {
+        $data = $this->makeRoom('octahedron');
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.start', [$data['game']->slug, $data['room']->room_code]));
+
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.octaMark', [$data['game']->slug, $data['room']->room_code]), [
+                'face' => 0,
+                'slot' => 1,
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.undoMark', [$data['game']->slug, $data['room']->room_code]))
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $room = $data['room']->fresh();
+        $this->assertNull($room->settings['marks'][OctahedronCube::indexOf(0, 1)]);
+        $this->assertFalse($room->settings['pending_action']);
+        $this->assertNull($room->settings['last_action']);
+        $this->assertSame(0, $room->settings['move_count']);
+        $this->assertSame(0, $room->settings['current_turn']);
+    }
+
+    public function test_octa_undo_rejects_when_last_action_was_a_rotation(): void
+    {
+        $data = $this->makeRoom('octahedron');
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.start', [$data['game']->slug, $data['room']->room_code]));
+
+        $room = $data['room']->fresh();
+        $settings = $room->settings;
+        $settings['pending_action'] = true;
+        $settings['last_action'] = ['type' => 'octa_rotate', 'player' => 0, 'face' => 0, 'direction' => 'cw', 'move_id' => 1];
+        $room->update(['settings' => $settings]);
+
+        $this->actingAs($data['host'])
+            ->post(route('rooms.cubetac.undoMark', [$data['game']->slug, $data['room']->room_code]))
+            ->assertSessionHasErrors('error');
+    }
 }
