@@ -15,6 +15,8 @@ import { Direction } from '@/lib/octahedron';
 interface OctaRotateControlsProps {
     onRotate: (face: number, direction: Direction) => void;
     disabled: boolean;
+    /** Called with the face under the pointer / focus so the scene can preview the layer; `null` on leave. */
+    onPreview?: (target: number | null) => void;
 }
 
 interface FaceConfig {
@@ -121,7 +123,7 @@ const FACES: FaceConfig[] = [
     },
 ];
 
-export default function OctaRotateControls({ onRotate, disabled }: OctaRotateControlsProps) {
+export default function OctaRotateControls({ onRotate, disabled, onPreview }: OctaRotateControlsProps) {
     // Keyboard shortcut: 1..8 trigger CW rotation of face 0..7; Shift+1..8 CCW.
     useEffect(() => {
         if (disabled) {
@@ -167,7 +169,14 @@ export default function OctaRotateControls({ onRotate, disabled }: OctaRotateCon
             </div>
             <div className="grid grid-cols-4 gap-2">
                 {FACES.map((face) => (
-                    <div key={face.name} className="flex flex-col items-center gap-1">
+                    <div
+                        key={face.name}
+                        className="flex flex-col items-center gap-1"
+                        onMouseEnter={() => !disabled && onPreview?.(face.index)}
+                        onMouseLeave={() => onPreview?.(null)}
+                        onFocus={() => !disabled && onPreview?.(face.index)}
+                        onBlur={() => onPreview?.(null)}
+                    >
                         <div
                             className={`rounded-full px-2.5 py-0.5 text-[10px] font-black tracking-wider ${face.tint.labelBg} ${face.tint.labelText}`}
                         >

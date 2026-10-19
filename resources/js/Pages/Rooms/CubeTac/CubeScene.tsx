@@ -1,9 +1,8 @@
 /**
  * The 3D CubeTac cube scene (React Three Fiber).
  *
- * Light-theme variant: transparent canvas background so the parent page's
- * gradient shows through, bright lighting, soft matte cubies with glowing
- * X/O glyphs that read well against a light backdrop.
+ * Transparent canvas background so the parent page's gradient shows
+ * through, bright lighting, navy matte cubies with self-lit glyphs.
  *
  * Rotation animation is handled internally: the parent calls the imperative
  * `playMove(move)` handle via a ref, and CubeScene splits the 9 layer cubies
@@ -11,10 +10,13 @@
  * `displayedMarks` is buffered so the marks prop can update freely without
  * causing a mid-animation snap — the handoff at t=1 advances displayedMarks
  * via `apply()` atomically.
+ *
+ * Click, hover, pop-in, last-move and win-line feedback come from the
+ * shared helpers in `sceneInteraction.tsx`.
  */
 
 import { Canvas, ThreeEvent, useFrame, useThree } from '@react-three/fiber';
-import { Environment, Html, OrbitControls, Text } from '@react-three/drei';
+import { Environment, Html, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import {
     ReactNode,
@@ -41,11 +43,26 @@ import {
     Move,
     apply,
     faceNormal,
+    faceRowCol,
     indexOf,
     moveParams,
     sticker3D,
 } from '@/lib/rubikCube';
 import MarkGlyph from './MarkGlyph';
+import {
+    PopIn,
+    PulseOutline,
+    SceneCamera,
+    type SceneCameraHandle,
+    type SceneViewHandle,
+    type Vec3,
+    type WinLineSpec,
+    WinLines,
+    isTap,
+    marksEqual,
+    useCellHover,
+    waitUntilIdle,
+} from './sceneInteraction';
 
 const FACE_DISPLAY_NAMES: Record<Face, string> = {
     0: 'Up',
@@ -76,7 +93,7 @@ const FACE_LABEL_COLORS: Record<Face, { bg: string; text: string }> = {
 
 export type StickerClickHandler = (face: number, row: number, col: number) => void;
 
-export interface CubeSceneHandle {
+export interface CubeSceneHandle extends SceneViewHandle {
     /** Queue a rotation animation. Resolves when this specific move finishes. */
     playMove: (move: Move) => Promise<void>;
 }
@@ -106,6 +123,20 @@ interface CubeSceneProps {
     pendingIndex?: number | null;
     onStickerClick?: StickerClickHandler;
     interactive: boolean;
+    /** Each winning line as flat indices; drawn as a glowing stroke. */
+    winLines?: number[][];
+    /** Translucent preview of the viewer's glyph on the hovered empty sticker. */
+    ghost?: { color: string; design: number } | null;
+    /** Most recent mark — gets a pulsing outline. */
+    lastMoveIndex?: number | null;
+    /** `${moveId}:${index}` of the newest mark so its glyph pops in once. */
+    popToken?: string | null;
+    /** Move whose layer is being previewed (rotate-button hover). */
+    highlightMove?: Move | null;
+    /** An opponent's rotation to replay; a new `id` triggers the animation. */
+    remoteMove?: { id: number; move: Move } | null;
+    autoRotate?: boolean;
+    controlsEnabled?: boolean;
 }
 
 const FALLBACK_GLYPH_COLOR = '#94a3b8'; // slate-400
@@ -122,7 +153,23 @@ interface Animation {
 const DEFAULT_DURATION_MS = 280;
 
 const CubeScene = forwardRef<CubeSceneHandle, CubeSceneProps>(function CubeScene(
-    { marks, playerColors, designs, winningIndices, pendingIndex, onStickerClick, interactive },
+    {
+        marks,
+        playerColors,
+        designs,
+        winningIndices,
+        pendingIndex,
+        onStickerClick,
+        interactive,
+        winLines,
+        ghost = null,
+        lastMoveIndex = null,
+        popToken = null,
+        highlightMove = null,
+        remoteMove = null,
+        autoRotate = false,
+        controlsEnabled = true,
+    },
     ref,
 ) {
     const [displayedMarks, setDisplayedMarks] = useState<Marks>(marks);
@@ -130,67 +177,28 @@ const CubeScene = forwardRef<CubeSceneHandle, CubeSceneProps>(function CubeScene
     const queueRef = useRef<Array<{ move: Move; resolve: () => void }>>([]);
     const isAnimatingRef = useRef(false);
     const marksRef = useRef(marks);
-    // Drei's OrbitControls ref resolves to three's own OrbitControls class;
-    // we only need the quarter-turn helpers (`rotateLeft`/`rotateUp`/`update`).
-    // Typed loosely and cast at the ref= site below.
-    const orbitControlsRef = useRef<OrbitControlsImpl | null>(null);
-    const heldArrowKeysRef = useRef<Set<string>>(new Set());
-
-    useEffect(() => {
-        const isArrow = (key: string) =>
-            key === 'ArrowLeft' || key === 'ArrowRight' || key === 'ArrowUp' || key === 'ArrowDown';
-
-        const onKeyDown = (e: KeyboardEvent) => {
-            if (!isArrow(e.key)) return;
-            const target = e.target as HTMLElement | null;
-            if (
-                target?.tagName === 'INPUT'
-                || target?.tagName === 'TEXTAREA'
-                || target?.isContentEditable
-            ) {
-                return;
-            }
-            e.preventDefault();
-            heldArrowKeysRef.current.add(e.key);
-        };
-        const onKeyUp = (e: KeyboardEvent) => {
-            if (!isArrow(e.key)) return;
-            heldArrowKeysRef.current.delete(e.key);
-        };
-        const onBlur = () => {
-            heldArrowKeysRef.current.clear();
-        };
-        window.addEventListener('keydown', onKeyDown);
-        window.addEventListener('keyup', onKeyUp);
-        window.addEventListener('blur', onBlur);
-        return () => {
-            window.removeEventListener('keydown', onKeyDown);
-            window.removeEventListener('keyup', onKeyUp);
-            window.removeEventListener('blur', onBlur);
-        };
-    }, []);
+    const marksAtQueueStartRef = useRef<Marks>(marks);
+    const forceReconcileRef = useRef(false);
+    const cameraRef = useRef<SceneCameraHandle>(null);
+    const seenRemoteIdRef = useRef<number | null>(remoteMove?.id ?? null);
 
     // Always track the latest marks prop so completion handlers can reconcile.
-    useEffect(() => {
-        marksRef.current = marks;
-    }, [marks]);
-
-    // Idle sync: when no animation is running or queued, accept the prop
-    // directly. During an animation this effect still runs but is a no-op,
-    // and `startNext` explicitly reconciles from `marksRef` at drain time.
-    useEffect(() => {
-        if (!isAnimatingRef.current && queueRef.current.length === 0) {
-            setDisplayedMarks(marks);
-        }
-    }, [marks]);
+    marksRef.current = marks;
 
     const startNext = useCallback(() => {
         const next = queueRef.current.shift();
         if (!next) {
             isAnimatingRef.current = false;
-            // Catch any prop updates (e.g. opponent moves via poll) that
-            // arrived during the animation sequence.
-            setDisplayedMarks((prev) => (marksRef.current !== prev ? marksRef.current : prev));
+            // Reconcile with the authoritative prop only if it changed while
+            // we were animating (or a remote replay asked for it). Otherwise
+            // keep the locally-applied result so a slow POST doesn't snap
+            // the board back to the pre-rotation marks for a frame.
+            const shouldReconcile = forceReconcileRef.current
+                || !marksEqual(marksRef.current, marksAtQueueStartRef.current);
+            forceReconcileRef.current = false;
+            if (shouldReconcile) {
+                setDisplayedMarks(marksRef.current);
+            }
             return;
         }
         const { move, resolve } = next;
@@ -222,6 +230,9 @@ const CubeScene = forwardRef<CubeSceneHandle, CubeSceneProps>(function CubeScene
     const playMove = useCallback(
         (move: Move) =>
             new Promise<void>((resolve) => {
+                if (!isAnimatingRef.current && queueRef.current.length === 0) {
+                    marksAtQueueStartRef.current = marksRef.current;
+                }
                 queueRef.current.push({ move, resolve });
                 if (!isAnimatingRef.current) {
                     startNext();
@@ -230,7 +241,41 @@ const CubeScene = forwardRef<CubeSceneHandle, CubeSceneProps>(function CubeScene
         [startNext],
     );
 
-    useImperativeHandle(ref, () => ({ playMove }), [playMove]);
+    // Opponent rotation replay. Declared before the idle-sync effect so the
+    // queue is already busy when that effect sees the post-rotation marks.
+    useEffect(() => {
+        if (!remoteMove || remoteMove.id === seenRemoteIdRef.current) return;
+        seenRemoteIdRef.current = remoteMove.id;
+        forceReconcileRef.current = true;
+        playMove(remoteMove.move);
+    }, [remoteMove, playMove]);
+
+    // Idle sync: when no animation is running or queued, accept the prop
+    // directly. During an animation this is a no-op and `startNext`
+    // reconciles from `marksRef` at drain time.
+    useEffect(() => {
+        if (!isAnimatingRef.current && queueRef.current.length === 0) {
+            setDisplayedMarks(marks);
+        }
+    }, [marks]);
+
+    useImperativeHandle(ref, () => ({
+        playMove,
+        idle: () => waitUntilIdle(() => isAnimatingRef.current || queueRef.current.length > 0),
+        lookAtFace: (face) => cameraRef.current?.lookAt(faceNormal(face)),
+        resetView: () => cameraRef.current?.reset(),
+    }), [playMove]);
+
+    const winLineSpecs = useMemo<WinLineSpec[]>(() => {
+        if (!winLines?.length) return [];
+        return winLines.map((cells) => {
+            const owner = displayedMarks[cells[0]];
+            return {
+                points: cells.map((idx) => stickerSurfacePoint(idx, 0.62)),
+                color: owner !== null && owner !== undefined ? playerColors[owner] ?? '#ffffff' : '#ffffff',
+            };
+        });
+    }, [winLines, displayedMarks, playerColors]);
 
     return (
         <Canvas
@@ -245,8 +290,12 @@ const CubeScene = forwardRef<CubeSceneHandle, CubeSceneProps>(function CubeScene
             <pointLight position={[-4, 4, -3]} intensity={0.5} color="#5b9bd5" distance={16} />
             <pointLight position={[4, -2, 3]} intensity={0.5} color="#ff8a3d" distance={16} />
 
+            {/* The HDR is fetched from a CDN; keep it in its own boundary so
+                the cube renders immediately instead of waiting on it. */}
             <Suspense fallback={null}>
                 <Environment preset="apartment" />
+            </Suspense>
+            <Suspense fallback={null}>
                 <CubeRoot
                     marks={displayedMarks}
                     playerColors={playerColors}
@@ -255,78 +304,31 @@ const CubeScene = forwardRef<CubeSceneHandle, CubeSceneProps>(function CubeScene
                     onAnimationComplete={onAnimationComplete}
                     winningIndices={winningIndices}
                     pendingIndex={pendingIndex ?? null}
-                    onStickerClick={interactive ? onStickerClick : undefined}
+                    onStickerClick={interactive && !animation ? onStickerClick : undefined}
+                    ghost={ghost}
+                    lastMoveIndex={lastMoveIndex}
+                    popToken={popToken}
+                    highlightMove={animation ? null : highlightMove}
+                    showLabels={!autoRotate}
                 />
+                {winLineSpecs.length > 0 && !animation && <WinLines lines={winLineSpecs} />}
             </Suspense>
 
-            <OrbitControls
-                // Drei's ref type is the full three.js OrbitControls; we only
-                // need a structural subset — cast to any to avoid pulling in
-                // all of three's types for this single prop.
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                ref={orbitControlsRef as any}
-                makeDefault
-                enablePan={false}
+            <SceneCamera
+                ref={cameraRef}
                 minDistance={5.8}
                 maxDistance={11}
                 minPolarAngle={Math.PI * 0.18}
                 maxPolarAngle={Math.PI * 0.82}
-                rotateSpeed={0.7}
+                autoRotate={autoRotate}
+                enabled={controlsEnabled}
+                arrowKeys={!autoRotate}
             />
-            <ArrowKeyOrbit controlsRef={orbitControlsRef} heldKeysRef={heldArrowKeysRef} />
         </Canvas>
     );
 });
 
 export default CubeScene;
-
-// -----------------------------------------------------------------------------
-// Arrow-key camera orbit — held keys are tracked in a Set and applied every
-// frame via `ArrowKeyOrbit` below, so hold-to-rotate mirrors the cadence of
-// mouse drag instead of OS key-repeat (which stalls ~500ms before firing).
-// -----------------------------------------------------------------------------
-
-const ORBIT_SPEED_RAD_PER_SEC = Math.PI * 6; // ~1080°/sec
-
-// Minimal subset of OrbitControls we call. Drei hands back three-stdlib's
-// OrbitControls instance, which exposes spherical-angle getters/setters but
-// keeps `rotateLeft` / `rotateUp` as private closures — so we drive the
-// camera by reading and writing the azimuthal/polar angles directly.
-interface OrbitControlsImpl {
-    getAzimuthalAngle: () => number;
-    getPolarAngle: () => number;
-    setAzimuthalAngle: (angle: number) => void;
-    setPolarAngle: (angle: number) => void;
-}
-
-function ArrowKeyOrbit({
-    controlsRef,
-    heldKeysRef,
-}: {
-    controlsRef: React.MutableRefObject<OrbitControlsImpl | null>;
-    heldKeysRef: React.MutableRefObject<Set<string>>;
-}) {
-    useFrame((_, delta) => {
-        const held = heldKeysRef.current;
-        if (held.size === 0) return;
-        const controls = controlsRef.current;
-        if (!controls) return;
-        const step = ORBIT_SPEED_RAD_PER_SEC * delta;
-        let dx = 0;
-        let dy = 0;
-        if (held.has('ArrowLeft')) dx -= step;
-        if (held.has('ArrowRight')) dx += step;
-        if (held.has('ArrowUp')) dy -= step;
-        if (held.has('ArrowDown')) dy += step;
-        if (dx !== 0) {
-            controls.setAzimuthalAngle(controls.getAzimuthalAngle() - dx);
-        }
-        if (dy !== 0) {
-            controls.setPolarAngle(controls.getPolarAngle() - dy);
-        }
-    });
-    return null;
-}
 
 // -----------------------------------------------------------------------------
 // CubeRoot — renders all 26 cubies + their visible stickers, splitting the
@@ -344,6 +346,12 @@ interface CubeRootProps {
     winningIndices?: Set<number>;
     pendingIndex: number | null;
     onStickerClick?: StickerClickHandler;
+    ghost: { color: string; design: number } | null;
+    lastMoveIndex: number | null;
+    popToken: string | null;
+    highlightMove: Move | null;
+    /** Floating face-name pills; off for auto-rotating previews. */
+    showLabels: boolean;
 }
 
 const CubeRoot = memo(function CubeRoot({
@@ -355,9 +363,30 @@ const CubeRoot = memo(function CubeRoot({
     winningIndices,
     pendingIndex,
     onStickerClick,
+    ghost,
+    lastMoveIndex,
+    popToken,
+    highlightMove,
+    showLabels,
 }: CubeRootProps) {
     const stickers = useMemo(() => collectStickers(), []);
     const faces: Face[] = [0, 1, 2, 3, 4, 5];
+
+    // Stickers in the layer a hovered rotate button would turn — same
+    // dot-product test as the animation split below.
+    const highlighted = useMemo(() => {
+        if (!highlightMove) return null;
+        const [ax, ay, az] = moveParams()[highlightMove].axis;
+        const len = Math.hypot(ax, ay, az) || 1;
+        const set = new Set<number>();
+        for (const s of stickers) {
+            const p = sticker3D(s.face, s.row, s.col);
+            if ((p[0] * ax + p[1] * ay + p[2] * az) / len >= 0.5) {
+                set.add(indexOf(s.face, s.row, s.col));
+            }
+        }
+        return set;
+    }, [highlightMove, stickers]);
 
     // Partition cubies and stickers into { inLayer, static } whenever an
     // animation starts or ends. This dot-product test mirrors the one used
@@ -407,6 +436,7 @@ const CubeRoot = memo(function CubeRoot({
             : null;
         const isWinning = winningIndices?.has(idx) ?? false;
         const isPending = pendingIndex === idx;
+        const isEmpty = mark === null || mark === undefined;
         return (
             <Sticker
                 key={`sticker-${idx}`}
@@ -418,6 +448,11 @@ const CubeRoot = memo(function CubeRoot({
                 glyphColor={color}
                 isWinning={isWinning}
                 isPending={isPending}
+                isHighlighted={highlighted?.has(idx) ?? false}
+                isLastMove={lastMoveIndex === idx && !isEmpty && !isPending}
+                popToken={popToken?.endsWith(`:${idx}`) ? popToken : null}
+                ghost={isEmpty ? ghost : null}
+                clickable={!!onStickerClick && (isEmpty || isPending)}
                 onClick={onStickerClick}
             />
         );
@@ -439,7 +474,7 @@ const CubeRoot = memo(function CubeRoot({
                 </RotatingLayer>
             )}
 
-            {faces.map((f) => (
+            {showLabels && faces.map((f) => (
                 <FaceLabel key={`label-${f}`} face={f} />
             ))}
         </group>
@@ -532,7 +567,11 @@ function FaceLabel({ face }: FaceLabelProps) {
             position={position}
             center
             distanceFactor={8}
-            pointerEvents="none"
+            // drei only honours `pointerEvents` in transform mode; without
+            // these the label's wrapper boxes swallow clicks on stickers
+            // underneath (even for labels hidden behind the cube).
+            wrapperClass="pointer-events-none"
+            style={{ pointerEvents: 'none' }}
             zIndexRange={[10, 0]}
         >
             <div
@@ -603,6 +642,14 @@ interface StickerProps {
     isWinning: boolean;
     /** Current player's unconfirmed mark — renders translucent + outlined. */
     isPending: boolean;
+    /** In the layer a hovered rotate button would turn. */
+    isHighlighted: boolean;
+    /** The most recent mark — gets a pulsing outline in the owner's color. */
+    isLastMove: boolean;
+    popToken: string | null;
+    ghost: { color: string; design: number } | null;
+    /** Tapping does something (mark an empty sticker or undo the pending one). */
+    clickable: boolean;
     onClick?: StickerClickHandler;
 }
 
@@ -610,7 +657,31 @@ const STICKER_SIZE = 0.84;
 const STICKER_OFFSET = 0.49;
 const GLYPH_OFFSET = 0.06;
 
-function Sticker({ face, row, col, mark, design, glyphColor, isWinning, isPending, onClick }: StickerProps) {
+const STICKER_OUTLINE: Vec3[] = [
+    [-STICKER_SIZE / 2, -STICKER_SIZE / 2, 0.012],
+    [STICKER_SIZE / 2, -STICKER_SIZE / 2, 0.012],
+    [STICKER_SIZE / 2, STICKER_SIZE / 2, 0.012],
+    [-STICKER_SIZE / 2, STICKER_SIZE / 2, 0.012],
+];
+
+function Sticker({
+    face,
+    row,
+    col,
+    mark,
+    design,
+    glyphColor,
+    isWinning,
+    isPending,
+    isHighlighted,
+    isLastMove,
+    popToken,
+    ghost,
+    clickable,
+    onClick,
+}: StickerProps) {
+    const hover = useCellHover(clickable);
+
     const { position, rotation } = useMemo(() => {
         const cubiePos = sticker3D(face, row, col);
         const normal = faceNormal(face);
@@ -629,25 +700,32 @@ function Sticker({ face, row, col, mark, design, glyphColor, isWinning, isPendin
     }, [face, row, col]);
 
     const handleClick = (e: ThreeEvent<MouseEvent>) => {
-        // Forward every click — the parent decides whether to mark, undo, or
-        // ignore based on game state. CubeScene used to block marked stickers
-        // here, but that prevented the "click your pending mark to undo" UX.
+        // Forward taps — the parent decides whether to mark, undo, or ignore
+        // based on game state. Drags (orbiting the camera) are swallowed.
         if (!onClick) return;
         e.stopPropagation();
-        onClick(face, row, col);
+        if (isTap(e)) onClick(face, row, col);
     };
 
-    // Background stays light but slightly off-white so the glyphs read
-    // with more contrast. On a winning sticker we glow the owner's color
-    // via the emissive channel so the winning line pops on any of the
-    // six palettes without having to pre-compute tinted backdrops.
+    // Navy plate; a winning sticker glows the owner's color via emissive so
+    // the line pops on any palette. Hover / ghost / layer-preview states
+    // reuse the same channel at lower intensity.
+    const showGhost = hover.hovered && clickable && ghost !== null;
     const stickerColor = mark === null ? '#0f2a7a' : '#1a3585';
-    const emissive = isWinning && glyphColor ? glyphColor : '#000000';
-    const emissiveIntensity = isWinning ? 0.9 : 0;
+    const emissive = isWinning && glyphColor
+        ? glyphColor
+        : showGhost
+            ? ghost.color
+            : isHighlighted
+                ? '#fde047'
+                : hover.hovered && clickable
+                    ? '#ffffff'
+                    : '#000000';
+    const emissiveIntensity = isWinning ? 0.9 : showGhost ? 0.3 : isHighlighted ? 0.22 : hover.hovered && clickable ? 0.15 : 0;
 
     return (
         <group position={position} rotation={rotation}>
-            <mesh onClick={handleClick}>
+            <mesh onClick={handleClick} onPointerOver={hover.onPointerOver} onPointerOut={hover.onPointerOut}>
                 <planeGeometry args={[STICKER_SIZE, STICKER_SIZE]} />
                 <meshStandardMaterial
                     color={stickerColor}
@@ -665,22 +743,25 @@ function Sticker({ face, row, col, mark, design, glyphColor, isWinning, isPendin
                 <edgesGeometry args={[new THREE.PlaneGeometry(STICKER_SIZE, STICKER_SIZE)]} />
                 <lineBasicMaterial color="#8ba3c9" transparent opacity={0.35} />
             </lineSegments>
-            {isPending && glyphColor && (
-                <lineSegments position={[0, 0, 0.01]}>
-                    <edgesGeometry args={[new THREE.PlaneGeometry(STICKER_SIZE * 1.02, STICKER_SIZE * 1.02)]} />
-                    <lineBasicMaterial color={glyphColor} transparent={false} />
-                </lineSegments>
+            {(isPending || isLastMove) && glyphColor && (
+                <PulseOutline points={STICKER_OUTLINE} color={glyphColor} width={isPending ? 2.5 : 3.5} />
             )}
 
             {mark !== null && mark !== undefined && (
-                <MarkGlyph
-                    design={design ?? mark}
-                    color={glyphColor ?? FALLBACK_GLYPH_COLOR}
-                    opacity={isPending ? 0.55 : 1}
-                />
+                <PopIn token={popToken}>
+                    <MarkGlyph
+                        design={design ?? mark}
+                        color={glyphColor ?? FALLBACK_GLYPH_COLOR}
+                        opacity={isPending ? 0.55 : 1}
+                    />
+                </PopIn>
             )}
 
-            {row === 1 && col === 1 && (mark === null || mark === undefined) && (
+            {showGhost && (
+                <MarkGlyph design={ghost.design} color={ghost.color} opacity={0.35} />
+            )}
+
+            {row === 1 && col === 1 && (mark === null || mark === undefined) && !showGhost && (
                 <Text
                     position={[0, 0, GLYPH_OFFSET]}
                     fontSize={0.5}
@@ -699,6 +780,14 @@ function Sticker({ face, row, col, mark, design, glyphColor, isWinning, isPendin
 // -----------------------------------------------------------------------------
 // Helpers
 // -----------------------------------------------------------------------------
+
+/** World-space point floating `offset` above the center of sticker `idx`. */
+function stickerSurfacePoint(idx: number, offset: number): Vec3 {
+    const [face, row, col] = faceRowCol(idx);
+    const p = sticker3D(face, row, col);
+    const n = faceNormal(face);
+    return [p[0] + n[0] * offset, p[1] + n[1] * offset, p[2] + n[2] * offset];
+}
 
 function allCubiePositions(): Array<[number, number, number]> {
     const out: Array<[number, number, number]> = [];

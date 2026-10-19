@@ -11,8 +11,12 @@
  */
 
 import GameLayout from '@/Layouts/GameLayout';
-import PlayingPhase, { SLOT_CHARS } from '@/Pages/Rooms/CubeTac/PlayingPhase';
+import PlayingPhase from '@/Pages/Rooms/CubeTac/PlayingPhase';
 import FinishedPhase from '@/Pages/Rooms/CubeTac/FinishedPhase';
+import VariantPicker from '@/Pages/Rooms/CubeTac/components/VariantPicker';
+import VariantPreview from '@/Pages/Rooms/CubeTac/components/VariantPreview';
+import SlotGlyph from '@/Pages/Rooms/CubeTac/components/SlotGlyph';
+import { toIndexGroups, useFinishReveal } from '@/Pages/Rooms/CubeTac/gameFeedback';
 import type { CubeSceneHandle } from '@/Pages/Rooms/CubeTac/CubeScene';
 import type { MegaminxSceneHandle } from '@/Pages/Rooms/CubeTac/MegaminxScene';
 import type { PyraminxSceneHandle } from '@/Pages/Rooms/CubeTac/PyraminxScene';
@@ -175,45 +179,12 @@ function Picker({ variant, onVariantChange, onPickCount, onLeave }: PickerProps)
                 <span className="h-5 w-5" />
             </div>
 
-            <div className="mt-8 flex flex-1 flex-col items-center justify-center gap-6">
-                {/* Variant toggle */}
-                <div className="flex flex-col items-center gap-2">
-                    <div className="text-[10px] font-black uppercase tracking-[0.35em] text-yellow-900/70">
-                        Playing surface
-                    </div>
-                    <div className="inline-flex flex-wrap justify-center rounded-full border-2 border-yellow-400 bg-white/80 p-1 shadow-md">
-                        {(['cube', 'megaminx', 'pyraminx', 'octahedron', 'icosahedron'] as const).map((v) => {
-                            const selected = v === variant;
-                            const label =
-                                v === 'cube'
-                                    ? 'Cube · 6 faces'
-                                    : v === 'megaminx'
-                                        ? 'Megaminx · 12 faces'
-                                        : v === 'pyraminx'
-                                            ? 'Pyraminx · 4 faces'
-                                            : v === 'octahedron'
-                                                ? 'Octahedron · 8 faces'
-                                                : 'Icosahedron · 20 faces';
-                            return (
-                                <button
-                                    key={v}
-                                    type="button"
-                                    onClick={() => onVariantChange(v)}
-                                    aria-pressed={selected}
-                                    className={`rounded-full px-4 py-1.5 text-xs font-black uppercase tracking-[0.18em] transition ${
-                                        selected
-                                            ? 'bg-linear-to-r from-orange-500 to-pink-500 text-white shadow-md'
-                                            : 'text-yellow-900 hover:bg-yellow-100/70'
-                                    }`}
-                                >
-                                    {label}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
+            <div className="mt-2 flex flex-1 flex-col items-center justify-center gap-4 sm:gap-5">
+                <VariantPreview variant={variant} className="h-[260px] w-full max-w-xl sm:h-[340px]" />
 
-                <h2 className="text-3xl font-black text-yellow-900 drop-shadow-xs sm:text-4xl">
+                <VariantPicker value={variant} onChange={onVariantChange} />
+
+                <h2 className="mt-1 text-2xl font-black text-yellow-900 drop-shadow-xs sm:text-3xl">
                     How many players?
                 </h2>
                 <p className="text-center text-xs font-bold uppercase tracking-[0.3em] text-yellow-900/60">
@@ -232,13 +203,10 @@ function Picker({ variant, onVariantChange, onPickCount, onLeave }: PickerProps)
                             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">
                                 player{count === 1 ? '' : 's'}
                             </span>
-                            <span
-                                className="mt-1 flex gap-1 text-lg font-black"
-                                aria-hidden="true"
-                            >
+                            <span className="mt-1 flex items-center gap-1" aria-hidden="true">
                                 {Array.from({ length: count }, (_, slot) => (
                                     <span key={slot} style={{ color: PALETTE[slot] }}>
-                                        {SLOT_CHARS[slot]}
+                                        <SlotGlyph design={slot} className="h-5 w-5" />
                                     </span>
                                 ))}
                             </span>
@@ -405,6 +373,7 @@ interface BoardProps {
 function CubeLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps) {
     const [state, dispatch] = useReducer(cubeReducer, playerCount, freshCubeState);
     const cubeRef = useRef<CubeSceneHandle>(null);
+    const showFinished = useFinishReveal(state.winner !== null, () => cubeRef.current);
 
     const players = Array.from({ length: playerCount }, (_, slot) => ({
         id: null as number | null,
@@ -437,7 +406,7 @@ function CubeLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps) {
 
     return (
         <div className="relative flex h-full flex-col">
-            {state.winner === null ? (
+            {!showFinished ? (
                 <>
                     <PlayingPhase
                         cubeRef={cubeRef}
@@ -457,22 +426,25 @@ function CubeLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps) {
                         turnLabelOverride={`${players[state.currentTurn]?.nickname ?? 'Player'}'s Turn`}
                         onLeave={onLeave}
                         gamesPlayed={state.gamesPlayed}
+                        outcome={state.winner}
+                        winLines={state.winner !== null ? toIndexGroups(state.winningLines) : undefined}
                     />
                     {canChangeSetup && (
                         <button
                             type="button"
                             onClick={onChangeSetup}
-                            className="absolute right-4 top-16 rounded-full bg-white/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-yellow-900 shadow-md backdrop-blur-xs transition hover:bg-white"
+                            className="absolute right-4 top-4 rounded-full bg-white/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-yellow-900 shadow-md backdrop-blur-xs transition hover:bg-white sm:top-16 sm:py-1"
                             style={changeSetupStyle}
                         >
-                            Cube · {playerCount} players — change
+                            <span className="sm:hidden">Change</span>
+                            <span className="hidden sm:inline">Cube · {playerCount} players — change</span>
                         </button>
                     )}
                 </>
             ) : (
                 <FinishedPhase
                     marks={state.marks}
-                    winner={state.winner}
+                    winner={state.winner ?? 'draw'}
                     winningLines={state.winningLines}
                     players={players}
                     mySlot={null}
@@ -635,6 +607,7 @@ function megaReducer(state: MegaLocalState, action: MegaLocalAction): MegaLocalS
 function MegaminxLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps) {
     const [state, dispatch] = useReducer(megaReducer, playerCount, freshMegaState);
     const megaRef = useRef<MegaminxSceneHandle>(null);
+    const showFinished = useFinishReveal(state.winner !== null, () => megaRef.current);
 
     const players = Array.from({ length: playerCount }, (_, slot) => ({
         id: null as number | null,
@@ -668,7 +641,7 @@ function MegaminxLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps)
 
     return (
         <div className="relative flex h-full flex-col">
-            {state.winner === null ? (
+            {!showFinished ? (
                 <>
                     <PlayingPhase
                         variant="megaminx"
@@ -693,15 +666,18 @@ function MegaminxLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps)
                         turnLabelOverride={`${players[state.currentTurn]?.nickname ?? 'Player'}'s Turn`}
                         onLeave={onLeave}
                         gamesPlayed={state.gamesPlayed}
+                        outcome={state.winner}
+                        winLines={state.winner !== null ? toIndexGroups(state.winningLines) : undefined}
                     />
                     {canChangeSetup && (
                         <button
                             type="button"
                             onClick={onChangeSetup}
-                            className="absolute right-4 top-16 rounded-full bg-white/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-yellow-900 shadow-md backdrop-blur-xs transition hover:bg-white"
+                            className="absolute right-4 top-4 rounded-full bg-white/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-yellow-900 shadow-md backdrop-blur-xs transition hover:bg-white sm:top-16 sm:py-1"
                             style={changeSetupStyle}
                         >
-                            Megaminx · {playerCount} players — change
+                            <span className="sm:hidden">Change</span>
+                            <span className="hidden sm:inline">Megaminx · {playerCount} players — change</span>
                         </button>
                     )}
                 </>
@@ -709,7 +685,7 @@ function MegaminxLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps)
                 <FinishedPhase
                     variant="megaminx"
                     marks={state.marks}
-                    winner={state.winner}
+                    winner={state.winner ?? 'draw'}
                     winningLines={state.winningLines}
                     players={players}
                     mySlot={null}
@@ -872,6 +848,7 @@ function pyraReducer(state: PyraLocalState, action: PyraLocalAction): PyraLocalS
 function PyraminxLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps) {
     const [state, dispatch] = useReducer(pyraReducer, playerCount, freshPyraState);
     const pyraRef = useRef<PyraminxSceneHandle>(null);
+    const showFinished = useFinishReveal(state.winner !== null, () => pyraRef.current);
 
     const players = Array.from({ length: playerCount }, (_, slot) => ({
         id: null as number | null,
@@ -903,7 +880,7 @@ function PyraminxLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps)
 
     return (
         <div className="relative flex h-full flex-col">
-            {state.winner === null ? (
+            {!showFinished ? (
                 <>
                     <PlayingPhase
                         variant="pyraminx"
@@ -928,15 +905,18 @@ function PyraminxLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps)
                         turnLabelOverride={`${players[state.currentTurn]?.nickname ?? 'Player'}'s Turn`}
                         onLeave={onLeave}
                         gamesPlayed={state.gamesPlayed}
+                        outcome={state.winner}
+                        winLines={state.winner !== null ? toIndexGroups(state.winningLines) : undefined}
                     />
                     {canChangeSetup && (
                         <button
                             type="button"
                             onClick={onChangeSetup}
-                            className="absolute right-4 top-16 rounded-full bg-white/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-yellow-900 shadow-md backdrop-blur-xs transition hover:bg-white"
+                            className="absolute right-4 top-4 rounded-full bg-white/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-yellow-900 shadow-md backdrop-blur-xs transition hover:bg-white sm:top-16 sm:py-1"
                             style={changeSetupStyle}
                         >
-                            Pyraminx · {playerCount} players — change
+                            <span className="sm:hidden">Change</span>
+                            <span className="hidden sm:inline">Pyraminx · {playerCount} players — change</span>
                         </button>
                     )}
                 </>
@@ -944,7 +924,7 @@ function PyraminxLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps)
                 <FinishedPhase
                     variant="pyraminx"
                     marks={state.marks}
-                    winner={state.winner}
+                    winner={state.winner ?? 'draw'}
                     winningLines={state.winningLines}
                     players={players}
                     mySlot={null}
@@ -1107,6 +1087,7 @@ function octaReducer(state: OctaLocalState, action: OctaLocalAction): OctaLocalS
 function OctahedronLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps) {
     const [state, dispatch] = useReducer(octaReducer, playerCount, freshOctaState);
     const octaRef = useRef<OctahedronSceneHandle>(null);
+    const showFinished = useFinishReveal(state.winner !== null, () => octaRef.current);
 
     const players = Array.from({ length: playerCount }, (_, slot) => ({
         id: null as number | null,
@@ -1138,7 +1119,7 @@ function OctahedronLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProp
 
     return (
         <div className="relative flex h-full flex-col">
-            {state.winner === null ? (
+            {!showFinished ? (
                 <>
                     <PlayingPhase
                         variant="octahedron"
@@ -1163,15 +1144,18 @@ function OctahedronLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProp
                         turnLabelOverride={`${players[state.currentTurn]?.nickname ?? 'Player'}'s Turn`}
                         onLeave={onLeave}
                         gamesPlayed={state.gamesPlayed}
+                        outcome={state.winner}
+                        winLines={state.winner !== null ? toIndexGroups(state.winningLines) : undefined}
                     />
                     {canChangeSetup && (
                         <button
                             type="button"
                             onClick={onChangeSetup}
-                            className="absolute right-4 top-16 rounded-full bg-white/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-yellow-900 shadow-md backdrop-blur-xs transition hover:bg-white"
+                            className="absolute right-4 top-4 rounded-full bg-white/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-yellow-900 shadow-md backdrop-blur-xs transition hover:bg-white sm:top-16 sm:py-1"
                             style={changeSetupStyle}
                         >
-                            Octahedron · {playerCount} players — change
+                            <span className="sm:hidden">Change</span>
+                            <span className="hidden sm:inline">Octahedron · {playerCount} players — change</span>
                         </button>
                     )}
                 </>
@@ -1179,7 +1163,7 @@ function OctahedronLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProp
                 <FinishedPhase
                     variant="octahedron"
                     marks={state.marks}
-                    winner={state.winner}
+                    winner={state.winner ?? 'draw'}
                     winningLines={state.winningLines}
                     players={players}
                     mySlot={null}
@@ -1342,6 +1326,7 @@ function icosaReducer(state: IcosaLocalState, action: IcosaLocalAction): IcosaLo
 function IcosahedronLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps) {
     const [state, dispatch] = useReducer(icosaReducer, playerCount, freshIcosaState);
     const icosaRef = useRef<IcosahedronSceneHandle>(null);
+    const showFinished = useFinishReveal(state.winner !== null, () => icosaRef.current);
 
     const players = Array.from({ length: playerCount }, (_, slot) => ({
         id: null as number | null,
@@ -1373,7 +1358,7 @@ function IcosahedronLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardPro
 
     return (
         <div className="relative flex h-full flex-col">
-            {state.winner === null ? (
+            {!showFinished ? (
                 <>
                     <PlayingPhase
                         variant="icosahedron"
@@ -1398,15 +1383,18 @@ function IcosahedronLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardPro
                         turnLabelOverride={`${players[state.currentTurn]?.nickname ?? 'Player'}'s Turn`}
                         onLeave={onLeave}
                         gamesPlayed={state.gamesPlayed}
+                        outcome={state.winner}
+                        winLines={state.winner !== null ? toIndexGroups(state.winningLines) : undefined}
                     />
                     {canChangeSetup && (
                         <button
                             type="button"
                             onClick={onChangeSetup}
-                            className="absolute right-4 top-16 rounded-full bg-white/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-yellow-900 shadow-md backdrop-blur-xs transition hover:bg-white"
+                            className="absolute right-4 top-4 rounded-full bg-white/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-yellow-900 shadow-md backdrop-blur-xs transition hover:bg-white sm:top-16 sm:py-1"
                             style={changeSetupStyle}
                         >
-                            Icosahedron · {playerCount} players — change
+                            <span className="sm:hidden">Change</span>
+                            <span className="hidden sm:inline">Icosahedron · {playerCount} players — change</span>
                         </button>
                     )}
                 </>
@@ -1414,7 +1402,7 @@ function IcosahedronLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardPro
                 <FinishedPhase
                     variant="icosahedron"
                     marks={state.marks}
-                    winner={state.winner}
+                    winner={state.winner ?? 'draw'}
                     winningLines={state.winningLines}
                     players={players}
                     mySlot={null}

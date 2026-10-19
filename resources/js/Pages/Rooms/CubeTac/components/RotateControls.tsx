@@ -15,6 +15,8 @@ import { Move } from '@/lib/rubikCube';
 interface RotateControlsProps {
     onRotate: (move: Move) => void;
     disabled: boolean;
+    /** Called with the face under the pointer / focus so the scene can preview the layer; `null` on leave. */
+    onPreview?: (target: Move | null) => void;
 }
 
 interface FaceConfig {
@@ -111,7 +113,7 @@ const FACES: FaceConfig[] = [
     },
 ];
 
-export default function RotateControls({ onRotate, disabled }: RotateControlsProps) {
+export default function RotateControls({ onRotate, disabled, onPreview }: RotateControlsProps) {
     // Keyboard shortcut: first letter of each face name triggers clockwise
     // rotation of that face; Shift+key rotates counter-clockwise. Skipped
     // while disabled (not my turn, pending-action) or while focus is on
@@ -164,7 +166,14 @@ export default function RotateControls({ onRotate, disabled }: RotateControlsPro
             </div>
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
                 {FACES.map((face) => (
-                    <div key={face.name} className="flex flex-col items-center gap-1">
+                    <div
+                        key={face.name}
+                        className="flex flex-col items-center gap-1"
+                        onMouseEnter={() => !disabled && onPreview?.(face.cw)}
+                        onMouseLeave={() => onPreview?.(null)}
+                        onFocus={() => !disabled && onPreview?.(face.cw)}
+                        onBlur={() => onPreview?.(null)}
+                    >
                         <div
                             className={`rounded-full px-2.5 py-0.5 text-[10px] font-black tracking-wider ${face.tint.labelBg} ${face.tint.labelText}`}
                         >

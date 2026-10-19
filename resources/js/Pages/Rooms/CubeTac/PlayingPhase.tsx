@@ -20,6 +20,7 @@ import RotateControls from './components/RotateControls';
 import PyraRotateControls from './components/PyraRotateControls';
 import OctaRotateControls from './components/OctaRotateControls';
 import IcosaRotateControls from './components/IcosaRotateControls';
+import SlotGlyph from './components/SlotGlyph';
 import type { CubeSceneHandle } from './CubeScene';
 import type { MegaminxSceneHandle } from './MegaminxScene';
 import type { PyraminxSceneHandle } from './PyraminxScene';
@@ -28,6 +29,9 @@ import type { IcosahedronSceneHandle } from './IcosahedronScene';
 import { useVoiceChatOptional } from '@/Contexts/VoiceChatContext';
 import VideoModal from '@/Components/VideoModal';
 import { useSound } from '@/hooks/useSound';
+import { useSfx } from '@/lib/sfx';
+import { vibrate } from './gameFeedback';
+import type { SceneViewHandle } from './sceneInteraction';
 
 const CubeScene = lazy(() => import('./CubeScene'));
 const MegaminxScene = lazy(() => import('./MegaminxScene'));
@@ -113,6 +117,26 @@ export interface PlayingPhaseProps {
      * indicator in the leaderboard — a round is one game per player.
      */
     gamesPlayed: number;
+    /**
+     * Set once the game has ended but before the results screen takes over:
+     * the board stays up, locked, with the winning line drawn.
+     */
+    outcome?: number | 'draw' | null;
+    /** Winning lines as flat indices — drawn on the board during the reveal. */
+    winLines?: number[][];
+}
+
+/** Display names for the cube faces, matching the 3D face labels. */
+const CUBE_FACE_NAMES = ['Up', 'Down', 'Left', 'Right', 'Front', 'Peeché'];
+const CUBE_MOVE_FACE: Record<string, number> = { U: 0, D: 1, L: 2, R: 3, F: 4, B: 5 };
+
+function refCurrent<T>(ref?: Ref<T>): T | null {
+    return ref && typeof ref === 'object' && 'current' in ref ? ref.current : null;
+}
+
+function isTypingTarget(target: EventTarget | null): boolean {
+    const el = target as HTMLElement | null;
+    return el?.tagName === 'INPUT' || el?.tagName === 'TEXTAREA' || el?.tagName === 'SELECT' || !!el?.isContentEditable;
 }
 
 /** 2D HUD chips for each slot — Unicode chars so the badges stay cheap. */
@@ -150,195 +174,272 @@ export default function PlayingPhase({
     octaRef,
     icosaRef,
     gamesPlayed,
+    outcome = null,
+    winLines,
 }: PlayingPhaseProps) {
     const voiceChat = useVoiceChatOptional();
     const voiceReady = !!voiceChat?.isConnected && currentPlayerId !== null;
     const selfMuted = voiceChat?.isMuted ?? true;
     const selfVideoOn = voiceChat?.isVideoEnabled ?? false;
     const { play: playRotateSound } = useSound('/sounds/cubetac/rotate.mp3', { volume: 0.6 });
-    const handleRotateWithSound = (move: Move) => {
-        playRotateSound();
-        onRotate(move);
-    };
+    const { play: playMarkSound } = useSound('/sounds/trio/card-flip.mp3', { volume: 0.55 });
+    const { play: playTurnSound } = useSound('/sounds/trio/turn-transition.mp3', { volume: 0.5 });
+    const { play: playSfx } = useSfx();
+    const [previewMove, setPreviewMove] = useState<Move | null>(null);
+    const [previewFace, setPreviewFace] = useState<number | null>(null);
+    const [rotateDrawerOpen, setRotateDrawerOpen] = useState(false);
+
     const markCounts = useMemo(() => countMarksBySlot(marks, players.length), [marks, players.length]);
     const playerColors = useMemo(() => players.map((p) => p.avatar_color), [players]);
     const playerDesigns = useMemo(() => players.map((p, slot) => p.design ?? slot), [players]);
 
+    const isRevealing = outcome !== null;
     const currentPlayer = players[currentTurn];
     const currentColor = currentPlayer?.avatar_color ?? '#5b9bd5';
-    const turnLabel =
-        turnLabelOverride ??
-        (mySlot === null
-            ? `${currentPlayer?.nickname ?? SLOT_CHARS[playerDesigns[currentTurn] ?? currentTurn] ?? '?'} to move`
-            : isMyTurn
-                ? 'Your Turn'
-                : `${currentPlayer?.nickname ?? 'Opponent'}'s Turn`);
+    const winnerPlayer = typeof outcome === 'number' ? players[outcome] : null;
+    const bannerColor = isRevealing ? winnerPlayer?.avatar_color ?? '#6b7280' : currentColor;
+    const turnLabel = isRevealing
+        ? outcome === 'draw'
+            ? "It's a draw"
+            : outcome === mySlot
+                ? 'You win!'
+                : `${winnerPlayer?.nickname ?? 'Opponent'} wins!`
+        : turnLabelOverride
+            ?? (mySlot === null
+                ? `${currentPlayer?.nickname ?? SLOT_CHARS[playerDesigns[currentTurn] ?? currentTurn] ?? '?'} to move`
+                : isMyTurn
+                    ? 'Your Turn'
+                    : `${currentPlayer?.nickname ?? 'Opponent'}'s Turn`);
 
-    const canAct = isMyTurn && !pendingAction;
+    const canAct = isMyTurn && !pendingAction && !isRevealing;
 
-    // Pending mark — different lastAction.type per variant. The cube
-    // identifies the pending sticker by (face, row, col); megaminx and
-    // pyraminx by (face, slot). We compute a single flat index for all
-    // three so the scene components can highlight it uniformly.
     const isMegaminx = variant === 'megaminx';
     const isPyraminx = variant === 'pyraminx';
     const isOctahedron = variant === 'octahedron';
     const isIcosahedron = variant === 'icosahedron';
-    const pendingCubeMark = variant === 'cube' && pendingAction && lastAction && lastAction.type === 'mark'
-        ? {
-            face: lastAction.face as number,
-            row: lastAction.row as number,
-            col: lastAction.col as number,
+    const isCube = variant === 'cube';
+
+    // Flat index of the most recent mark, whatever the variant. The cube
+    // identifies stickers by (face, row, col); the rest by (face, slot).
+    const actionType = typeof lastAction?.type === 'string' ? lastAction.type : null;
+    const lastMarkIndex = (() => {
+        if (!lastAction || !actionType) return null;
+        const face = lastAction.face as number;
+        const slot = lastAction.slot as number;
+        switch (actionType) {
+            case 'mark': return indexOf(face, lastAction.row as number, lastAction.col as number);
+            case 'mega_mark': return megaIndexOf(face, slot);
+            case 'pyra_mark': return pyraIndexOf(face, slot);
+            case 'octa_mark': return octaIndexOf(face, slot);
+            case 'icosa_mark': return icosaIndexOf(face, slot);
+            default: return null;
         }
+    })();
+    const pendingIndex = pendingAction ? lastMarkIndex : null;
+    const hasPending = pendingIndex !== null;
+    const actionMoveId = typeof lastAction?.move_id === 'number' ? lastAction.move_id : moveCount;
+    const popToken = lastMarkIndex !== null ? `${actionMoveId}:${lastMarkIndex}` : null;
+    const actionPlayer = typeof lastAction?.player === 'number' ? lastAction.player : null;
+    const isOpponentAction = mySlot !== null && actionPlayer !== null && actionPlayer !== mySlot;
+
+    // Opponent rotations arrive by poll; hand them to the scene to replay.
+    const remoteCubeMove = isOpponentAction && actionType === 'rotate'
+        ? { id: actionMoveId, move: lastAction!.move as Move }
         : null;
-    const pendingMegaMark = isMegaminx && pendingAction && lastAction && lastAction.type === 'mega_mark'
-        ? {
-            face: lastAction.face as number,
-            slot: lastAction.slot as number,
+    const remotePolyMove = isOpponentAction && actionType !== null && actionType.endsWith('_rotate')
+        ? { id: actionMoveId, face: lastAction!.face as number, direction: lastAction!.direction as 'cw' | 'ccw' }
+        : null;
+
+    const subLabel = isRevealing
+        ? outcome === 'draw' ? 'No more moves' : 'Three in a row!'
+        : pendingAction && isMyTurn
+            ? 'Confirm · or tap your mark to undo'
+            : canAct || turnLabelOverride
+                ? isMegaminx
+                    ? 'Tap a cell · or use a face center to rotate ↺ ↻'
+                    : isPyraminx || isOctahedron || isIcosahedron
+                        ? 'Tap a perimeter cell · or rotate a face below'
+                        : 'Tap a sticker · or rotate a face'
+                : 'Waiting…';
+
+    const activeHandle = (): SceneViewHandle | null => {
+        if (isMegaminx) return refCurrent(megaRef);
+        if (isPyraminx) return refCurrent(pyraRef);
+        if (isOctahedron) return refCurrent(octaRef);
+        if (isIcosahedron) return refCurrent(icosaRef);
+        return refCurrent(cubeRef);
+    };
+
+    // Feedback for opponent actions arriving by poll. Our own actions play
+    // their sounds at click time instead.
+    const seenMoveIdRef = useRef(actionMoveId);
+    useEffect(() => {
+        if (seenMoveIdRef.current === actionMoveId) return;
+        seenMoveIdRef.current = actionMoveId;
+        if (!isOpponentAction || !actionType) return;
+        if (actionType.endsWith('rotate')) {
+            playRotateSound();
+        } else if (actionType.endsWith('mark')) {
+            playMarkSound();
         }
-        : null;
-    const pendingPyraMark = isPyraminx && pendingAction && lastAction && lastAction.type === 'pyra_mark'
-        ? {
-            face: lastAction.face as number,
-            slot: lastAction.slot as number,
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [actionMoveId]);
+
+    // "Your turn" cue: sound + banner pop. In hotseat mode every hand-off
+    // is announced since the device changes hands.
+    const turnSignal = mySlot === null ? `slot-${currentTurn}` : isMyTurn ? 'mine' : 'theirs';
+    const prevTurnSignalRef = useRef(turnSignal);
+    const [turnPulse, setTurnPulse] = useState(0);
+    useEffect(() => {
+        if (prevTurnSignalRef.current === turnSignal) return;
+        prevTurnSignalRef.current = turnSignal;
+        if (isRevealing) return;
+        if (mySlot === null || turnSignal === 'mine') {
+            playTurnSound();
+            setTurnPulse((n) => n + 1);
+            if (mySlot !== null) vibrate([20, 40, 20]);
         }
-        : null;
-    const pendingOctaMark = isOctahedron && pendingAction && lastAction && lastAction.type === 'octa_mark'
-        ? {
-            face: lastAction.face as number,
-            slot: lastAction.slot as number,
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [turnSignal]);
+
+    useEffect(() => {
+        if (!canAct) {
+            setPreviewMove(null);
+            setPreviewFace(null);
         }
-        : null;
-    const pendingIcosaMark = isIcosahedron && pendingAction && lastAction && lastAction.type === 'icosa_mark'
-        ? {
-            face: lastAction.face as number,
-            slot: lastAction.slot as number,
-        }
-        : null;
-    const pendingIndex = pendingCubeMark
-        ? indexOf(pendingCubeMark.face, pendingCubeMark.row, pendingCubeMark.col)
-        : pendingMegaMark
-            ? megaIndexOf(pendingMegaMark.face, pendingMegaMark.slot)
-            : pendingPyraMark
-                ? pyraIndexOf(pendingPyraMark.face, pendingPyraMark.slot)
-                : pendingOctaMark
-                    ? octaIndexOf(pendingOctaMark.face, pendingOctaMark.slot)
-                    : pendingIcosaMark
-                        ? icosaIndexOf(pendingIcosaMark.face, pendingIcosaMark.slot)
-                        : null;
-    const hasPending = pendingCubeMark !== null || pendingMegaMark !== null || pendingPyraMark !== null || pendingOctaMark !== null || pendingIcosaMark !== null;
-    const subLabel = pendingAction && isMyTurn
-        ? 'Confirm · or tap your mark to undo'
-        : canAct || turnLabelOverride
-            ? isMegaminx
-                ? 'Tap a cell · or use a face center to rotate ↺ ↻'
-                : isPyraminx || isOctahedron || isIcosahedron
-                    ? 'Tap a perimeter cell · or rotate a face below'
-                    : 'Tap a sticker · or rotate a face'
-            : 'Waiting…';
+    }, [canAct]);
+
+    const placeMark = (place: () => void) => {
+        playMarkSound();
+        vibrate(10);
+        place();
+    };
+    const handleUndo = () => {
+        playSfx('UI_TOGGLE');
+        onUndoMark();
+    };
+    const handleConfirm = () => {
+        playSfx('UI_SUCCESS');
+        onEndTurn();
+    };
+
+    // Enter confirms a pending mark; Backspace / Z takes it back.
+    useEffect(() => {
+        if (!isMyTurn || !pendingAction || isRevealing) return;
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.repeat || e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
+            if (e.key === 'Enter') {
+                if ((e.target as HTMLElement | null)?.tagName === 'BUTTON') return;
+                e.preventDefault();
+                handleConfirm();
+            } else if (e.key === 'Backspace' || e.key === 'z' || e.key === 'Z') {
+                e.preventDefault();
+                handleUndo();
+            }
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isMyTurn, pendingAction, isRevealing]);
+
+    const handleRotateWithSound = (move: Move) => {
+        playRotateSound();
+        setPreviewMove(null);
+        onRotate(move);
+    };
 
     // Cube click: tap the pending mark to undo, otherwise mark an empty cell.
     const handleStickerClick = (face: number, row: number, col: number) => {
-        if (pendingCubeMark
-            && pendingCubeMark.face === face
-            && pendingCubeMark.row === row
-            && pendingCubeMark.col === col) {
-            onUndoMark();
+        const idx = indexOf(face, row, col);
+        if (pendingIndex === idx) {
+            handleUndo();
             return;
         }
-        if (canAct && marks[indexOf(face, row, col)] === null) {
-            onMark(face, row, col);
+        if (canAct && marks[idx] === null) {
+            placeMark(() => onMark(face, row, col));
         }
     };
 
-    // Megaminx click: same shape, with (face, slot) instead of (face, row, col).
-    const handleCellClick = (face: number, slot: number) => {
-        if (pendingMegaMark && pendingMegaMark.face === face && pendingMegaMark.slot === slot) {
-            onUndoMark();
-            return;
-        }
-        if (canAct && marks[megaIndexOf(face, slot)] === null) {
-            onMegaMark?.(face, slot);
-        }
+    // Slot-based variants share one click shape: (face, slot).
+    const makeCellClick = (flat: (face: number, slot: number) => number, mark?: (face: number, slot: number) => void) =>
+        (face: number, slot: number) => {
+            const idx = flat(face, slot);
+            if (pendingIndex === idx) {
+                handleUndo();
+                return;
+            }
+            if (canAct && marks[idx] === null && mark) {
+                placeMark(() => mark(face, slot));
+            }
+        };
+    const handleCellClick = makeCellClick(megaIndexOf, onMegaMark);
+    const handlePyraCellClick = makeCellClick(pyraIndexOf, onPyraMark);
+    const handleOctaCellClick = makeCellClick(octaIndexOf, onOctaMark);
+    const handleIcosaCellClick = makeCellClick(icosaIndexOf, onIcosaMark);
+
+    // Slot-based rotations: start the local animation, then let the parent
+    // commit (network round-trip or reducer dispatch) in parallel.
+    const makeRotate = <D,>(ref: Ref<{ playMove: (face: number, direction: D) => Promise<void> }> | undefined, rotate?: (face: number, direction: D) => void) =>
+        (face: number, direction: D) => {
+            if (!canAct) return;
+            playRotateSound();
+            setPreviewFace(null);
+            refCurrent(ref)?.playMove(face, direction);
+            rotate?.(face, direction);
+        };
+    const handleMegaRotateWithSound = makeRotate<MegaDirection>(megaRef, onMegaRotate);
+    const handlePyraRotateWithSound = makeRotate<PyraDirection>(pyraRef, onPyraRotate);
+    const handleOctaRotateWithSound = makeRotate<OctaDirection>(octaRef, onOctaRotate);
+    const handleIcosaRotateWithSound = makeRotate<IcosaDirection>(icosaRef, onIcosaRotate);
+
+    const stickerClickActive = isMyTurn && (canAct || hasPending) && !isRevealing;
+    const ghost = canAct ? { color: currentColor, design: playerDesigns[currentTurn] ?? currentTurn } : null;
+    const sceneFeedback = {
+        marks,
+        playerColors,
+        designs: playerDesigns,
+        pendingIndex,
+        ghost,
+        lastMoveIndex: lastMarkIndex,
+        popToken,
+        winLines: isRevealing ? winLines : undefined,
     };
 
-    const handleMegaRotateWithSound = (face: number, direction: MegaDirection) => {
-        if (!canAct) return;
-        playRotateSound();
-        // Trigger the local animation; the network round-trip runs in parallel.
-        if (megaRef && typeof megaRef === 'object' && 'current' in megaRef) {
-            megaRef.current?.playMove(face, direction);
-        }
-        onMegaRotate?.(face, direction);
-    };
+    const lastMoveChip = (() => {
+        if (!lastAction || !actionType || actionPlayer === null || isRevealing) return null;
+        if (actionPlayer === mySlot && pendingAction) return null;
+        const who = actionPlayer === mySlot ? 'You' : players[actionPlayer]?.nickname || `Player ${actionPlayer + 1}`;
+        const isRotate = actionType.endsWith('rotate');
+        const face = isCube && actionType === 'rotate'
+            ? CUBE_MOVE_FACE[String(lastAction.move)[0]] ?? 0
+            : (lastAction.face as number);
+        const faceName = isCube ? CUBE_FACE_NAMES[face] ?? 'a face' : `face ${face + 1}`;
+        const arrow = isRotate
+            ? (isCube ? String(lastAction.move).endsWith("'") : lastAction.direction === 'ccw') ? ' ↺' : ' ↻'
+            : '';
+        return {
+            face,
+            color: players[actionPlayer]?.avatar_color ?? '#6b7280',
+            text: `${who} ${isRotate ? 'rotated' : 'marked'} ${faceName}${arrow}`,
+        };
+    })();
 
-    // Pyraminx click: same shape as megaminx, but only the 6 perimeter slots
-    // (0..5) are accepted. The scene already restricts clicking to those.
-    const handlePyraCellClick = (face: number, slot: number) => {
-        if (pendingPyraMark && pendingPyraMark.face === face && pendingPyraMark.slot === slot) {
-            onUndoMark();
-            return;
-        }
-        if (canAct && marks[pyraIndexOf(face, slot)] === null) {
-            onPyraMark?.(face, slot);
-        }
-    };
+    const moveProgress = moveLimit > 0 ? Math.min(1, moveCount / moveLimit) : 0;
 
-    const handlePyraRotateWithSound = (face: number, direction: PyraDirection) => {
-        if (!canAct) return;
-        playRotateSound();
-        if (pyraRef && typeof pyraRef === 'object' && 'current' in pyraRef) {
-            pyraRef.current?.playMove(face, direction);
-        }
-        onPyraRotate?.(face, direction);
-    };
-
-    // Octahedron click: same shape as pyraminx, with 8 faces instead of 4.
-    const handleOctaCellClick = (face: number, slot: number) => {
-        if (pendingOctaMark && pendingOctaMark.face === face && pendingOctaMark.slot === slot) {
-            onUndoMark();
-            return;
-        }
-        if (canAct && marks[octaIndexOf(face, slot)] === null) {
-            onOctaMark?.(face, slot);
-        }
-    };
-
-    const handleOctaRotateWithSound = (face: number, direction: OctaDirection) => {
-        if (!canAct) return;
-        playRotateSound();
-        if (octaRef && typeof octaRef === 'object' && 'current' in octaRef) {
-            octaRef.current?.playMove(face, direction);
-        }
-        onOctaRotate?.(face, direction);
-    };
-
-    // Icosahedron click: same shape as pyraminx, with 20 faces instead of 4.
-    const handleIcosaCellClick = (face: number, slot: number) => {
-        if (pendingIcosaMark && pendingIcosaMark.face === face && pendingIcosaMark.slot === slot) {
-            onUndoMark();
-            return;
-        }
-        if (canAct && marks[icosaIndexOf(face, slot)] === null) {
-            onIcosaMark?.(face, slot);
-        }
-    };
-
-    const handleIcosaRotateWithSound = (face: number, direction: IcosaDirection) => {
-        if (!canAct) return;
-        playRotateSound();
-        if (icosaRef && typeof icosaRef === 'object' && 'current' in icosaRef) {
-            icosaRef.current?.playMove(face, direction);
-        }
-        onIcosaRotate?.(face, direction);
-    };
-
-    const stickerClickActive = isMyTurn && (canAct || hasPending);
+    const rotateControls = isCube ? (
+        <RotateControls onRotate={handleRotateWithSound} disabled={!canAct} onPreview={setPreviewMove} />
+    ) : isPyraminx ? (
+        <PyraRotateControls onRotate={handlePyraRotateWithSound} disabled={!canAct} onPreview={setPreviewFace} />
+    ) : isOctahedron ? (
+        <OctaRotateControls onRotate={handleOctaRotateWithSound} disabled={!canAct} onPreview={setPreviewFace} />
+    ) : isIcosahedron ? (
+        <IcosaRotateControls onRotate={handleIcosaRotateWithSound} disabled={!canAct} onPreview={setPreviewFace} />
+    ) : null;
 
     return (
         <div className="relative flex h-full w-full flex-col overflow-hidden">
-            {/* Top bar: leave button + move counter */}
-            <div className="flex items-center justify-between px-4 pt-3 sm:px-6">
+            {/* Top bar: leave button + move progress */}
+            <div className="flex items-center justify-between gap-3 px-4 pt-3 sm:px-6">
                 {onLeave ? (
                     <button
                         type="button"
@@ -355,103 +456,165 @@ export default function PlayingPhase({
                     <span className="h-9 w-9" />
                 )}
 
-                <div className="rounded-full bg-white/80 px-3 py-1 text-xs font-bold uppercase tracking-widest text-gray-700 shadow-md backdrop-blur-xs">
-                    Move {moveCount} / {moveLimit}
+                <div
+                    className="flex min-w-[9rem] flex-col items-center gap-1 rounded-full bg-white/80 px-4 py-1.5 shadow-md backdrop-blur-xs"
+                    title={`${moveLimit - moveCount} moves left before a draw`}
+                >
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-700">
+                        Move {moveCount} / {moveLimit}
+                    </span>
+                    <span className="h-1 w-full overflow-hidden rounded-full bg-gray-200" aria-hidden="true">
+                        <span
+                            className="block h-full rounded-full transition-[width] duration-500"
+                            style={{
+                                width: `${moveProgress * 100}%`,
+                                backgroundColor: moveProgress > 0.85 ? '#ef4444' : moveProgress > 0.6 ? '#f59e0b' : '#10b981',
+                            }}
+                        />
+                    </span>
                 </div>
 
                 <span className="h-9 w-9" />
             </div>
 
             {/* Turn banner */}
-            <div className="mt-3 flex flex-col items-center">
+            <div className="mt-3 flex flex-col items-center px-4">
                 <div
-                    className="text-3xl font-black leading-none sm:text-4xl drop-shadow-xs"
-                    style={{ color: currentColor }}
+                    key={turnPulse}
+                    className={`text-center text-3xl font-black leading-none drop-shadow-xs sm:text-4xl ${
+                        isRevealing ? 'motion-safe:animate-winReveal' : 'motion-safe:animate-turnPop'
+                    }`}
+                    style={{ color: bannerColor }}
+                    aria-live="polite"
                 >
                     {turnLabel}
                 </div>
-                <div className="mt-1 text-[11px] font-bold uppercase tracking-[0.3em] text-gray-600">
+                <div className="mt-1 text-center text-[11px] font-bold uppercase tracking-[0.3em] text-gray-600">
                     {subLabel}
                 </div>
+                {lastMoveChip && (
+                    <button
+                        type="button"
+                        onClick={() => activeHandle()?.lookAtFace(lastMoveChip.face)}
+                        className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white/85 px-3 py-1 text-[11px] font-bold text-gray-700 shadow-sm backdrop-blur-xs transition hover:bg-white hover:shadow-md"
+                        title="Turn the view to this face"
+                    >
+                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: lastMoveChip.color }} aria-hidden="true" />
+                        {lastMoveChip.text}
+                        <svg className="h-3.5 w-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24" aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.5 12C4 7.5 7.7 4.5 12 4.5s8 3 9.5 7.5c-1.5 4.5-5.2 7.5-9.5 7.5s-8-3-9.5-7.5z" />
+                        </svg>
+                    </button>
+                )}
             </div>
 
-            {/* 3D canvas — cube or dodecahedron depending on variant */}
+            {/* 3D canvas */}
             <div className="relative flex-1 min-h-0">
                 <Suspense
                     fallback={
                         <div className="flex h-full items-center justify-center">
-                            <div className="text-xs font-bold uppercase tracking-[0.4em] text-gray-500">
-                                {isMegaminx
-                                    ? 'Loading megaminx…'
-                                    : isPyraminx
-                                        ? 'Loading pyraminx…'
-                                        : isOctahedron
-                                            ? 'Loading octahedron…'
-                                            : isIcosahedron
-                                                ? 'Loading icosahedron…'
-                                                : 'Loading cube…'}
-                            </div>
+                            <div className="h-40 w-40 animate-pulse rounded-3xl bg-white/40 shadow-inner" aria-label="Loading board" />
                         </div>
                     }
                 >
                     {isMegaminx ? (
                         <MegaminxScene
                             ref={megaRef}
-                            marks={marks}
-                            playerColors={playerColors}
-                            designs={playerDesigns}
-                            pendingIndex={pendingIndex}
+                            {...sceneFeedback}
                             onCellClick={stickerClickActive ? handleCellClick : undefined}
                             onRotate={canAct ? handleMegaRotateWithSound : undefined}
                             interactive={stickerClickActive || canAct}
+                            remoteMove={remotePolyMove}
                         />
                     ) : isPyraminx ? (
                         <PyraminxScene
                             ref={pyraRef}
-                            marks={marks}
-                            playerColors={playerColors}
-                            designs={playerDesigns}
-                            pendingIndex={pendingIndex}
+                            {...sceneFeedback}
                             onCellClick={stickerClickActive ? handlePyraCellClick : undefined}
                             interactive={stickerClickActive}
+                            highlightFace={previewFace}
+                            remoteMove={remotePolyMove}
                         />
                     ) : isOctahedron ? (
                         <OctahedronScene
                             ref={octaRef}
-                            marks={marks}
-                            playerColors={playerColors}
-                            designs={playerDesigns}
-                            pendingIndex={pendingIndex}
+                            {...sceneFeedback}
                             onCellClick={stickerClickActive ? handleOctaCellClick : undefined}
                             interactive={stickerClickActive}
+                            highlightFace={previewFace}
+                            remoteMove={remotePolyMove}
                         />
                     ) : isIcosahedron ? (
                         <IcosahedronScene
                             ref={icosaRef}
-                            marks={marks}
-                            playerColors={playerColors}
-                            designs={playerDesigns}
-                            pendingIndex={pendingIndex}
+                            {...sceneFeedback}
                             onCellClick={stickerClickActive ? handleIcosaCellClick : undefined}
                             interactive={stickerClickActive}
+                            highlightFace={previewFace}
+                            remoteMove={remotePolyMove}
                         />
                     ) : (
                         <CubeScene
                             ref={cubeRef}
-                            marks={marks}
-                            playerColors={playerColors}
-                            designs={playerDesigns}
-                            pendingIndex={pendingIndex}
+                            {...sceneFeedback}
                             onStickerClick={stickerClickActive ? handleStickerClick : undefined}
                             interactive={stickerClickActive}
+                            highlightMove={previewMove}
+                            remoteMove={remoteCubeMove}
                         />
                     )}
                 </Suspense>
 
-                {!isMyTurn && !turnLabelOverride && (
+                {!isMyTurn && !turnLabelOverride && !isRevealing && (
                     <div className="pointer-events-none absolute inset-x-0 top-4 flex justify-center">
-                        <div className="rounded-full bg-white/80 px-4 py-1 text-[10px] font-bold uppercase tracking-[0.3em] text-gray-600 shadow-md backdrop-blur-xs">
-                            waiting for opponent
+                        <div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-4 py-1 text-[10px] font-bold uppercase tracking-[0.3em] text-gray-600 shadow-md backdrop-blur-xs">
+                            <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ backgroundColor: currentColor }} aria-hidden="true" />
+                            waiting for {currentPlayer?.nickname || 'opponent'}
+                        </div>
+                    </div>
+                )}
+
+                <button
+                    type="button"
+                    onClick={() => activeHandle()?.resetView()}
+                    className="absolute left-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-white/80 text-gray-600 shadow-md backdrop-blur-xs transition hover:bg-white hover:text-gray-900"
+                    aria-label="Reset view"
+                    title="Reset view"
+                >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5M20 20v-5h-5M5.6 15A7.5 7.5 0 0018.4 17M18.4 9A7.5 7.5 0 005.6 7" />
+                    </svg>
+                </button>
+
+                {isMyTurn && pendingAction && !isRevealing && (
+                    <div className="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex justify-center px-4">
+                        <div className="pointer-events-auto flex items-center gap-2 motion-safe:animate-slideIn">
+                            <button
+                                type="button"
+                                onClick={handleUndo}
+                                aria-label="Undo mark"
+                                title="Undo — Backspace or Z"
+                                className="inline-flex items-center gap-2 rounded-full border-2 border-gray-300 bg-white px-5 py-2.5 text-sm font-black uppercase tracking-[0.2em] text-gray-700 shadow-md transition hover:border-gray-400 hover:bg-gray-50 active:scale-95"
+                            >
+                                <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.6" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 14L4 9l5-5M4 9h11a5 5 0 010 10h-3" />
+                                </svg>
+                                Undo
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleConfirm}
+                                aria-label="End turn"
+                                title="Confirm — Enter"
+                                className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-emerald-500 to-teal-500 px-6 py-2.5 text-sm font-black uppercase tracking-[0.2em] text-white shadow-lg border-b-4 border-emerald-700 transition hover:scale-[1.03] hover:from-emerald-600 hover:to-teal-600 active:scale-95 motion-safe:animate-turnPop"
+                                style={{ boxShadow: `0 8px 22px ${hexWithAlpha(currentColor, 0.35)}` }}
+                            >
+                                <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                                Confirm Turn
+                            </button>
                         </div>
                     </div>
                 )}
@@ -466,14 +629,14 @@ export default function PlayingPhase({
             </div>
 
             {/* Player HUD + rotate controls */}
-            <div className="flex flex-col gap-3 border-t-2 border-yellow-600/30 bg-white/80 px-4 py-4 backdrop-blur-xs sm:px-6">
+            <div className="flex flex-col gap-3 border-t-2 border-yellow-600/30 bg-white/80 px-4 py-3 backdrop-blur-xs sm:px-6 sm:py-4">
                 <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
                     {players.map((p, slot) => (
                         <PlayerBadge
                             key={slot}
                             player={p}
                             slot={slot}
-                            isActive={currentTurn === slot}
+                            isActive={currentTurn === slot && !isRevealing}
                             markCount={markCounts[slot] ?? 0}
                             currentPlayerId={currentPlayerId}
                         />
@@ -506,26 +669,30 @@ export default function PlayingPhase({
                     )}
                 </div>
 
-                {!isMegaminx && !isPyraminx && !isOctahedron && !isIcosahedron && <RotateControls onRotate={handleRotateWithSound} disabled={!canAct} />}
-                {isPyraminx && <PyraRotateControls onRotate={handlePyraRotateWithSound} disabled={!canAct} />}
-                {isOctahedron && <OctaRotateControls onRotate={handleOctaRotateWithSound} disabled={!canAct} />}
-                {isIcosahedron && <IcosaRotateControls onRotate={handleIcosaRotateWithSound} disabled={!canAct} />}
-
-                {isMyTurn && pendingAction && (
-                    <div className="flex justify-center pt-1">
+                {rotateControls && (
+                    <>
                         <button
                             type="button"
-                            onClick={onEndTurn}
-                            aria-label="End turn"
-                            className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-emerald-500 to-teal-500 px-6 py-2.5 text-sm font-black uppercase tracking-[0.2em] text-white shadow-lg border-b-4 border-emerald-700 transition hover:scale-[1.03] hover:from-emerald-600 hover:to-teal-600 active:scale-95"
-                            style={{ boxShadow: `0 8px 22px ${hexWithAlpha(currentColor, 0.35)}` }}
+                            onClick={() => setRotateDrawerOpen((open) => !open)}
+                            aria-expanded={rotateDrawerOpen}
+                            className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[11px] font-black uppercase tracking-[0.2em] text-gray-700 shadow-md transition hover:bg-gray-50 sm:hidden"
                         >
-                            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            Rotate a face
+                            <svg
+                                className={`h-3.5 w-3.5 transition-transform ${rotateDrawerOpen ? 'rotate-180' : ''}`}
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth={2.6}
+                                viewBox="0 0 24 24"
+                                aria-hidden="true"
+                            >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
                             </svg>
-                            Confirm Turn
                         </button>
-                    </div>
+                        <div className={`${rotateDrawerOpen ? 'block' : 'hidden'} sm:block`}>
+                            {rotateControls}
+                        </div>
+                    </>
                 )}
             </div>
         </div>
@@ -544,7 +711,7 @@ interface PlayerBadgeProps {
 
 function PlayerBadge({ player, slot, isActive, markCount, currentPlayerId }: PlayerBadgeProps) {
     const color = player.avatar_color;
-    const char = SLOT_CHARS[player.design ?? slot] ?? '?';
+    const design = player.design ?? slot;
 
     const voiceChat = useVoiceChatOptional();
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -607,7 +774,7 @@ function PlayerBadge({ player, slot, isActive, markCount, currentPlayerId }: Pla
                             className="absolute inset-0 h-full w-full object-cover scale-x-[-1]"
                         />
                     ) : (
-                        <span>{char}</span>
+                        <SlotGlyph design={design} className="h-5 w-5" />
                     )}
                     {showMutedDot && (
                         <span
@@ -731,7 +898,6 @@ interface LeaderboardRowProps {
 
 function LeaderboardRow({ player, slot, isActive }: LeaderboardRowProps) {
     const color = player.avatar_color;
-    const char = SLOT_CHARS[player.design ?? slot] ?? '?';
 
     const rowStyle: CSSProperties = isActive
         ? {
@@ -749,7 +915,7 @@ function LeaderboardRow({ player, slot, isActive }: LeaderboardRowProps) {
                 className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-sm font-black"
                 style={{ backgroundColor: hexWithAlpha(color, 0.15), color }}
             >
-                {char}
+                <SlotGlyph design={player.design ?? slot} className="h-4 w-4" />
             </div>
             <span className="max-w-[7rem] truncate text-xs font-black text-gray-900">
                 {player.nickname || `Player ${slot + 1}`}
@@ -794,6 +960,14 @@ function ShortcutHints({ variant }: { variant: 'cube' | 'megaminx' | 'pyraminx' 
                     <Kbd>↓</Kbd>
                 </span>
                 <span className="text-gray-500">orbit camera</span>
+            </div>
+            <div className="mt-1.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-700">
+                <span className="inline-flex items-center gap-0.5">
+                    <Kbd>Enter</Kbd>
+                    <span className="text-gray-400">/</span>
+                    <Kbd>Z</Kbd>
+                </span>
+                <span className="text-gray-500">confirm / undo mark</span>
             </div>
             {variant === 'cube' && (
                 <>
