@@ -20,12 +20,14 @@ import { getFaceColors } from '../IcosahedronScene';
 interface IcosaRotateControlsProps {
     onRotate: (face: number, direction: Direction) => void;
     disabled: boolean;
+    /** Called with the face under the pointer / focus so the scene can preview the layer; `null` on leave. */
+    onPreview?: (target: number | null) => void;
 }
 
 const FACE_COUNT = 20;
 const SHORTCUT_LIMIT = 9;
 
-export default function IcosaRotateControls({ onRotate, disabled }: IcosaRotateControlsProps) {
+export default function IcosaRotateControls({ onRotate, disabled, onPreview }: IcosaRotateControlsProps) {
     const colors = getFaceColors();
 
     // Keyboard shortcut: keys 1..9 trigger CW rotation of face 0..8;
@@ -76,7 +78,14 @@ export default function IcosaRotateControls({ onRotate, disabled }: IcosaRotateC
                 {Array.from({ length: FACE_COUNT }, (_, faceIndex) => {
                     const color = colors[faceIndex] ?? '#94a3b8';
                     return (
-                        <div key={faceIndex} className="flex flex-col items-center gap-1">
+                        <div
+                            key={faceIndex}
+                            className="flex flex-col items-center gap-1"
+                            onMouseEnter={() => !disabled && onPreview?.(faceIndex)}
+                            onMouseLeave={() => onPreview?.(null)}
+                            onFocus={() => !disabled && onPreview?.(faceIndex)}
+                            onBlur={() => onPreview?.(null)}
+                        >
                             <div
                                 className="inline-flex items-center gap-1.5 rounded-full bg-white px-2 py-0.5 text-[10px] font-black tracking-wider text-gray-700 shadow-xs ring-1 ring-gray-200"
                             >

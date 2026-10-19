@@ -1341,13 +1341,18 @@ class CubeTacGameController extends Controller
 
         $last = $settings['last_action'] ?? null;
         $lastType = is_array($last) ? ($last['type'] ?? null) : null;
-        if ($lastType !== 'mark' && $lastType !== 'mega_mark') {
+        $idx = match ($lastType) {
+            'mark' => RubikCube::indexOf((int) $last['face'], (int) $last['row'], (int) $last['col']),
+            'mega_mark' => MegaminxCube::indexOf((int) $last['face'], (int) $last['slot']),
+            'pyra_mark' => PyraminxCube::indexOf((int) $last['face'], (int) $last['slot']),
+            'octa_mark' => OctahedronCube::indexOf((int) $last['face'], (int) $last['slot']),
+            'icosa_mark' => IcosahedronCube::indexOf((int) $last['face'], (int) $last['slot']),
+            default => null,
+        };
+        if ($idx === null) {
             return back()->withErrors(['error' => 'Only marks can be undone.']);
         }
 
-        $idx = $lastType === 'mega_mark'
-            ? MegaminxCube::indexOf((int) $last['face'], (int) $last['slot'])
-            : RubikCube::indexOf((int) $last['face'], (int) $last['row'], (int) $last['col']);
         /** @var array<int, int|null> $marks */
         $marks = $settings['marks'];
         $marks[$idx] = null;

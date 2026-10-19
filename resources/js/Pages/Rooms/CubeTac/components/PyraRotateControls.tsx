@@ -15,6 +15,8 @@ import { Direction } from '@/lib/pyraminx';
 interface PyraRotateControlsProps {
     onRotate: (face: number, direction: Direction) => void;
     disabled: boolean;
+    /** Called with the face under the pointer / focus so the scene can preview the layer; `null` on leave. */
+    onPreview?: (target: number | null) => void;
 }
 
 interface FaceConfig {
@@ -77,7 +79,7 @@ const FACES: FaceConfig[] = [
     },
 ];
 
-export default function PyraRotateControls({ onRotate, disabled }: PyraRotateControlsProps) {
+export default function PyraRotateControls({ onRotate, disabled, onPreview }: PyraRotateControlsProps) {
     // Keyboard shortcut: 1..4 trigger CW rotation of face 0..3; Shift+1..4 CCW.
     useEffect(() => {
         if (disabled) {
@@ -123,7 +125,14 @@ export default function PyraRotateControls({ onRotate, disabled }: PyraRotateCon
             </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {FACES.map((face) => (
-                    <div key={face.name} className="flex flex-col items-center gap-1">
+                    <div
+                        key={face.name}
+                        className="flex flex-col items-center gap-1"
+                        onMouseEnter={() => !disabled && onPreview?.(face.index)}
+                        onMouseLeave={() => onPreview?.(null)}
+                        onFocus={() => !disabled && onPreview?.(face.index)}
+                        onBlur={() => onPreview?.(null)}
+                    >
                         <div
                             className={`rounded-full px-2.5 py-0.5 text-[10px] font-black tracking-wider ${face.tint.labelBg} ${face.tint.labelText}`}
                         >
