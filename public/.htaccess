@@ -23,3 +23,21 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+# Interim mitigations for CVE-2026-109618 / CVE-2026-109619 until the host runs
+# PHP >= 8.3.36 / 8.4.27 / 8.5.12. Guarded so PHP-FPM hosts don't 500 on php_value.
+<IfModule mod_php.c>
+    php_value session.upload_progress.enabled 0
+    php_value post_max_size 8M
+    php_value upload_max_filesize 2M
+</IfModule>
+<IfModule mod_lsapi.c>
+    php_value session.upload_progress.enabled 0
+    php_value post_max_size 8M
+    php_value upload_max_filesize 2M
+</IfModule>
+<IfModule LiteSpeed>
+    php_value session.upload_progress.enabled 0
+    php_value post_max_size 8M
+    php_value upload_max_filesize 2M
+</IfModule>
