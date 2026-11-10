@@ -31,6 +31,7 @@
         "@react-three/drei": "^10.7.7",
         "@react-three/fiber": "^9.5.0",
         "peerjs": "^1.5.5",
+        "qrcode.react": "^4.2.0",
         "three": "^0.183.2",
         "vite-plugin-pwa": "^0.19.8"
     },
