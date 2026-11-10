@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CubeTacGameController;
+use App\Http\Controllers\CubeTacLocalSessionController;
 use App\Http\Controllers\GameController;
 use App\Http\Controllers\GameRoomController;
 use App\Http\Controllers\ProfileController;
@@ -90,6 +91,16 @@ Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/octa-rotate', [CubeTacG
 Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/icosa-mark', [CubeTacGameController::class, 'icosaMark'])->middleware('throttle:60,1')->name('rooms.cubetac.icosaMark');
 Route::post('/rooms/{game:slug}/{room:room_code}/cubetac/icosa-rotate', [CubeTacGameController::class, 'icosaRotate'])->middleware('throttle:60,1')->name('rooms.cubetac.icosaRotate');
 Route::get('/play/cubetac/local', [CubeTacGameController::class, 'local'])->name('cubetac.local');
+
+// CubeTac local mode: phones join the host screen's game as controllers
+Route::post('/play/cubetac/local/sessions', [CubeTacLocalSessionController::class, 'store'])->middleware('throttle:20,1')->name('cubetac.local.sessions.store');
+Route::post('/play/cubetac/local/sessions/{session}/sync', [CubeTacLocalSessionController::class, 'sync'])->middleware('throttle:local-play')->name('cubetac.local.sessions.sync');
+Route::delete('/play/cubetac/local/sessions/{session}', [CubeTacLocalSessionController::class, 'destroy'])->middleware('throttle:local-play')->name('cubetac.local.sessions.destroy');
+Route::get('/play/cubetac/local/join/{session}', [CubeTacLocalSessionController::class, 'join'])->name('cubetac.local.join');
+Route::post('/play/cubetac/local/sessions/{session}/seats', [CubeTacLocalSessionController::class, 'claimSeat'])->middleware('throttle:local-play')->name('cubetac.local.sessions.claimSeat');
+Route::delete('/play/cubetac/local/sessions/{session}/seats', [CubeTacLocalSessionController::class, 'releaseSeat'])->middleware('throttle:local-play')->name('cubetac.local.sessions.releaseSeat');
+Route::get('/play/cubetac/local/sessions/{session}/state', [CubeTacLocalSessionController::class, 'state'])->name('cubetac.local.sessions.state');
+Route::post('/play/cubetac/local/sessions/{session}/actions', [CubeTacLocalSessionController::class, 'action'])->middleware('throttle:local-play')->name('cubetac.local.sessions.action');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

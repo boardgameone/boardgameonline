@@ -5,6 +5,11 @@
  * writes. The reducer owns the entire game state and mirrors the PHP
  * controller's transition logic on the server side.
  *
+ * Optional phone play: the "Play on phones" QR opens a relay session so
+ * players can take a seat and play their turns from their own phones while
+ * this screen stays the shared board. The reducers here remain the source of
+ * truth; see localSession.ts. Nothing touches the server until that is used.
+ *
  * Supports two variants picked before the match starts (cube or megaminx)
  * and 2..6 players. Slots 0/1 are X/O (keeping the 2-player feel identical),
  * 2..5 add triangle/square/plus/hexagon.
@@ -22,8 +27,17 @@ import type { MegaminxSceneHandle } from '@/Pages/Rooms/CubeTac/MegaminxScene';
 import type { PyraminxSceneHandle } from '@/Pages/Rooms/CubeTac/PyraminxScene';
 import type { OctahedronSceneHandle } from '@/Pages/Rooms/CubeTac/OctahedronScene';
 import type { IcosahedronSceneHandle } from '@/Pages/Rooms/CubeTac/IcosahedronScene';
+import PhoneJoinModal, { PhoneJoinButton } from '@/Pages/Rooms/CubeTac/components/PhoneJoinModal';
+import {
+    PALETTE,
+    localSeating,
+    useLocalBoardState,
+    useLocalSession,
+    type BoardLink,
+    type LocalVariant,
+} from '@/Pages/Rooms/CubeTac/localSession';
 import { Head, router } from '@inertiajs/react';
-import { useReducer, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import {
     Marks,
     Move,
@@ -80,10 +94,7 @@ const MOVES_PER_PLAYER = 30;
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 6;
 
-type Variant = 'cube' | 'megaminx' | 'pyraminx' | 'octahedron' | 'icosahedron';
-
-/** Palette mirrors the backend SLOT_COLORS in CubeTacGameController.php. */
-const PALETTE = ['#ff4d2e', '#3a90ff', '#16a34a', '#a855f7', '#f59e0b', '#c2813a'];
+type Variant = LocalVariant;
 
 // ---------------------------------------------------------------------------
 // Top-level shell — picks variant + player count, then mounts the right board.
@@ -92,53 +103,67 @@ const PALETTE = ['#ff4d2e', '#3a90ff', '#16a34a', '#a855f7', '#f59e0b', '#c2813a
 export default function LocalGame() {
     const [variant, setVariant] = useState<Variant>('cube');
     const [playerCount, setPlayerCount] = useState<number | null>(null);
+    const [isPhoneModalOpen, setIsPhoneModalOpen] = useState(false);
+    const session = useLocalSession();
+    const { publish, link } = session;
+
+    // While the picker is up there is no board to publish a snapshot, so tell
+    // joined phones the host is still choosing.
+    useEffect(() => {
+        if (playerCount === null) publish(null, null, null);
+    }, [playerCount, publish]);
 
     const handleLeave = () => {
         router.get(route('games.show', 'cubetac'));
     };
     const handleChangeSetup = () => setPlayerCount(null);
+    const handleOpenPhoneJoin = () => {
+        session.open();
+        setIsPhoneModalOpen(true);
+    };
+
+    const boardProps: BoardProps | null = playerCount === null
+        ? null
+        : { playerCount, onLeave: handleLeave, onChangeSetup: handleChangeSetup, link };
 
     return (
         <GameLayout fullHeight={true}>
             <Head title="CubeTac — Local" />
-            {playerCount === null ? (
+            {boardProps === null ? (
                 <Picker
                     variant={variant}
                     onVariantChange={setVariant}
                     onPickCount={setPlayerCount}
                     onLeave={handleLeave}
-                />
-            ) : variant === 'megaminx' ? (
-                <MegaminxLocalBoard
-                    playerCount={playerCount}
-                    onLeave={handleLeave}
-                    onChangeSetup={handleChangeSetup}
-                />
-            ) : variant === 'pyraminx' ? (
-                <PyraminxLocalBoard
-                    playerCount={playerCount}
-                    onLeave={handleLeave}
-                    onChangeSetup={handleChangeSetup}
-                />
-            ) : variant === 'octahedron' ? (
-                <OctahedronLocalBoard
-                    playerCount={playerCount}
-                    onLeave={handleLeave}
-                    onChangeSetup={handleChangeSetup}
-                />
-            ) : variant === 'icosahedron' ? (
-                <IcosahedronLocalBoard
-                    playerCount={playerCount}
-                    onLeave={handleLeave}
-                    onChangeSetup={handleChangeSetup}
+                    onPhoneJoin={handleOpenPhoneJoin}
+                    phoneCount={session.seats.length}
                 />
             ) : (
-                <CubeLocalBoard
-                    playerCount={playerCount}
-                    onLeave={handleLeave}
-                    onChangeSetup={handleChangeSetup}
-                />
+                <div className="relative h-full">
+                    {variant === 'megaminx' ? (
+                        <MegaminxLocalBoard {...boardProps} />
+                    ) : variant === 'pyraminx' ? (
+                        <PyraminxLocalBoard {...boardProps} />
+                    ) : variant === 'octahedron' ? (
+                        <OctahedronLocalBoard {...boardProps} />
+                    ) : variant === 'icosahedron' ? (
+                        <IcosahedronLocalBoard {...boardProps} />
+                    ) : (
+                        <CubeLocalBoard {...boardProps} />
+                    )}
+                    <PhoneJoinButton
+                        onClick={handleOpenPhoneJoin}
+                        phoneCount={session.seats.length}
+                        className="absolute right-4 top-14 z-20 sm:top-[6.25rem]"
+                    />
+                </div>
             )}
+            <PhoneJoinModal
+                show={isPhoneModalOpen}
+                onClose={() => setIsPhoneModalOpen(false)}
+                session={session}
+                playerCount={playerCount}
+            />
         </GameLayout>
     );
 }
@@ -152,9 +177,11 @@ interface PickerProps {
     onVariantChange: (v: Variant) => void;
     onPickCount: (count: number) => void;
     onLeave: () => void;
+    onPhoneJoin: () => void;
+    phoneCount: number;
 }
 
-function Picker({ variant, onVariantChange, onPickCount, onLeave }: PickerProps) {
+function Picker({ variant, onVariantChange, onPickCount, onLeave, onPhoneJoin, phoneCount }: PickerProps) {
     const options = Array.from(
         { length: MAX_PLAYERS - MIN_PLAYERS + 1 },
         (_, i) => i + MIN_PLAYERS,
@@ -188,7 +215,7 @@ function Picker({ variant, onVariantChange, onPickCount, onLeave }: PickerProps)
                     How many players?
                 </h2>
                 <p className="text-center text-xs font-bold uppercase tracking-[0.3em] text-yellow-900/60">
-                    Pass and play on one device
+                    Pass and play on one device, or join from phones
                 </p>
 
                 <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
@@ -213,6 +240,8 @@ function Picker({ variant, onVariantChange, onPickCount, onLeave }: PickerProps)
                         </button>
                     ))}
                 </div>
+
+                <PhoneJoinButton onClick={onPhoneJoin} phoneCount={phoneCount} />
             </div>
         </div>
     );
@@ -364,24 +393,27 @@ function cubeReducer(state: CubeLocalState, action: CubeLocalAction): CubeLocalS
     };
 }
 
-interface BoardProps {
+export interface BoardProps {
     playerCount: number;
     onLeave: () => void;
     onChangeSetup: () => void;
+    /** Phone-play link: host side on the shared screen, remote side on a phone. */
+    link?: BoardLink;
 }
 
-function CubeLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps) {
-    const [state, dispatch] = useReducer(cubeReducer, playerCount, freshCubeState);
+export function CubeLocalBoard({ playerCount, onLeave, onChangeSetup, link }: BoardProps) {
+    const [state, dispatch] = useLocalBoardState(cubeReducer, playerCount, freshCubeState, 'cube', link, (action) => {
+        if (action.type === 'ROTATE') cubeRef.current?.playMove(action.move);
+    });
     const cubeRef = useRef<CubeSceneHandle>(null);
     const showFinished = useFinishReveal(state.winner !== null, () => cubeRef.current);
 
-    const players = Array.from({ length: playerCount }, (_, slot) => ({
-        id: null as number | null,
-        nickname: `Player ${slot + 1}`,
-        avatar_color: PALETTE[slot] ?? '#5b9bd5',
-        design: slot,
-        wins: state.wins[slot] ?? 0,
-    }));
+    const { players, mySlot, isMyTurn, turnLabel, isRemote } = localSeating(
+        link,
+        playerCount,
+        state.wins,
+        state.currentTurn,
+    );
 
     const handleMark = (face: number, row: number, col: number) => {
         dispatch({ type: 'MARK', face, row, col });
@@ -401,7 +433,7 @@ function CubeLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps) {
         })()
         : null;
 
-    const canChangeSetup = state.moveCount === 0 && state.winner === null;
+    const canChangeSetup = !isRemote && state.moveCount === 0 && state.winner === null;
     const changeSetupStyle: CSSProperties = { zIndex: 20 };
 
     return (
@@ -415,15 +447,15 @@ function CubeLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps) {
                         moveCount={state.moveCount}
                         moveLimit={state.moveLimit}
                         players={players}
-                        mySlot={null}
-                        isMyTurn={true}
+                        mySlot={mySlot}
+                        isMyTurn={isMyTurn}
                         pendingAction={state.pendingAction}
                         lastAction={lastAction}
                         onMark={handleMark}
                         onRotate={handleRotate}
                         onEndTurn={handleEndTurn}
                         onUndoMark={handleUndoMark}
-                        turnLabelOverride={`${players[state.currentTurn]?.nickname ?? 'Player'}'s Turn`}
+                        turnLabelOverride={turnLabel}
                         onLeave={onLeave}
                         gamesPlayed={state.gamesPlayed}
                         outcome={state.winner}
@@ -447,11 +479,11 @@ function CubeLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps) {
                     winner={state.winner ?? 'draw'}
                     winningLines={state.winningLines}
                     players={players}
-                    mySlot={null}
-                    canRematch={true}
+                    mySlot={mySlot}
+                    canRematch={!isRemote || mySlot !== null}
                     onRematch={handleReset}
                     onLeave={onLeave}
-                    leaveLabel="Main menu"
+                    leaveLabel={isRemote ? 'Leave seat' : 'Main menu'}
                 />
             )}
         </div>
@@ -604,18 +636,17 @@ function megaReducer(state: MegaLocalState, action: MegaLocalAction): MegaLocalS
     };
 }
 
-function MegaminxLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps) {
-    const [state, dispatch] = useReducer(megaReducer, playerCount, freshMegaState);
+export function MegaminxLocalBoard({ playerCount, onLeave, onChangeSetup, link }: BoardProps) {
+    const [state, dispatch] = useLocalBoardState(megaReducer, playerCount, freshMegaState, 'megaminx', link);
     const megaRef = useRef<MegaminxSceneHandle>(null);
     const showFinished = useFinishReveal(state.winner !== null, () => megaRef.current);
 
-    const players = Array.from({ length: playerCount }, (_, slot) => ({
-        id: null as number | null,
-        nickname: `Player ${slot + 1}`,
-        avatar_color: PALETTE[slot] ?? '#5b9bd5',
-        design: slot,
-        wins: state.wins[slot] ?? 0,
-    }));
+    const { players, mySlot, isMyTurn, turnLabel, isRemote } = localSeating(
+        link,
+        playerCount,
+        state.wins,
+        state.currentTurn,
+    );
 
     const handleMegaMark = (face: number, slot: number) => {
         dispatch({ type: 'MARK', face, slot });
@@ -636,7 +667,7 @@ function MegaminxLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps)
         })()
         : null;
 
-    const canChangeSetup = state.moveCount === 0 && state.winner === null;
+    const canChangeSetup = !isRemote && state.moveCount === 0 && state.winner === null;
     const changeSetupStyle: CSSProperties = { zIndex: 20 };
 
     return (
@@ -651,8 +682,8 @@ function MegaminxLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps)
                         moveCount={state.moveCount}
                         moveLimit={state.moveLimit}
                         players={players}
-                        mySlot={null}
-                        isMyTurn={true}
+                        mySlot={mySlot}
+                        isMyTurn={isMyTurn}
                         pendingAction={state.pendingAction}
                         lastAction={lastAction}
                         // Cube callbacks are unused in this branch but PlayingPhase
@@ -663,7 +694,7 @@ function MegaminxLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps)
                         onMegaRotate={handleMegaRotate}
                         onEndTurn={handleEndTurn}
                         onUndoMark={handleUndoMark}
-                        turnLabelOverride={`${players[state.currentTurn]?.nickname ?? 'Player'}'s Turn`}
+                        turnLabelOverride={turnLabel}
                         onLeave={onLeave}
                         gamesPlayed={state.gamesPlayed}
                         outcome={state.winner}
@@ -688,11 +719,11 @@ function MegaminxLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps)
                     winner={state.winner ?? 'draw'}
                     winningLines={state.winningLines}
                     players={players}
-                    mySlot={null}
-                    canRematch={true}
+                    mySlot={mySlot}
+                    canRematch={!isRemote || mySlot !== null}
                     onRematch={handleReset}
                     onLeave={onLeave}
-                    leaveLabel="Main menu"
+                    leaveLabel={isRemote ? 'Leave seat' : 'Main menu'}
                 />
             )}
         </div>
@@ -845,18 +876,17 @@ function pyraReducer(state: PyraLocalState, action: PyraLocalAction): PyraLocalS
     };
 }
 
-function PyraminxLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps) {
-    const [state, dispatch] = useReducer(pyraReducer, playerCount, freshPyraState);
+export function PyraminxLocalBoard({ playerCount, onLeave, onChangeSetup, link }: BoardProps) {
+    const [state, dispatch] = useLocalBoardState(pyraReducer, playerCount, freshPyraState, 'pyraminx', link);
     const pyraRef = useRef<PyraminxSceneHandle>(null);
     const showFinished = useFinishReveal(state.winner !== null, () => pyraRef.current);
 
-    const players = Array.from({ length: playerCount }, (_, slot) => ({
-        id: null as number | null,
-        nickname: `Player ${slot + 1}`,
-        avatar_color: PALETTE[slot] ?? '#5b9bd5',
-        design: slot,
-        wins: state.wins[slot] ?? 0,
-    }));
+    const { players, mySlot, isMyTurn, turnLabel, isRemote } = localSeating(
+        link,
+        playerCount,
+        state.wins,
+        state.currentTurn,
+    );
 
     const handlePyraMark = (face: number, slot: number) => {
         dispatch({ type: 'MARK', face, slot });
@@ -875,7 +905,7 @@ function PyraminxLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps)
         })()
         : null;
 
-    const canChangeSetup = state.moveCount === 0 && state.winner === null;
+    const canChangeSetup = !isRemote && state.moveCount === 0 && state.winner === null;
     const changeSetupStyle: CSSProperties = { zIndex: 20 };
 
     return (
@@ -890,8 +920,8 @@ function PyraminxLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps)
                         moveCount={state.moveCount}
                         moveLimit={state.moveLimit}
                         players={players}
-                        mySlot={null}
-                        isMyTurn={true}
+                        mySlot={mySlot}
+                        isMyTurn={isMyTurn}
                         pendingAction={state.pendingAction}
                         lastAction={lastAction}
                         // Cube callbacks are unused in this branch but PlayingPhase
@@ -902,7 +932,7 @@ function PyraminxLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps)
                         onPyraRotate={handlePyraRotate}
                         onEndTurn={handleEndTurn}
                         onUndoMark={handleUndoMark}
-                        turnLabelOverride={`${players[state.currentTurn]?.nickname ?? 'Player'}'s Turn`}
+                        turnLabelOverride={turnLabel}
                         onLeave={onLeave}
                         gamesPlayed={state.gamesPlayed}
                         outcome={state.winner}
@@ -927,11 +957,11 @@ function PyraminxLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps)
                     winner={state.winner ?? 'draw'}
                     winningLines={state.winningLines}
                     players={players}
-                    mySlot={null}
-                    canRematch={true}
+                    mySlot={mySlot}
+                    canRematch={!isRemote || mySlot !== null}
                     onRematch={handleReset}
                     onLeave={onLeave}
-                    leaveLabel="Main menu"
+                    leaveLabel={isRemote ? 'Leave seat' : 'Main menu'}
                 />
             )}
         </div>
@@ -1084,18 +1114,17 @@ function octaReducer(state: OctaLocalState, action: OctaLocalAction): OctaLocalS
     };
 }
 
-function OctahedronLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps) {
-    const [state, dispatch] = useReducer(octaReducer, playerCount, freshOctaState);
+export function OctahedronLocalBoard({ playerCount, onLeave, onChangeSetup, link }: BoardProps) {
+    const [state, dispatch] = useLocalBoardState(octaReducer, playerCount, freshOctaState, 'octahedron', link);
     const octaRef = useRef<OctahedronSceneHandle>(null);
     const showFinished = useFinishReveal(state.winner !== null, () => octaRef.current);
 
-    const players = Array.from({ length: playerCount }, (_, slot) => ({
-        id: null as number | null,
-        nickname: `Player ${slot + 1}`,
-        avatar_color: PALETTE[slot] ?? '#5b9bd5',
-        design: slot,
-        wins: state.wins[slot] ?? 0,
-    }));
+    const { players, mySlot, isMyTurn, turnLabel, isRemote } = localSeating(
+        link,
+        playerCount,
+        state.wins,
+        state.currentTurn,
+    );
 
     const handleOctaMark = (face: number, slot: number) => {
         dispatch({ type: 'MARK', face, slot });
@@ -1114,7 +1143,7 @@ function OctahedronLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProp
         })()
         : null;
 
-    const canChangeSetup = state.moveCount === 0 && state.winner === null;
+    const canChangeSetup = !isRemote && state.moveCount === 0 && state.winner === null;
     const changeSetupStyle: CSSProperties = { zIndex: 20 };
 
     return (
@@ -1129,8 +1158,8 @@ function OctahedronLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProp
                         moveCount={state.moveCount}
                         moveLimit={state.moveLimit}
                         players={players}
-                        mySlot={null}
-                        isMyTurn={true}
+                        mySlot={mySlot}
+                        isMyTurn={isMyTurn}
                         pendingAction={state.pendingAction}
                         lastAction={lastAction}
                         // Cube callbacks are unused in this branch but PlayingPhase
@@ -1141,7 +1170,7 @@ function OctahedronLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProp
                         onOctaRotate={handleOctaRotate}
                         onEndTurn={handleEndTurn}
                         onUndoMark={handleUndoMark}
-                        turnLabelOverride={`${players[state.currentTurn]?.nickname ?? 'Player'}'s Turn`}
+                        turnLabelOverride={turnLabel}
                         onLeave={onLeave}
                         gamesPlayed={state.gamesPlayed}
                         outcome={state.winner}
@@ -1166,11 +1195,11 @@ function OctahedronLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProp
                     winner={state.winner ?? 'draw'}
                     winningLines={state.winningLines}
                     players={players}
-                    mySlot={null}
-                    canRematch={true}
+                    mySlot={mySlot}
+                    canRematch={!isRemote || mySlot !== null}
                     onRematch={handleReset}
                     onLeave={onLeave}
-                    leaveLabel="Main menu"
+                    leaveLabel={isRemote ? 'Leave seat' : 'Main menu'}
                 />
             )}
         </div>
@@ -1323,18 +1352,17 @@ function icosaReducer(state: IcosaLocalState, action: IcosaLocalAction): IcosaLo
     };
 }
 
-function IcosahedronLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardProps) {
-    const [state, dispatch] = useReducer(icosaReducer, playerCount, freshIcosaState);
+export function IcosahedronLocalBoard({ playerCount, onLeave, onChangeSetup, link }: BoardProps) {
+    const [state, dispatch] = useLocalBoardState(icosaReducer, playerCount, freshIcosaState, 'icosahedron', link);
     const icosaRef = useRef<IcosahedronSceneHandle>(null);
     const showFinished = useFinishReveal(state.winner !== null, () => icosaRef.current);
 
-    const players = Array.from({ length: playerCount }, (_, slot) => ({
-        id: null as number | null,
-        nickname: `Player ${slot + 1}`,
-        avatar_color: PALETTE[slot] ?? '#5b9bd5',
-        design: slot,
-        wins: state.wins[slot] ?? 0,
-    }));
+    const { players, mySlot, isMyTurn, turnLabel, isRemote } = localSeating(
+        link,
+        playerCount,
+        state.wins,
+        state.currentTurn,
+    );
 
     const handleIcosaMark = (face: number, slot: number) => {
         dispatch({ type: 'MARK', face, slot });
@@ -1353,7 +1381,7 @@ function IcosahedronLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardPro
         })()
         : null;
 
-    const canChangeSetup = state.moveCount === 0 && state.winner === null;
+    const canChangeSetup = !isRemote && state.moveCount === 0 && state.winner === null;
     const changeSetupStyle: CSSProperties = { zIndex: 20 };
 
     return (
@@ -1368,8 +1396,8 @@ function IcosahedronLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardPro
                         moveCount={state.moveCount}
                         moveLimit={state.moveLimit}
                         players={players}
-                        mySlot={null}
-                        isMyTurn={true}
+                        mySlot={mySlot}
+                        isMyTurn={isMyTurn}
                         pendingAction={state.pendingAction}
                         lastAction={lastAction}
                         // Cube callbacks are unused in this branch but PlayingPhase
@@ -1380,7 +1408,7 @@ function IcosahedronLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardPro
                         onIcosaRotate={handleIcosaRotate}
                         onEndTurn={handleEndTurn}
                         onUndoMark={handleUndoMark}
-                        turnLabelOverride={`${players[state.currentTurn]?.nickname ?? 'Player'}'s Turn`}
+                        turnLabelOverride={turnLabel}
                         onLeave={onLeave}
                         gamesPlayed={state.gamesPlayed}
                         outcome={state.winner}
@@ -1405,11 +1433,11 @@ function IcosahedronLocalBoard({ playerCount, onLeave, onChangeSetup }: BoardPro
                     winner={state.winner ?? 'draw'}
                     winningLines={state.winningLines}
                     players={players}
-                    mySlot={null}
-                    canRematch={true}
+                    mySlot={mySlot}
+                    canRematch={!isRemote || mySlot !== null}
                     onRematch={handleReset}
                     onLeave={onLeave}
-                    leaveLabel="Main menu"
+                    leaveLabel={isRemote ? 'Leave seat' : 'Main menu'}
                 />
             )}
         </div>
