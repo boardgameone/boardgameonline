@@ -264,6 +264,8 @@ const CubeScene = forwardRef<CubeSceneHandle, CubeSceneProps>(function CubeScene
         idle: () => waitUntilIdle(() => isAnimatingRef.current || queueRef.current.length > 0),
         lookAtFace: (face) => cameraRef.current?.lookAt(faceNormal(face)),
         resetView: () => cameraRef.current?.reset(),
+        getView: () => cameraRef.current?.getView() ?? null,
+        followView: (view) => cameraRef.current?.follow(view),
     }), [playMove]);
 
     const winLineSpecs = useMemo<WinLineSpec[]>(() => {

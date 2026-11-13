@@ -23,6 +23,8 @@ class LocalPlaySession extends Model
 
     public const HOST_ONLINE_WINDOW_SECONDS = 30;
 
+    public const VIEW_TTL_SECONDS = 30;
+
     /**
      * @var list<string>
      */
@@ -91,6 +93,15 @@ class LocalPlaySession extends Model
     {
         return $this->last_synced_at !== null
             && $this->last_synced_at->gte(now()->subSeconds(self::HOST_ONLINE_WINDOW_SECONDS));
+    }
+
+    /**
+     * Cache key for the camera angle the phone currently playing last sent.
+     * It is throwaway, many-times-a-second data, so it never touches the database.
+     */
+    public function viewCacheKey(): string
+    {
+        return 'local-play:view:'.$this->code;
     }
 
     public function findSeatByToken(?string $token): ?LocalPlaySeat

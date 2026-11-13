@@ -225,11 +225,21 @@ export function WinLines({ lines, width = 7 }: { lines: WinLineSpec[]; width?: n
 // SceneCamera — OrbitControls + held-arrow orbit + lookAt/reset tween
 // -----------------------------------------------------------------------------
 
+/** Orbit angles of the camera around the puzzle, in radians. */
+export interface CameraView {
+    azimuth: number;
+    polar: number;
+}
+
 export interface SceneCameraHandle {
     /** Ease the camera so it looks at the cube from `direction`. */
     lookAt: (direction: Vec3) => void;
     /** Ease back to the opening camera angle. */
     reset: () => void;
+    /** Current orbit angles, or null before the controls mount. */
+    getView: () => CameraView | null;
+    /** Ease towards another screen's orbit angles (phone play mirroring). */
+    follow: (view: CameraView) => void;
 }
 
 interface SceneCameraProps {
@@ -296,6 +306,18 @@ export const SceneCamera = forwardRef<SceneCameraHandle, SceneCameraProps>(funct
         },
         reset() {
             tweenRef.current = homeRef.current ? { ...homeRef.current } : null;
+        },
+        getView() {
+            const controls = controlsRef.current;
+            return controls
+                ? { azimuth: controls.getAzimuthalAngle(), polar: controls.getPolarAngle() }
+                : null;
+        },
+        follow(view) {
+            tweenRef.current = {
+                azimuth: view.azimuth,
+                polar: THREE.MathUtils.clamp(view.polar, minPolarAngle, maxPolarAngle),
+            };
         },
     }), [minPolarAngle, maxPolarAngle]);
 
@@ -397,4 +419,8 @@ export interface SceneViewHandle {
     lookAtFace: (face: number) => void;
     /** Ease the camera back to its opening angle. */
     resetView: () => void;
+    /** Current camera orbit angles, or null before the scene is ready. */
+    getView: () => CameraView | null;
+    /** Ease the camera towards orbit angles reported by another screen. */
+    followView: (view: CameraView) => void;
 }

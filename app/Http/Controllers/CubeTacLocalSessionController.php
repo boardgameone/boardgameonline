@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ClaimLocalPlaySeatRequest;
 use App\Http\Requests\CreateLocalPlaySessionRequest;
 use App\Http\Requests\SendLocalPlayActionRequest;
+use App\Http\Requests\SendLocalPlayViewRequest;
 use App\Http\Requests\SyncLocalPlaySessionRequest;
 use App\Models\LocalPlayAction;
 use App\Models\LocalPlaySeat;
@@ -12,6 +13,7 @@ use App\Models\LocalPlaySession;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -67,6 +69,7 @@ class CubeTacLocalSessionController extends Controller
         return response()->json([
             'version' => $session->state_version,
             'seats' => $this->seatList($session),
+            'view' => Cache::get($session->viewCacheKey()),
             'actions' => $session->actions()
                 ->where('id', '>', $afterId)
                 ->orderBy('id')
@@ -84,6 +87,7 @@ class CubeTacLocalSessionController extends Controller
     {
         $this->abortUnlessHost($request, $session);
 
+        Cache::forget($session->viewCacheKey());
         $session->delete();
 
         return response()->json(['closed' => true]);
@@ -173,6 +177,28 @@ class CubeTacLocalSessionController extends Controller
         ]);
 
         return response()->json(['queued' => true], 201);
+    }
+
+    /**
+     * A phone reports how it has turned the cube so the host screen can follow.
+     * Only the latest angle matters, so it overwrites rather than queues.
+     */
+    public function view(SendLocalPlayViewRequest $request, LocalPlaySession $session): JsonResponse
+    {
+        $seat = $session->findSeatByToken($this->token($request));
+
+        if ($seat === null) {
+            return response()->json(['message' => 'Take a seat before playing.'], 403);
+        }
+
+        Cache::put($session->viewCacheKey(), [
+            'slot' => $seat->slot,
+            'azimuth' => (float) $request->validated('azimuth'),
+            'polar' => (float) $request->validated('polar'),
+            'seq' => (int) round(microtime(true) * 1000),
+        ], LocalPlaySession::VIEW_TTL_SECONDS);
+
+        return response()->json(['stored' => true]);
     }
 
     private function token(Request $request): ?string
