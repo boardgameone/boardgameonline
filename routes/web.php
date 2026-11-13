@@ -101,6 +101,7 @@ Route::post('/play/cubetac/local/sessions/{session}/seats', [CubeTacLocalSession
 Route::delete('/play/cubetac/local/sessions/{session}/seats', [CubeTacLocalSessionController::class, 'releaseSeat'])->middleware('throttle:local-play')->name('cubetac.local.sessions.releaseSeat');
 Route::get('/play/cubetac/local/sessions/{session}/state', [CubeTacLocalSessionController::class, 'state'])->name('cubetac.local.sessions.state');
 Route::post('/play/cubetac/local/sessions/{session}/actions', [CubeTacLocalSessionController::class, 'action'])->middleware('throttle:local-play')->name('cubetac.local.sessions.action');
+Route::post('/play/cubetac/local/sessions/{session}/view', [CubeTacLocalSessionController::class, 'view'])->middleware('throttle:local-play')->name('cubetac.local.sessions.view');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

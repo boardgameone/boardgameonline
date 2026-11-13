@@ -256,6 +256,8 @@ const PolyhedronScene = forwardRef<PolyhedronSceneHandle, PolyhedronSceneProps &
             idle: () => waitUntilIdle(() => isAnimatingRef.current || queueRef.current.length > 0),
             lookAtFace: (face) => cameraRef.current?.lookAt(geometry.faceNormals()[face]),
             resetView: () => cameraRef.current?.reset(),
+            getView: () => cameraRef.current?.getView() ?? null,
+            followView: (view) => cameraRef.current?.follow(view),
         }), [playMove, geometry]);
 
         const winLineSpecs = useMemo<WinLineSpec[]>(() => {

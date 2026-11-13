@@ -29,7 +29,7 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('local-play', function (Request $request): Limit {
             $token = $request->header(LocalPlaySession::TOKEN_HEADER);
 
-            return Limit::perMinute(240)->by(is_string($token) && $token !== '' ? sha1($token) : (string) $request->ip());
+            return Limit::perMinute(600)->by(is_string($token) && $token !== '' ? sha1($token) : (string) $request->ip());
         });
     }
 }

@@ -6,6 +6,7 @@ use App\Models\LocalPlayAction;
 use App\Models\LocalPlaySeat;
 use App\Models\LocalPlaySession;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 class CubeTacLocalSessionTest extends TestCase
@@ -389,6 +390,94 @@ class CubeTacLocalSessionTest extends TestCase
         $this->assertSame(0, LocalPlaySeat::query()->count());
         $this->assertSame(0, LocalPlayAction::query()->count());
         $this->getJson(route('cubetac.local.sessions.state', $session))->assertNotFound();
+    }
+
+    public function test_view_requires_a_seat(): void
+    {
+        $session = LocalPlaySession::factory()->create();
+        $url = route('cubetac.local.sessions.view', $session);
+        $view = ['azimuth' => 0.5, 'polar' => 1.2];
+
+        $this->postJson($url, $view)->assertForbidden();
+        $this->postJson($url, $view, $this->tokenHeader($session->host_token))->assertForbidden();
+    }
+
+    public function test_view_rejects_missing_or_out_of_range_angles(): void
+    {
+        $session = LocalPlaySession::factory()->create();
+        $seat = LocalPlaySeat::factory()->forSession($session)->create();
+        $url = route('cubetac.local.sessions.view', $session);
+
+        $this->postJson($url, [], $this->tokenHeader($seat->token))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['azimuth', 'polar']);
+        $this->postJson($url, ['azimuth' => 9, 'polar' => -1], $this->tokenHeader($seat->token))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['azimuth', 'polar']);
+        $this->postJson($url, ['azimuth' => 'left', 'polar' => 1], $this->tokenHeader($seat->token))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['azimuth']);
+    }
+
+    public function test_sync_has_no_view_until_a_phone_sends_one(): void
+    {
+        $session = LocalPlaySession::factory()->create();
+
+        $this->postJson(
+            route('cubetac.local.sessions.sync', $session),
+            ['push' => false],
+            $this->tokenHeader($session->host_token),
+        )->assertOk()->assertJsonPath('view', null);
+    }
+
+    public function test_sync_returns_the_latest_view_with_the_seats_slot(): void
+    {
+        $session = LocalPlaySession::factory()->create();
+        $other = LocalPlaySession::factory()->create();
+        $seat = LocalPlaySeat::factory()->forSession($session)->slot(1)->create();
+        $url = route('cubetac.local.sessions.view', $session);
+
+        $this->postJson($url, ['azimuth' => 0.25, 'polar' => 1.5, 'slot' => 0], $this->tokenHeader($seat->token))
+            ->assertOk();
+        $this->postJson($url, ['azimuth' => -1.25, 'polar' => 0.75], $this->tokenHeader($seat->token))
+            ->assertOk();
+
+        $response = $this->postJson(
+            route('cubetac.local.sessions.sync', $session),
+            ['push' => false],
+            $this->tokenHeader($session->host_token),
+        );
+
+        $response->assertOk()
+            ->assertJsonPath('view.slot', 1)
+            ->assertJsonPath('view.azimuth', -1.25)
+            ->assertJsonPath('view.polar', 0.75);
+        $this->assertIsInt($response->json('view.seq'));
+
+        $this->postJson(
+            route('cubetac.local.sessions.sync', $other),
+            ['push' => false],
+            $this->tokenHeader($other->host_token),
+        )->assertOk()->assertJsonPath('view', null);
+    }
+
+    public function test_closing_the_session_forgets_the_view(): void
+    {
+        $session = LocalPlaySession::factory()->create();
+        $seat = LocalPlaySeat::factory()->forSession($session)->create();
+        $this->postJson(
+            route('cubetac.local.sessions.view', $session),
+            ['azimuth' => 1, 'polar' => 1],
+            $this->tokenHeader($seat->token),
+        )->assertOk();
+
+        $this->deleteJson(
+            route('cubetac.local.sessions.destroy', $session),
+            [],
+            $this->tokenHeader($session->host_token),
+        )->assertOk();
+
+        $this->assertNull(Cache::get($session->viewCacheKey()));
     }
 
     public function test_prune_removes_only_stale_sessions(): void
