@@ -19,6 +19,7 @@ import {
 import {
     PALETTE,
     TOKEN_HEADER,
+    type BoardView,
     type LocalVariant,
     type RemoteLink,
     type Seat,
@@ -27,7 +28,7 @@ import { Head, router } from '@inertiajs/react';
 import axios from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
-const POLL_INTERVAL_MS = 1000;
+const POLL_INTERVAL_MS = 500;
 const NICKNAME_KEY = 'cubetac-local-nickname';
 
 interface StateResponse {
@@ -175,13 +176,29 @@ export default function LocalJoin({ code }: { code: string }) {
         [code, headers, storeSeatToken],
     );
 
+    const isSendingViewRef = useRef(false);
+    const sendView = useCallback(
+        (view: BoardView): boolean => {
+            if (isSendingViewRef.current) return false;
+            isSendingViewRef.current = true;
+            axios
+                .post(route('cubetac.local.sessions.view', code), view, { headers })
+                .catch(() => {})
+                .finally(() => {
+                    isSendingViewRef.current = false;
+                });
+            return true;
+        },
+        [code, headers],
+    );
+
     const mySlot = lobby?.mySlot ?? null;
     const seats = lobby?.seats;
     const state = snapshot?.state ?? null;
 
     const link = useMemo<RemoteLink>(
-        () => ({ mode: 'remote', seats: seats ?? [], mySlot, state, send }),
-        [seats, mySlot, state, send],
+        () => ({ mode: 'remote', seats: seats ?? [], mySlot, state, send, sendView }),
+        [seats, mySlot, state, send, sendView],
     );
 
     const canShowBoard = lobby !== null

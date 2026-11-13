@@ -32,6 +32,7 @@ import {
     PALETTE,
     localSeating,
     useLocalBoardState,
+    useViewMirror,
     useLocalSession,
     type BoardLink,
     type LocalVariant,
@@ -406,6 +407,7 @@ export function CubeLocalBoard({ playerCount, onLeave, onChangeSetup, link }: Bo
         if (action.type === 'ROTATE') cubeRef.current?.playMove(action.move);
     });
     const cubeRef = useRef<CubeSceneHandle>(null);
+    useViewMirror(link, () => cubeRef.current, state.currentTurn);
     const showFinished = useFinishReveal(state.winner !== null, () => cubeRef.current);
 
     const { players, mySlot, isMyTurn, turnLabel, isRemote } = localSeating(
@@ -637,8 +639,11 @@ function megaReducer(state: MegaLocalState, action: MegaLocalAction): MegaLocalS
 }
 
 export function MegaminxLocalBoard({ playerCount, onLeave, onChangeSetup, link }: BoardProps) {
-    const [state, dispatch] = useLocalBoardState(megaReducer, playerCount, freshMegaState, 'megaminx', link);
+    const [state, dispatch] = useLocalBoardState(megaReducer, playerCount, freshMegaState, 'megaminx', link, (action) => {
+        if (action.type === 'ROTATE') megaRef.current?.playMove(action.face, action.direction);
+    });
     const megaRef = useRef<MegaminxSceneHandle>(null);
+    useViewMirror(link, () => megaRef.current, state.currentTurn);
     const showFinished = useFinishReveal(state.winner !== null, () => megaRef.current);
 
     const { players, mySlot, isMyTurn, turnLabel, isRemote } = localSeating(
@@ -877,8 +882,11 @@ function pyraReducer(state: PyraLocalState, action: PyraLocalAction): PyraLocalS
 }
 
 export function PyraminxLocalBoard({ playerCount, onLeave, onChangeSetup, link }: BoardProps) {
-    const [state, dispatch] = useLocalBoardState(pyraReducer, playerCount, freshPyraState, 'pyraminx', link);
+    const [state, dispatch] = useLocalBoardState(pyraReducer, playerCount, freshPyraState, 'pyraminx', link, (action) => {
+        if (action.type === 'ROTATE') pyraRef.current?.playMove(action.face, action.direction);
+    });
     const pyraRef = useRef<PyraminxSceneHandle>(null);
+    useViewMirror(link, () => pyraRef.current, state.currentTurn);
     const showFinished = useFinishReveal(state.winner !== null, () => pyraRef.current);
 
     const { players, mySlot, isMyTurn, turnLabel, isRemote } = localSeating(
@@ -1115,8 +1123,11 @@ function octaReducer(state: OctaLocalState, action: OctaLocalAction): OctaLocalS
 }
 
 export function OctahedronLocalBoard({ playerCount, onLeave, onChangeSetup, link }: BoardProps) {
-    const [state, dispatch] = useLocalBoardState(octaReducer, playerCount, freshOctaState, 'octahedron', link);
+    const [state, dispatch] = useLocalBoardState(octaReducer, playerCount, freshOctaState, 'octahedron', link, (action) => {
+        if (action.type === 'ROTATE') octaRef.current?.playMove(action.face, action.direction);
+    });
     const octaRef = useRef<OctahedronSceneHandle>(null);
+    useViewMirror(link, () => octaRef.current, state.currentTurn);
     const showFinished = useFinishReveal(state.winner !== null, () => octaRef.current);
 
     const { players, mySlot, isMyTurn, turnLabel, isRemote } = localSeating(
@@ -1353,8 +1364,11 @@ function icosaReducer(state: IcosaLocalState, action: IcosaLocalAction): IcosaLo
 }
 
 export function IcosahedronLocalBoard({ playerCount, onLeave, onChangeSetup, link }: BoardProps) {
-    const [state, dispatch] = useLocalBoardState(icosaReducer, playerCount, freshIcosaState, 'icosahedron', link);
+    const [state, dispatch] = useLocalBoardState(icosaReducer, playerCount, freshIcosaState, 'icosahedron', link, (action) => {
+        if (action.type === 'ROTATE') icosaRef.current?.playMove(action.face, action.direction);
+    });
     const icosaRef = useRef<IcosahedronSceneHandle>(null);
+    useViewMirror(link, () => icosaRef.current, state.currentTurn);
     const showFinished = useFinishReveal(state.winner !== null, () => icosaRef.current);
 
     const { players, mySlot, isMyTurn, turnLabel, isRemote } = localSeating(

@@ -5,10 +5,14 @@
  * truth. A small server relay stores its latest snapshot, the seats phones
  * have claimed, and a queue of phone actions:
  *
- *   host  — `useLocalSession` syncs once a second: pushes the snapshot when it
+ *   host  — `useLocalSession` syncs a few times a second while phones are
+ *           seated (once a second otherwise): pushes the snapshot when it
  *           changed and pulls queued actions, which the mounted board applies.
  *   phone — `Rooms/CubeTac/LocalJoin` polls the snapshot and renders the same
  *           board through a remote link whose dispatch posts the action.
+ *
+ * The phone whose turn it is also reports how it has turned the puzzle, and
+ * the host screen's camera follows it (`useViewMirror`).
  *
  * `useLocalBoardState` is the board-side seam: a drop-in for `useReducer`
  * that behaves exactly like it when no link is passed.
@@ -24,7 +28,14 @@ export const PALETTE = ['#ff4d2e', '#3a90ff', '#16a34a', '#a855f7', '#f59e0b', '
 
 export const TOKEN_HEADER = 'X-Local-Play-Token';
 
-const SYNC_INTERVAL_MS = 1000;
+/** Host sync cadence with no phones seated; just a heartbeat. */
+const IDLE_SYNC_INTERVAL_MS = 1000;
+/** Host sync cadence once a phone is seated, so its moves show up promptly. */
+const LIVE_SYNC_INTERVAL_MS = 300;
+/** How often a phone checks whether its camera moved. */
+const VIEW_SAMPLE_INTERVAL_MS = 150;
+/** Camera movement (radians) too small to be worth sending. */
+const VIEW_EPSILON = 0.01;
 /** How long a phone trusts its own prediction before falling back to the host. */
 const OPTIMISTIC_TIMEOUT_MS = 4000;
 
@@ -33,13 +44,27 @@ export interface Seat {
     nickname: string;
 }
 
+/** Orbit angles of a board's camera, in radians. */
+export interface BoardView {
+    azimuth: number;
+    polar: number;
+}
+
+/** The part of a scene handle that view mirroring needs. */
+export interface ViewScene {
+    getView: () => BoardView | null;
+    followView: (view: BoardView) => void;
+}
+
 type RemoteActionHandler = (slot: number, action: unknown) => void;
+type RemoteViewHandler = (slot: number, view: BoardView) => void;
 
 export interface HostLink {
     mode: 'host';
     seats: Seat[];
     publish: (variant: LocalVariant | null, playerCount: number | null, state: unknown) => void;
     setActionHandler: (handler: RemoteActionHandler | null) => void;
+    setViewHandler: (handler: RemoteViewHandler | null) => void;
 }
 
 export interface RemoteLink {
@@ -48,6 +73,8 @@ export interface RemoteLink {
     mySlot: number | null;
     state: unknown;
     send: (action: unknown) => void;
+    /** Reports the phone's camera angles. False when it could not be sent yet. */
+    sendView: (view: BoardView) => boolean;
 }
 
 export type BoardLink = HostLink | RemoteLink;
@@ -83,6 +110,7 @@ export interface LocalSession {
 interface SyncResponse {
     version: number;
     seats: Seat[];
+    view: (BoardView & { slot: number; seq: number }) | null;
     actions: { id: number; slot: number; action: unknown }[];
 }
 
@@ -106,6 +134,10 @@ export function useLocalSession(): LocalSession {
         dirty: boolean;
     }>({ variant: null, playerCount: null, state: null, dirty: true });
     const handlerRef = useRef<RemoteActionHandler | null>(null);
+    const viewHandlerRef = useRef<RemoteViewHandler | null>(null);
+    const viewSeqRef = useRef<number | null>(null);
+    const seatCountRef = useRef(0);
+    seatCountRef.current = seats.length;
     const cursorRef = useRef(0);
     const infoRef = useRef<LocalSessionInfo | null>(null);
     infoRef.current = info;
@@ -116,6 +148,10 @@ export function useLocalSession(): LocalSession {
 
     const setActionHandler = useCallback<HostLink['setActionHandler']>((handler) => {
         handlerRef.current = handler;
+    }, []);
+
+    const setViewHandler = useCallback<HostLink['setViewHandler']>((handler) => {
+        viewHandlerRef.current = handler;
     }, []);
 
     const open = useCallback(() => {
@@ -149,12 +185,11 @@ export function useLocalSession(): LocalSession {
     useEffect(() => {
         if (info === null) return;
 
-        let inFlight = false;
         let cancelled = false;
+        let timer: number | undefined;
 
         const sync = () => {
-            if (inFlight || cancelled) return;
-            inFlight = true;
+            if (cancelled) return;
             const snapshot = snapshotRef.current;
             const push = snapshot.dirty;
             snapshot.dirty = false;
@@ -176,9 +211,17 @@ export function useLocalSession(): LocalSession {
                     setSeats((previous) =>
                         JSON.stringify(previous) === JSON.stringify(data.seats) ? previous : data.seats,
                     );
+                    seatCountRef.current = data.seats.length;
                     for (const queued of data.actions) {
                         cursorRef.current = Math.max(cursorRef.current, queued.id);
                         handlerRef.current?.(queued.slot, queued.action);
+                    }
+                    if (data.view !== null && data.view.seq !== viewSeqRef.current) {
+                        viewSeqRef.current = data.view.seq;
+                        viewHandlerRef.current?.(data.view.slot, {
+                            azimuth: data.view.azimuth,
+                            polar: data.view.polar,
+                        });
                     }
                 })
                 .catch((failure) => {
@@ -191,16 +234,19 @@ export function useLocalSession(): LocalSession {
                     }
                 })
                 .finally(() => {
-                    inFlight = false;
+                    if (cancelled) return;
+                    timer = window.setTimeout(
+                        sync,
+                        seatCountRef.current > 0 ? LIVE_SYNC_INTERVAL_MS : IDLE_SYNC_INTERVAL_MS,
+                    );
                 });
         };
 
         sync();
-        const timer = window.setInterval(sync, SYNC_INTERVAL_MS);
 
         return () => {
             cancelled = true;
-            window.clearInterval(timer);
+            window.clearTimeout(timer);
         };
     }, [info]);
 
@@ -218,8 +264,8 @@ export function useLocalSession(): LocalSession {
     );
 
     const link = useMemo<HostLink | undefined>(
-        () => (info === null ? undefined : { mode: 'host', seats, publish, setActionHandler }),
-        [info, seats, publish, setActionHandler],
+        () => (info === null ? undefined : { mode: 'host', seats, publish, setActionHandler, setViewHandler }),
+        [info, seats, publish, setActionHandler, setViewHandler],
     );
 
     return { info, seats, isOpening, error, open, close, link, publish };
@@ -338,6 +384,71 @@ export function useLocalBoardState<S extends LocalBoardBaseState, A extends { ty
     }
 
     return [localState, localDispatch];
+}
+
+function wrapAngle(angle: number): number {
+    return Math.atan2(Math.sin(angle), Math.cos(angle));
+}
+
+/**
+ * Mirrors the camera of the phone whose turn it is onto the host screen.
+ *
+ *  - remote link: while it is this phone's turn, camera movement is sampled
+ *    and sent to the host.
+ *  - host link: the host camera eases towards the angles that phone sent.
+ *  - no link: does nothing.
+ */
+export function useViewMirror(
+    link: BoardLink | undefined,
+    getScene: () => ViewScene | null,
+    currentTurn: number,
+): void {
+    const host = link?.mode === 'host' ? link : undefined;
+    const remote = link?.mode === 'remote' ? link : undefined;
+    const hostSetViewHandler = host?.setViewHandler;
+    const isRemote = remote !== undefined;
+
+    const getSceneRef = useRef(getScene);
+    getSceneRef.current = getScene;
+    const currentTurnRef = useRef(currentTurn);
+    currentTurnRef.current = currentTurn;
+    const remoteRef = useRef(remote);
+    remoteRef.current = remote;
+
+    useEffect(() => {
+        if (!hostSetViewHandler) return;
+
+        hostSetViewHandler((slot, view) => {
+            if (slot !== currentTurnRef.current) return;
+            getSceneRef.current()?.followView(view);
+        });
+
+        return () => hostSetViewHandler(null);
+    }, [hostSetViewHandler]);
+
+    useEffect(() => {
+        if (!isRemote) return;
+
+        let lastSent: BoardView | null = null;
+
+        const timer = window.setInterval(() => {
+            const view = getSceneRef.current()?.getView() ?? null;
+            const current = remoteRef.current;
+            if (view === null || !current) return;
+            if (lastSent === null) {
+                lastSent = view;
+                return;
+            }
+            if (current.mySlot !== currentTurnRef.current) return;
+            const hasMoved = Math.abs(wrapAngle(view.azimuth - lastSent.azimuth)) > VIEW_EPSILON
+                || Math.abs(view.polar - lastSent.polar) > VIEW_EPSILON;
+            if (hasMoved && current.sendView(view)) {
+                lastSent = view;
+            }
+        }, VIEW_SAMPLE_INTERVAL_MS);
+
+        return () => window.clearInterval(timer);
+    }, [isRemote]);
 }
 
 export interface LocalSeating {
